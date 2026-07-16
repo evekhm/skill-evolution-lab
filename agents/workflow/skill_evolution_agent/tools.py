@@ -278,6 +278,10 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
     if not os.path.isfile(quality_report_path):
         return {"error": f"Quality report not found: {quality_report_path}"}
 
+    cached = _bottleneck_cache.get(os.path.abspath(quality_report_path))
+    if cached is not None:
+        return {**cached, "note": "cached (already classified this report)"}
+
     with open(quality_report_path) as f:
         report = json.load(f)
 
@@ -289,7 +293,7 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
 
     try:
         result = detect_bottleneck(report, client)
-        return {
+        out = {
             "recommendation": result.recommendation,
             "confidence": result.confidence,
             "total_failures": result.total_failures,
@@ -299,6 +303,11 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
             "architecture_failures": len(result.architecture_failures),
             "summary": result.summary,
         }
+        # Cache so coevolve (and repeat tool calls) reuse this instead of
+        # re-classifying the same report (~5 min of LLM calls, observed
+        # running twice per loop before this).
+        _bottleneck_cache[os.path.abspath(quality_report_path)] = out
+        return out
     except Exception as e:
         logger.error("Bottleneck detection failed: %s", e, exc_info=True)
         return {"error": str(e)}
@@ -310,6 +319,7 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
 
 
 _coevolution_rounds_run = 0  # EVOLUTION_MAX_ROUNDS guard (per process)
+_bottleneck_cache: dict = {}  # report path -> classification (run once per report)
 
 
 def run_coevolution(

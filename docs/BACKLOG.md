@@ -1,5 +1,13 @@
 # Backlog
 
+**Status 2026-07-17:** items 1, 2, 3, 5, 6*, 7*, 8 CLOSED — measured
+result: trigger-to-PR went 73m38s -> **13m45s** (PR #4: real rates in
+the title, regression cases + trace selector included, gate green).
+(*6: pre-check verified locally against PR #2's refused skill;
+in-container confirmation rides the next supervisor-targeted run.
+*7: validated for local-runner traffic; deployed traffic cannot carry
+per-run labels — see item 13.)
+
 Known issues and planned work, ordered by impact. Measured evidence in
 parentheses; timings from the 2026-07-16 runs on `skill-evolution-lab`.
 
@@ -33,9 +41,8 @@ Measured breakdown of a warm-BQ, policy-scoped, 3-candidate run
    what `--mode policy_agent` already decided. Also: classifier hit
    per-minute Gemini quota ~14 times (4 workers + retries) — batch or
    lower-QPS classify when it does run.
-4. **Analyst cap for demo runs**: 84 analysts ~6 min; a sampled ~30
-   preserves patch quality signal at ~2.5 min (category-aware
-   sampling, like the SDK lab's `max_failure_extract auto`).
+4. DONE — `--quick` binds `EVOLUTION_MAX_ANALYSTS=30`
+   (stride-sampled so the failure distribution stays represented).
 5. **`extract_regression_cases` glob mismatch** — in single-round
    coevolve mode the candidate reports are not matched by
    `candidate_*_report.json` under the run dir, so the tool errored
@@ -69,3 +76,9 @@ Measured breakdown of a warm-BQ, policy-scoped, 3-candidate run
     traffic when both exist in the window.
 12. **Old repo parity**: agent-quality-lab's quality wrapper has the
     same missing app_name filter; port if that repo stays active.
+
+13. **Per-run labels for deployed traffic**: agent plugins fix
+    custom_tags at startup, so generator `run_id` labels only reach
+    BigQuery on the local-runner path. Design option: pass a label
+    through session state / request metadata and have the plugin merge
+    it per event (SDK-side change).

@@ -698,6 +698,20 @@ def collect_patches(
         successes_to_use = successes[:max_success_samples]
         failures_to_use = failures
 
+    # EVOLUTION_MAX_ANALYSTS (set by --quick): stride-sample the failures
+    # so every part of the failure distribution stays represented while
+    # the fleet stays demo-sized. Full runs leave this unset.
+    cap = os.getenv("EVOLUTION_MAX_ANALYSTS")
+    if cap and len(failures_to_use) > int(cap):
+        n = int(cap)
+        stride = len(failures_to_use) / n
+        sampled = [failures_to_use[int(i * stride)] for i in range(n)]
+        logger.info(
+            "EVOLUTION_MAX_ANALYSTS=%d: stride-sampled %d of %d failures",
+            n, len(sampled), len(failures_to_use),
+        )
+        failures_to_use = sampled
+
     # Lazy import for agentic analysts to avoid circular imports
     agentic_analyst_fn = None
     if agentic:

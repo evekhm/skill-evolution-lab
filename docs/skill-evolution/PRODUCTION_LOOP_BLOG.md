@@ -159,5 +159,5 @@ gcloud run jobs execute skill-evolution-agent --region us-central1
 ```
 
 The full runbook, including the demo-speed scheduler override and the
-verification checklist, is in `docs/skill-evolution/PRODUCTION_LOOP_PLAN.md`
+verification checklist, is in `docs/BOOTSTRAP.md`
 and `docs/skill-evolution/QUICK_EVOLUTION_RUNBOOK.md`.

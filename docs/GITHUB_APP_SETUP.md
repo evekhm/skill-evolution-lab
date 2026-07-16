@@ -1,7 +1,7 @@
 # GitHub App Setup
 
-All quality agents (Quality Agent, Remediation Agent, Review Agent) authenticate
-to GitHub using a single GitHub App. Actions show as `agent-quality-lab[bot]`.
+The workflow agents (Quality Agent, Skill Evolution Agent) authenticate
+to GitHub using a single GitHub App. Actions show as `skill-evolution-lab-bot[bot]`.
 
 
 
@@ -13,7 +13,7 @@ Go to: https://github.com/settings/apps/new
 
 | Field | Value |
 |-------|-------|
-| App name | `agent-quality-lab` |
+| App name | `skill-evolution-lab-bot` (any name you choose) |
 | Homepage URL | Your repo URL |
 | Webhook active | **Uncheck** (not needed, agents are triggered by GitHub Actions) |
 
@@ -64,7 +64,7 @@ source .env
 gcloud secrets create github-app-key \
   --project=$PROJECT_ID \
   --replication-policy=automatic \
-  --data-file=./agent-quality-lab.*.private-key.pem
+  --data-file=./skill-evolution-lab-bot.*.private-key.pem
 ```
 
 Verify:
@@ -86,7 +86,7 @@ gcloud secrets create github-app-config \
   --project=$PROJECT_ID \
   --replication-policy=automatic \
   --data-file=- <<EOF
-{"app_id": YOUR_APP_ID, "installation_id": YOUR_INSTALLATION_ID, "repo": "your-org/agent-quality-lab"}
+{"app_id": YOUR_APP_ID, "installation_id": YOUR_INSTALLATION_ID, "repo": "your-org/your-repolity-lab"}
 EOF
 ```
 
@@ -110,7 +110,7 @@ to the default compute service account at the project level.
 ## Step 6: Delete the local .pem file
 
 ```bash
-rm ./agent-quality-lab.*.private-key.pem
+rm ./skill-evolution-lab-bot.*.private-key.pem
 ```
 
 The private key now lives only in Secret Manager.
@@ -150,7 +150,7 @@ from github import Github
 
 token = get_installation_token(PROJECT_ID, APP_ID, INSTALLATION_ID)
 g = Github(token)
-repo = g.get_repo("your-org/agent-quality-lab")
+repo = g.get_repo("your-org/your-repo")
 ```
 
 ---
@@ -182,8 +182,8 @@ No code changes needed -- agents always read `versions/latest`.
 
 | What | Where |
 |------|-------|
-| GitHub App | `agent-quality-lab` (your GitHub account settings) |
+| GitHub App | `skill-evolution-lab-bot` (your GitHub account settings) |
 | App config | `projects/$PROJECT_ID/secrets/github-app-config` (app_id, installation_id, repo) |
 | Private key | `projects/$PROJECT_ID/secrets/github-app-key` |
-| Bot identity | `agent-quality-lab[bot]` |
+| Bot identity | `skill-evolution-lab-bot[bot]` |
 | Permissions | Issues, Pull requests, Contents (all Read & Write) |

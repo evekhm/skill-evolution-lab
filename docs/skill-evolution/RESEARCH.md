@@ -1,5 +1,11 @@
 # Automatic Skill Evolution for LLM Agents
 
+> **Scope note:** historical research analysis. Mentions of the
+> Remediation Agent and deploy_prompts.yml refer to the original
+> agent-quality-lab repo; this repo ships the skill-evolution loop
+> only.
+
+
 ## From Reactive Fixes to Self-Improving Agent Skills
 
 **Research Review & Application to the Knowledge Supervisor Demo**

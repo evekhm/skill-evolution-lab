@@ -630,10 +630,13 @@ def _build_issue_body(
         parts.append("```")
 
     # 8. Footer
+    _app = os.getenv("QUALITY_APP_NAME", "knowledge_supervisor")
+    _labels = os.getenv("EVOLUTION_TRACE_LABELS", "") or "(none)"
     parts.append(
         "\n---\n*Created by "
         "Quality Agent "
-        f"| Dataset: `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}`*"
+        f"| Dataset: `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}` "
+        f"| App: `{_app}` | Labels: {_labels}*"
     )
 
     return "\n".join(parts)

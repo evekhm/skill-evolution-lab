@@ -116,6 +116,12 @@ def coevolve(
 
     logger.info("Step 1: Detecting bottleneck...")
     _bound_targets = os.getenv("EVOLUTION_TARGET_AGENTS", "").strip()
+    _precomputed = None
+    try:
+        from agents.workflow.skill_evolution_agent.tools import _bottleneck_cache
+        _precomputed = _bottleneck_cache.get(os.path.abspath(report_path))
+    except Exception:
+        pass
     if _bound_targets:
         # Target bound (--mode <agent>): skip the ~5-min LLM
         # classification; agents_to_evolve is filtered to the bound
@@ -126,6 +132,16 @@ def coevolve(
         )
         bottleneck = SimpleNamespace(
             recommendation="both", summary="skipped (target bound)",
+        )
+    elif _precomputed:
+        logger.info(
+            "Reusing bottleneck classification from the orchestrator's "
+            "earlier detect_bottleneck call: %s",
+            _precomputed.get("recommendation"),
+        )
+        bottleneck = SimpleNamespace(
+            recommendation=_precomputed.get("recommendation", "both"),
+            summary=_precomputed.get("summary", "precomputed"),
         )
     else:
         bottleneck = detect_bottleneck(report, client, model_id)

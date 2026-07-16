@@ -948,11 +948,21 @@ you asked for.
 
 ### Choosing which traces to evolve on (labels)
 
-Every BigQuery event carries `custom_tags`: `agent_version` (from the
-skill frontmatter), `sw_version` (git sha, stamped by the supervisor
-deploy), and — for generator traffic — `traffic_source=generator` plus
-a per-invocation `run_id`. Add your own with
-`TRACE_LABELS="k=v,k2=v2"` on any traffic run or deploy.
+Every BigQuery event carries `custom_tags` — but WHO stamps them
+depends on who logs the event, because plugin tags are fixed at agent
+startup:
+
+- **Deployed traffic** (through Agent Engine) is logged by the
+  *agents'* plugins: `agent_version` (skill frontmatter) +
+  `sw_version` (git sha) + whatever `TRACE_LABELS` the deploy set.
+  Per-run labels cannot be attached from the outside; slice deployed
+  traffic by version + time window (or redeploy with a label).
+- **Local-runner traffic** (`--local`, also used by candidate scoring)
+  is logged by the *generator's* plugin, which adds
+  `traffic_source=generator` and a per-invocation `run_id`
+  (verified live: seed -> `run_id` queryable in BigQuery ->
+  `--trace-labels run_id=...` selects exactly that slice). Add your
+  own with `TRACE_LABELS="k=v,k2=v2"`.
 
 The evolution job selects its input slice with the same vocabulary:
 

@@ -732,6 +732,7 @@ Examples:
             _repo, "eval", "data", "questions", "two_defect_quick.json")
         os.environ["EVAL_MAX_TURNS"] = "1"
         os.environ["SUPERVISOR_MODEL_ID"] = "gemini-2.5-flash"
+        os.environ.setdefault("EVOLUTION_MAX_ANALYSTS", "30")
     bound = {
         k: os.environ[k]
         for k in (

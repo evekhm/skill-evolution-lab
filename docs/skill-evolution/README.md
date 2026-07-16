@@ -214,7 +214,9 @@ update, a skill edit, a tool behavior shift -- and capability that
 existed before is now broken. The CA Data Agent (BigQuery Conversational
 Analytics) detects these by searching session history for similar past
 queries. When it finds past successes that now fail, the issue gets
-`[URGENT]` and triggers the Remediation Agent for a pointed fix.
+`[URGENT]` for immediate human attention (the original repo's
+remediation agent handled these automatically; this repo routes them
+to a human).
 
 **Persistent gaps** are known weaknesses. The agent gives vague
 benefits answers instead of citing "80% employer-paid PPO premiums."
@@ -387,7 +389,7 @@ In production, two agents work together with different cadences:
   3. CA Data Agent checks for             4. Flat consolidation
      regressions vs history               5. Evolved SKILL.md --> PR
   4. Create GitHub issues                    (with before/after quality table)
-       |-- [URGENT] regression --> Remediation Agent (pointed fix)
+       |-- [URGENT] regression --> human attention (label)
        |-- persistent gap --> accumulate for Evolution Agent
        +-- new-topic --> human decision (add or mark out-of-scope)
 ```
@@ -412,7 +414,7 @@ In production, two agents work together with different cadences:
   |  Scores sessions against Golden Q&A ground truth         |
   |  Searches history for regressions (CA Data Agent)        |
   |  Creates GitHub issues by type:                          |
-  |    regression --> [URGENT] --> Remediation Agent          |
+  |    regression --> [URGENT] --> human attention            |
   |    persistent gap --> accumulate --> Evolution Agent      |
   |    new topic --> human decision                          |
   +----------------------------+-----------------------------+
@@ -447,7 +449,7 @@ deployed skill, preventing cross-version data contamination.
 | **Output** | GitHub issues (observation) | GitHub PR (action) |
 | **Failure mode** | Missed problem | Bad evolution |
 
-## What's Different from Reactive Loop
+## What's Different from the Reactive Loop (the original agent-quality-lab repo)
 
 | Reactive Loop | Skill Evolution |
 |---------------|-----------------|

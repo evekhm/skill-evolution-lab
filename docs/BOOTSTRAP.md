@@ -237,7 +237,7 @@ regression cases to `eval/data/eval_cases.json` + `golden_evals.json`
 merging it triggers `deploy.yml`, which reconciles the registry and
 redeploys.
 
-**Demo-speed variant (~1h instead of ~3h).** The full run lets
+**Demo-speed variant (measured: 13m45s trigger-to-PR, vs ~1.5-3h full).** The full run lets
 the job decide scope (often all three skills, best-of-5, 55-question
 validation per candidate — thorough, and slow). For a live demo,
 override the job args for one execution to evolve only the policy
