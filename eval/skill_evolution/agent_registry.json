@@ -1,0 +1,20 @@
+{
+  "registry_location": "us-central1",
+  "agents": {
+    "policy_agent": {
+      "skill_dir": "agents/enterprise/policy_agent/skill",
+      "label": "Policy Agent",
+      "skill_id": "ks-policy-agent"
+    },
+    "benefits_agent": {
+      "skill_dir": "agents/enterprise/benefits_agent/skill",
+      "label": "Benefits Agent",
+      "skill_id": "ks-benefits-agent"
+    },
+    "supervisor": {
+      "skill_dir": "agents/enterprise/knowledge_supervisor/app/skill",
+      "label": "Knowledge Supervisor",
+      "skill_id": "ks-knowledge-supervisor"
+    }
+  }
+}

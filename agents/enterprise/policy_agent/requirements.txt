@@ -1,0 +1,6 @@
+google-adk[a2a]>=1.32.0,<2.0.0
+a2a-sdk==0.3.26
+python-dotenv==1.2.2
+# Skill Registry client (skill_registry.py copied in at deploy time)
+requests
+google-auth

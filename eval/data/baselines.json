@@ -1,0 +1,10 @@
+{
+  "description": "Operational metric budgets for the load test gate. Initial baselines are generous — the quality loop tightens them after fixes. Run `python eval/check_budget.py eval/load_test_report.json --record-baseline` to recalibrate from observed metrics.",
+  "budgets": {
+    "quality_threshold": 0.8,
+    "error_rate": 0.15,
+    "p95_latency_ms": 120000,
+    "avg_latency_ms": 60000,
+    "avg_turns": 15
+  }
+}

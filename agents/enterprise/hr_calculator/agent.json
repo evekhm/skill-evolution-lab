@@ -1,0 +1,36 @@
+{
+  "capabilities": {},
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "description": "An agent that calculates PTO balances, sick leave balances, working days for date ranges, and remaining work days in a period.",
+  "name": "hr_calculator",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "skills": [
+    {
+      "description": "An agent that calculates PTO balances, sick leave balances, working days for specific date ranges, and remaining work days in a month/quarter/year.",
+      "examples": [],
+      "id": "hr_calculator",
+      "name": "model",
+      "tags": [
+        "llm"
+      ]
+    },
+    {
+      "description": "Calculates remaining days in the year, work days, weekends, US public holidays, and current PTO and sick leave balances.",
+      "id": "hr_calculator-calculate_pto_details",
+      "name": "calculate_pto_details",
+      "tags": [
+        "llm",
+        "tools"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false,
+  "url": "http://localhost:8000/a2a/hr_calculator",
+  "version": "0.0.1"
+}

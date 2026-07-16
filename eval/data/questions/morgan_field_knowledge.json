@@ -1,0 +1,28 @@
+{
+  "questions": [
+    {
+      "question": "Does the company reimburse tuition for degree programs?",
+      "topic": "tuition_reimbursement"
+    },
+    {
+      "question": "How much tuition reimbursement can I get per year?",
+      "topic": "tuition_reimbursement"
+    },
+    {
+      "question": "What's the bereavement leave policy if a parent passes?",
+      "topic": "bereavement_leave"
+    },
+    {
+      "question": "How many days of bereavement leave do we get for extended family?",
+      "topic": "bereavement_leave"
+    },
+    {
+      "question": "If I get called for jury duty, do I still get paid?",
+      "topic": "jury_duty"
+    },
+    {
+      "question": "Does the company have an employee assistance program?",
+      "topic": "employee_assistance"
+    }
+  ]
+}

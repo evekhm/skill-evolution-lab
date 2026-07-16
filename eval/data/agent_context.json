@@ -1,0 +1,65 @@
+{
+  "scope_decisions": [
+    {
+      "topic": "stock_options",
+      "decision": "out_of_scope",
+      "reason": "No tool or data source covers equity compensation"
+    },
+    {
+      "topic": "salary_bands",
+      "decision": "out_of_scope",
+      "reason": "Compensation data is confidential"
+    },
+    {
+      "topic": "promotions",
+      "decision": "out_of_scope",
+      "reason": "No tool covers career progression"
+    },
+    {
+      "topic": "it_support",
+      "decision": "out_of_scope",
+      "reason": "No tool covers IT support"
+    },
+    {
+      "topic": "office_locations",
+      "decision": "out_of_scope",
+      "reason": "No tool covers office/facilities info"
+    },
+    {
+      "topic": "compensation",
+      "decision": "out_of_scope",
+      "reason": "No tool covers bonuses, signing bonuses, or severance pay"
+    },
+    {
+      "topic": "performance_reviews",
+      "decision": "out_of_scope",
+      "reason": "No tool covers performance review cycles or schedules"
+    },
+    {
+      "topic": "training_budget",
+      "decision": "out_of_scope",
+      "reason": "No tool covers learning & development budgets"
+    },
+    {
+      "topic": "employee_relations",
+      "decision": "out_of_scope",
+      "reason": "Harassment complaints and grievances are handled by HR, not covered by any tool"
+    },
+    {
+      "topic": "facilities",
+      "decision": "out_of_scope",
+      "reason": "No tool covers cafeteria, desk equipment, or facility requests"
+    },
+    {
+      "topic": "conduct",
+      "decision": "out_of_scope",
+      "reason": "No tool covers moonlighting, side projects, or code of conduct"
+    },
+    {
+      "topic": "internal_mobility",
+      "decision": "out_of_scope",
+      "reason": "No tool covers team transfers or internal moves"
+    }
+  ],
+  "ground_truth": "PTO: 20 days/year, accrued monthly (~1.67/mo), max 5 days rollover, 2 weeks notice for >3 day absence.\nSICK LEAVE: 10 days/year, NO rollover, doctor's note for >3 consecutive days.\nREMOTE WORK: up to 3 days/week, requires manager approval, core hours 10am-3pm, recorded in HR system.\nEXPENSES: meal allowance $75/day, pre-approval for travel expenses >$500, receipts required for expenses >$25, reports submitted within 30 days.\nBENEFITS: PPO & HMO plans available, company pays 80% employee premiums, 50% dependent premiums; preventive dental 100% covered, major dental 80% covered; annual eye exams covered, frames up to $200 every 2 years; 401k match 4% salary, vested after 1 year.\nPARENTAL LEAVE: 16 weeks primary caregiver, 8 weeks secondary caregiver.\nHOLIDAYS: 11 paid holidays/year, Juneteenth NOT a company holiday, Veterans Day NOT a company holiday, Columbus Day NOT a company holiday.\nOUT OF SCOPE: Salary information, stock/equity, Promotion processes, IT support, office/facilities (cafeteria, desk equipment), bonuses/severance, performance reviews, training budget, harassment/grievances, moonlighting/side projects, team transfers, Dress code."
+}

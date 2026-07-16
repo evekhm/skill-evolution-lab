@@ -1,0 +1,197 @@
+{
+  "name": "demo_quick_rebalanced",
+  "eval_set_id": "demo_quick_rebalanced",
+  "description": "Quick cleanly-answerable + declines + 2 labeled gaps",
+  "eval_cases": [
+    {
+      "id": "compound_01",
+      "question": "I want to use sick days as PTO since I never get sick. Is that allowed?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_05",
+      "question": "Can I convert unused sick days to PTO at year end?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_06",
+      "question": "My manager said I can ignore the 2-week advance notice for PTO. Is that valid?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "casual_phrasing_01",
+      "question": "Hey quick question — how does time off work around here?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "casual_phrasing_02",
+      "question": "So what's the deal with working from home?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "casual_phrasing_03",
+      "question": "Can someone break down the insurance options for me?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "bait_01",
+      "question": "I know we get 20 PTO days, but I think the rollover is 10 days, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_02",
+      "question": "Our 401k matches at 4% and vests immediately, correct?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_03",
+      "question": "We can work from home 3 days a week without any approval needed, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "cross_policy_02",
+      "question": "Can I use the $75 meal allowance when I'm working remotely, or only when traveling?",
+      "category": "cross_policy"
+    },
+    {
+      "id": "date_01",
+      "question": "What's the next company holiday?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_02",
+      "question": "How many holidays are left this year?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_03",
+      "question": "Do we have any holidays coming up this month?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "halluc_01",
+      "question": "Is Juneteenth a company holiday?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_02",
+      "question": "Do we get Veterans Day off?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_03",
+      "question": "Is the 401k match 6% or 8%?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "route_01",
+      "question": "I'm going to be out next week.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_02",
+      "question": "I have a dentist appointment Tuesday.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_03",
+      "question": "I spent $80 on dinner with a client last night.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "multi_01",
+      "question": "Tell me about all my time-off options.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_02",
+      "question": "Compare PTO and sick leave — what rolls over and what doesn't?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_03",
+      "question": "I'm planning a trip in July. What do I need to know about PTO, expenses, and any holidays?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "near_scope_decline_01",
+      "question": "What's the bereavement leave policy?",
+      "category": "near_scope_decline"
+    },
+    {
+      "id": "near_scope_decline_03",
+      "question": "Is there a student loan repayment benefit?",
+      "category": "near_scope_decline"
+    },
+    {
+      "id": "near_scope_decline_04",
+      "question": "What's our severance policy?",
+      "category": "near_scope_decline"
+    },
+    {
+      "id": "scope_01",
+      "question": "What are the salary bands for senior engineers?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_02",
+      "question": "How do I get promoted?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_03",
+      "question": "What's the dress code?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "straight_01",
+      "question": "What is the PTO policy?",
+      "category": "straightforward"
+    },
+    {
+      "id": "straight_02",
+      "question": "How many sick days do we get?",
+      "category": "straightforward"
+    },
+    {
+      "id": "straight_03",
+      "question": "What's the remote work policy?",
+      "category": "straightforward"
+    },
+    {
+      "id": "synonym_01",
+      "question": "How many vacation days do I get?",
+      "category": "synonym"
+    },
+    {
+      "id": "synonym_02",
+      "question": "What's our telecommuting policy?",
+      "category": "synonym"
+    },
+    {
+      "id": "synonym_03",
+      "question": "Tell me about our WFH rules.",
+      "category": "synonym"
+    },
+    {
+      "id": "subtopic_13",
+      "question": "What's the orthodontia coverage under our dental plan?",
+      "category": "knowledge_gap_demo"
+    },
+    {
+      "id": "subtopic_14",
+      "question": "Is there a maximum out-of-pocket for our health plan?",
+      "category": "knowledge_gap_demo"
+    },
+    {
+      "id": "toolgap_tuition_reimbursement",
+      "question": "Does the company reimburse tuition for degree programs?",
+      "category": "tool_gap_demo"
+    },
+    {
+      "id": "toolgap_tuition_reimbursement",
+      "question": "How much tuition reimbursement can I get per year?",
+      "category": "tool_gap_demo"
+    }
+  ]
+}

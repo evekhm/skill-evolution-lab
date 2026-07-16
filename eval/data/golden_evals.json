@@ -1,0 +1,236 @@
+{
+  "eval_set_id": "golden_evals_hr_policy",
+  "name": "Golden Eval Set: HR Policy Q&A",
+  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact — what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
+  "version": "1.0",
+  "eval_cases": [
+    {
+      "id": "pto_01",
+      "question": "How many PTO days do I get per year?",
+      "expected_answer": "20 days per year, accrued monthly at approximately 1.67 days per month.",
+      "topic": "pto"
+    },
+    {
+      "id": "pto_02",
+      "question": "Can I roll over unused PTO to next year?",
+      "expected_answer": "Yes, up to 5 days can roll over to the next year. Any days beyond 5 are forfeited.",
+      "topic": "pto"
+    },
+    {
+      "id": "pto_03",
+      "question": "How far in advance do I need to request PTO?",
+      "expected_answer": "For absences of more than 3 days, you need to give at least 2 weeks notice.",
+      "topic": "pto"
+    },
+    {
+      "id": "pto_04",
+      "question": "How many vacation days do I get?",
+      "expected_answer": "20 days per year. 'Vacation days' and 'PTO' refer to the same benefit.",
+      "topic": "pto",
+      "notes": "Tests synonym mapping: vacation = PTO"
+    },
+    {
+      "id": "sick_01",
+      "question": "How many sick days do we get?",
+      "expected_answer": "10 sick days per year.",
+      "topic": "sick_leave"
+    },
+    {
+      "id": "sick_02",
+      "question": "Do unused sick days roll over?",
+      "expected_answer": "No, sick days do not roll over. They reset each year.",
+      "topic": "sick_leave"
+    },
+    {
+      "id": "sick_03",
+      "question": "Do I need a doctor's note for sick leave?",
+      "expected_answer": "A doctor's note is required if you are out for more than 3 consecutive days.",
+      "topic": "sick_leave"
+    },
+    {
+      "id": "remote_01",
+      "question": "How many days per week can I work from home?",
+      "expected_answer": "Up to 3 days per week, with manager approval.",
+      "topic": "remote_work"
+    },
+    {
+      "id": "remote_02",
+      "question": "What's our telecommuting policy?",
+      "expected_answer": "You can work remotely up to 3 days per week with manager approval. Core hours are 10am-3pm, and remote work must be recorded in the HR system.",
+      "topic": "remote_work",
+      "notes": "Tests synonym mapping: telecommuting = remote work"
+    },
+    {
+      "id": "remote_03",
+      "question": "Are there core hours I need to be available during?",
+      "expected_answer": "Yes, core hours are 10am to 3pm regardless of whether you're remote or in-office.",
+      "topic": "remote_work"
+    },
+    {
+      "id": "expense_01",
+      "question": "What's the meal allowance when traveling for work?",
+      "expected_answer": "$75 per day for meals during business travel.",
+      "topic": "expenses"
+    },
+    {
+      "id": "expense_02",
+      "question": "Do I need pre-approval for travel expenses?",
+      "expected_answer": "Yes, travel expenses over $500 require pre-approval.",
+      "topic": "expenses"
+    },
+    {
+      "id": "expense_03",
+      "question": "When do I need to keep receipts?",
+      "expected_answer": "Receipts are required for any expense over $25.",
+      "topic": "expenses"
+    },
+    {
+      "id": "expense_04",
+      "question": "How long do I have to submit expense reports?",
+      "expected_answer": "Expense reports must be submitted within 30 days at expenses.company.com.",
+      "topic": "expenses"
+    },
+    {
+      "id": "insurance_01",
+      "question": "What health insurance plans are available?",
+      "expected_answer": "PPO and HMO plans are available. The company pays 80% of employee premiums and 50% of dependent premiums.",
+      "topic": "benefits"
+    },
+    {
+      "id": "insurance_02",
+      "question": "How much does the company pay for health insurance?",
+      "expected_answer": "The company covers 80% of employee premiums and 50% of dependent premiums.",
+      "topic": "benefits"
+    },
+    {
+      "id": "dental_01",
+      "question": "What dental coverage do we have?",
+      "expected_answer": "Preventive dental care is fully covered. Major procedures are covered at 80%.",
+      "topic": "benefits"
+    },
+    {
+      "id": "vision_01",
+      "question": "What does the vision plan cover?",
+      "expected_answer": "Annual eye exams are covered. Frames are covered up to $200 every 2 years.",
+      "topic": "benefits"
+    },
+    {
+      "id": "retirement_01",
+      "question": "How does the 401k match work?",
+      "expected_answer": "The company matches 4% of your salary. Contributions are vested after 1 year of employment.",
+      "topic": "benefits"
+    },
+    {
+      "id": "retirement_02",
+      "question": "How does our pension plan work?",
+      "expected_answer": "The company provides a 401(k) with a 4% match, vested after 1 year.",
+      "topic": "benefits",
+      "notes": "Tests synonym mapping: pension = 401(k)"
+    },
+    {
+      "id": "parental_01",
+      "question": "How much parental leave do primary caregivers get?",
+      "expected_answer": "16 weeks for primary caregivers.",
+      "topic": "parental_leave"
+    },
+    {
+      "id": "parental_02",
+      "question": "I'm the secondary caregiver. How much parental leave do I get?",
+      "expected_answer": "8 weeks for secondary caregivers.",
+      "topic": "parental_leave"
+    },
+    {
+      "id": "holiday_01",
+      "question": "How many paid holidays do we get per year?",
+      "expected_answer": "11 paid holidays per year.",
+      "topic": "holidays"
+    },
+    {
+      "id": "holiday_02",
+      "question": "Is Juneteenth a company holiday?",
+      "expected_answer": "No, Juneteenth is not a company holiday.",
+      "topic": "holidays",
+      "notes": "Tests hallucination resistance — agent must not assume"
+    },
+    {
+      "id": "holiday_03",
+      "question": "Do we get Veterans Day off?",
+      "expected_answer": "No, Veterans Day is not a company holiday.",
+      "topic": "holidays",
+      "notes": "Tests hallucination resistance"
+    },
+    {
+      "id": "holiday_04",
+      "question": "Do we get Columbus Day off?",
+      "expected_answer": "No, Columbus Day is not a company holiday.",
+      "topic": "holidays",
+      "notes": "Tests hallucination resistance"
+    },
+    {
+      "id": "halluc_01",
+      "question": "Is the 401k match 6%?",
+      "expected_answer": "No, the 401(k) match is 4%, not 6%.",
+      "topic": "benefits",
+      "notes": "Tests correction of false premise"
+    },
+    {
+      "id": "halluc_02",
+      "question": "I heard we get 25 PTO days. Is that right?",
+      "expected_answer": "No, PTO is 20 days per year, not 25.",
+      "topic": "pto",
+      "notes": "Tests correction of false premise"
+    },
+    {
+      "id": "halluc_03",
+      "question": "Someone told me sick days roll over. True?",
+      "expected_answer": "No, sick days do not roll over. They reset each year.",
+      "topic": "sick_leave",
+      "notes": "Tests correction of false premise"
+    },
+    {
+      "id": "halluc_04",
+      "question": "Is it true we can work remotely 5 days a week?",
+      "expected_answer": "No, remote work is limited to 3 days per week with manager approval.",
+      "topic": "remote_work",
+      "notes": "Tests correction of false premise"
+    },
+    {
+      "id": "scope_01",
+      "question": "What are the salary bands for senior engineers?",
+      "expected_answer": "DECLINE — salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "topic": "out_of_scope"
+    },
+    {
+      "id": "scope_02",
+      "question": "How do I get promoted?",
+      "expected_answer": "DECLINE — promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "topic": "out_of_scope"
+    },
+    {
+      "id": "scope_03",
+      "question": "Can you help me set up my laptop?",
+      "expected_answer": "DECLINE — IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "topic": "out_of_scope"
+    },
+    {
+      "id": "scope_04",
+      "question": "What's the dress code?",
+      "expected_answer": "DECLINE — dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "topic": "out_of_scope"
+    },
+    {
+      "id": "compound_01",
+      "question": "Compare PTO and sick leave — what rolls over and what doesn't?",
+      "expected_answer": "PTO: 20 days/year, up to 5 days roll over. Sick leave: 10 days/year, no rollover.",
+      "topic": "multi_topic",
+      "notes": "Tests multi-topic handling with comparison"
+    },
+    {
+      "id": "compound_02",
+      "question": "Tell me about all my time-off options.",
+      "expected_answer": "PTO: 20 days/year. Sick leave: 10 days/year. Parental leave: 16 weeks (primary) or 8 weeks (secondary). 11 paid holidays/year.",
+      "topic": "multi_topic",
+      "notes": "Tests comprehensive multi-topic response"
+    }
+  ]
+}

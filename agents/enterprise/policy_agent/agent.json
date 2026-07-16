@@ -1,0 +1,45 @@
+{
+  "capabilities": {},
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "description": "Answers questions about company policies including PTO, sick leave, remote work, expenses, benefits, holidays, and current date.",
+  "name": "policy_agent",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "skills": [
+    {
+      "description": "Answers questions about company policies including PTO, sick leave, remote work, expenses, benefits, holidays, and current date.",
+      "examples": [],
+      "id": "policy_agent",
+      "name": "model",
+      "tags": [
+        "llm"
+      ]
+    },
+    {
+      "description": "Looks up a company policy by topic (pto, sick_leave, remote_work, expenses, benefits, holidays).",
+      "id": "policy_agent-lookup_company_policy",
+      "name": "lookup_company_policy",
+      "tags": [
+        "llm",
+        "tools"
+      ]
+    },
+    {
+      "description": "Gets the current date.",
+      "id": "policy_agent-get_current_date",
+      "name": "get_current_date",
+      "tags": [
+        "llm",
+        "tools"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false,
+  "url": "http://localhost:8000/a2a/policy_agent",
+  "version": "0.0.1"
+}

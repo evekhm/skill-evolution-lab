@@ -1,0 +1,447 @@
+{
+  "eval_set_id": "morgan_production_traffic",
+  "name": "Morgan Production Traffic",
+  "description": "Post-evolution production traffic for Morgan persona (senior employee, former HR compliance specialist). Tests the prediction gap: topics beyond Golden Q&A that real users ask about. Designed to run after V1 evolution to expose what bootstrap can't teach.",
+  "eval_cases": [
+    {
+      "id": "tuition_01",
+      "question": "Does the company offer tuition reimbursement?",
+      "category": "straightforward"
+    },
+    {
+      "id": "tuition_02",
+      "question": "How much tuition reimbursement can I get per year?",
+      "category": "straightforward"
+    },
+    {
+      "id": "tuition_03",
+      "question": "What GPA do I need to maintain for tuition reimbursement?",
+      "category": "straightforward"
+    },
+    {
+      "id": "tuition_04",
+      "question": "The tuition reimbursement cap is $10,000 per year, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "tuition_05",
+      "question": "I heard you only need a C average for tuition reimbursement. Is that true?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "tuition_06",
+      "question": "How do I apply for tuition reimbursement?",
+      "category": "procedural"
+    },
+    {
+      "id": "tuition_07",
+      "question": "What documentation do I need to submit for tuition reimbursement?",
+      "category": "procedural"
+    },
+    {
+      "id": "tuition_08",
+      "question": "Does tuition reimbursement cover online-only programs?",
+      "category": "edge_case"
+    },
+    {
+      "id": "tuition_09",
+      "question": "Can I use tuition reimbursement for a certification program that isn't a degree?",
+      "category": "edge_case"
+    },
+    {
+      "id": "bereavement_01",
+      "question": "What's the bereavement leave policy?",
+      "category": "straightforward"
+    },
+    {
+      "id": "bereavement_02",
+      "question": "How many days of bereavement leave do I get for a parent?",
+      "category": "straightforward"
+    },
+    {
+      "id": "bereavement_03",
+      "question": "How many bereavement days for extended family members?",
+      "category": "straightforward"
+    },
+    {
+      "id": "bereavement_04",
+      "question": "Bereavement leave is 3 days for immediate family, correct?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bereavement_05",
+      "question": "Does bereavement leave cover the death of a close friend?",
+      "category": "edge_case"
+    },
+    {
+      "id": "bereavement_06",
+      "question": "If the funeral is overseas, can I extend bereavement leave with PTO?",
+      "category": "edge_case"
+    },
+    {
+      "id": "jury_01",
+      "question": "Do I get paid during jury duty?",
+      "category": "straightforward"
+    },
+    {
+      "id": "jury_02",
+      "question": "How many days of jury duty leave are covered?",
+      "category": "straightforward"
+    },
+    {
+      "id": "jury_03",
+      "question": "I heard jury duty is unpaid leave. Is that right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "jury_04",
+      "question": "If I'm dismissed from jury duty at noon, do I need to come back to work?",
+      "category": "edge_case"
+    },
+    {
+      "id": "jury_05",
+      "question": "What if jury duty extends beyond 10 days?",
+      "category": "consequence_boundary"
+    },
+    {
+      "id": "jury_06",
+      "question": "What do I need to provide to HR when I get a jury summons?",
+      "category": "procedural"
+    },
+    {
+      "id": "eap_01",
+      "question": "Does the company have an employee assistance program?",
+      "category": "straightforward"
+    },
+    {
+      "id": "eap_02",
+      "question": "How many free counseling sessions does the EAP provide?",
+      "category": "straightforward"
+    },
+    {
+      "id": "eap_03",
+      "question": "The EAP only covers 3 sessions per year, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "eap_04",
+      "question": "How do I access the EAP's crisis hotline?",
+      "category": "procedural"
+    },
+    {
+      "id": "eap_05",
+      "question": "Is the EAP confidential? Will my manager know I used it?",
+      "category": "edge_case"
+    },
+    {
+      "id": "deep_benefits_01",
+      "question": "What are the actual premium differences between PPO and HMO for a family of four?",
+      "category": "subtopic"
+    },
+    {
+      "id": "deep_benefits_02",
+      "question": "If I max out my 401k contributions, does the company match apply to the full amount or just the first 4%?",
+      "category": "subtopic"
+    },
+    {
+      "id": "deep_benefits_03",
+      "question": "What happens to my 401k match if I leave before the 1-year vesting period?",
+      "category": "consequence_boundary"
+    },
+    {
+      "id": "deep_benefits_04",
+      "question": "Can I contribute to both an HSA and use the PPO plan?",
+      "category": "edge_case"
+    },
+    {
+      "id": "deep_benefits_05",
+      "question": "What's the process for appealing a denied insurance claim?",
+      "category": "procedural"
+    },
+    {
+      "id": "deep_expenses_01",
+      "question": "I'm traveling internationally for a client meeting. Are the expense limits different for international travel?",
+      "category": "edge_case"
+    },
+    {
+      "id": "deep_expenses_02",
+      "question": "My team wants to do an offsite retreat. What's the approval process for group expenses?",
+      "category": "procedural"
+    },
+    {
+      "id": "deep_expenses_03",
+      "question": "I accidentally used my personal card for a $2,000 conference registration. How do I get reimbursed?",
+      "category": "procedural"
+    },
+    {
+      "id": "deep_expenses_04",
+      "question": "If my flight gets canceled and I have to rebook at a higher price, do I need new pre-approval?",
+      "category": "edge_case"
+    },
+    {
+      "id": "deep_pto_01",
+      "question": "I've been here 10 years. Is there a higher PTO accrual rate for long-tenured employees?",
+      "category": "edge_case"
+    },
+    {
+      "id": "deep_pto_02",
+      "question": "What happens to my PTO accrual if I go on short-term disability?",
+      "category": "cross_policy"
+    },
+    {
+      "id": "deep_pto_03",
+      "question": "If I get sick during PTO, can I retroactively convert those days to sick leave?",
+      "category": "cross_policy"
+    },
+    {
+      "id": "deep_remote_01",
+      "question": "I want to work from our European office for a month. What are the implications for my benefits and taxes?",
+      "category": "edge_case"
+    },
+    {
+      "id": "deep_remote_02",
+      "question": "Can my team establish a permanent 4-day remote, 1-day office schedule?",
+      "category": "edge_case"
+    },
+    {
+      "id": "consequence_01",
+      "question": "What happens if I don't submit my expense report within the 30-day window?",
+      "category": "consequence_boundary"
+    },
+    {
+      "id": "consequence_02",
+      "question": "What happens if an employee is found to have fabricated an expense receipt?",
+      "category": "consequence_boundary"
+    },
+    {
+      "id": "consequence_03",
+      "question": "If I don't maintain a B+ average, do I have to repay tuition reimbursement?",
+      "category": "consequence_boundary"
+    },
+    {
+      "id": "consequence_04",
+      "question": "What happens if I don't return to work after parental leave?",
+      "category": "consequence_boundary"
+    },
+    {
+      "id": "cross_01",
+      "question": "If I'm on jury duty and a holiday falls during that period, what happens?",
+      "category": "cross_policy"
+    },
+    {
+      "id": "cross_02",
+      "question": "Can I use EAP counseling sessions while on parental leave?",
+      "category": "cross_policy"
+    },
+    {
+      "id": "cross_03",
+      "question": "I'm using tuition reimbursement for evening classes. Can I adjust my work hours under the remote work policy?",
+      "category": "cross_policy"
+    },
+    {
+      "id": "cross_04",
+      "question": "Does bereavement leave count against my PTO balance?",
+      "category": "cross_policy"
+    },
+    {
+      "id": "casual_01",
+      "question": "Hey, I've been meaning to ask — what's the deal with tuition benefits?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "casual_02",
+      "question": "So my aunt passed away and I need some time off, how does that work?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "casual_03",
+      "question": "Got jury duty next month, what should I know?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "casual_04",
+      "question": "Feeling really burnt out lately — does the company have any kind of mental health support?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "halluc_01",
+      "question": "Is there a sabbatical program for employees with 10+ years of service?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_02",
+      "question": "I heard the company offers pet insurance as a benefit. Is that true?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_03",
+      "question": "Does the EAP cover financial counseling and legal advice?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_04",
+      "question": "Is there a childcare subsidy for employees with young children?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_05",
+      "question": "I heard about a wellness stipend of $500 per year. Can you confirm?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "compound_01",
+      "question": "I'm going back to school, having a baby, and might need to go part-time. How do all these policies interact?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_02",
+      "question": "My father is terminally ill overseas. I need bereavement leave, remote work from another country, and possibly EAP support. Walk me through everything.",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_03",
+      "question": "I got called for jury duty during a work trip. Who covers the travel expenses and how does the leave work?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_04",
+      "question": "I want to take a leave of absence to finish my degree using tuition reimbursement. What happens to my PTO, benefits, and 401k?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "implicit_01",
+      "question": "My mother-in-law just passed away.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "implicit_02",
+      "question": "I received a jury summons in the mail today.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "implicit_03",
+      "question": "I've been thinking about going back to school for my MBA.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "implicit_04",
+      "question": "I'm really struggling with stress at work lately.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "core_01",
+      "question": "Could you detail the health insurance plans offered?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_02",
+      "question": "What are the specifics of the dental coverage?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_03",
+      "question": "What is the company's 401k matching contribution?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_04",
+      "question": "What's the maximum amount I can spend on lunch while on a business trip?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_05",
+      "question": "For what expense amount is a receipt always required?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_06",
+      "question": "How many sick days am I allowed per year?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_07",
+      "question": "What is the company's policy on carrying over unused sick leave?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_08",
+      "question": "At what point is a medical certificate required for sick leave?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_09",
+      "question": "How many paid holidays does the company offer per year?",
+      "category": "straightforward"
+    },
+    {
+      "id": "core_10",
+      "question": "Can you list all of the company-observed holidays?",
+      "category": "straightforward"
+    },
+    {
+      "id": "bait_01",
+      "question": "The company pays 90% of employee health premiums, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_02",
+      "question": "Sick days roll over up to 5 days, just like PTO, correct?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_03",
+      "question": "The receipt threshold is $50 for expenses, isn't it?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_04",
+      "question": "Vision frames are covered up to $300 every year, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_05",
+      "question": "Remote work requires no manager approval, just notification, correct?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "multi_01",
+      "question": "Give me the full picture of all leave types — PTO, sick, bereavement, jury duty, parental.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_02",
+      "question": "I'm a new senior hire. Walk me through all the benefits I should know about — insurance, 401k, tuition, EAP.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_03",
+      "question": "What support does the company offer for major life events — having a baby, losing a family member, going back to school?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "scope_01",
+      "question": "Can you explain the company's stock option plan?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_02",
+      "question": "What are the current salary bands for a Senior Software Engineer?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_03",
+      "question": "What's the process for applying for an internal promotion?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_04",
+      "question": "How do I submit a non-urgent IT request?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_05",
+      "question": "What's the company's policy on employee referral bonuses?",
+      "category": "out_of_scope"
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Deploy to GCP — runs when a PR is merged into main.
+#
+# Deploys all agents in order:
+#   1. policy_agent       -> Cloud Run (A2A)
+#   2. hr_calculator      -> Cloud Run (A2A)
+#   3. knowledge_supervisor -> Agent Engine
+#   4. traffic_generator  -> Cloud Run Job
+#
+# Requires:
+#   - Workload Identity Federation configured (vars.WIF_PROVIDER, vars.WIF_SERVICE_ACCOUNT)
+#   - GCP project set up (scripts/setup/setup_gcp.sh)
+
+name: Deploy to GCP
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    # Run when PR is merged, or when triggered manually
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    name: Deploy All Agents
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # for Workload Identity Federation
+      pull-requests: write   # deployment summary comment on the merged PR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate .env from .env.example
+        run: |
+          cp .env.example .env
+          sed -i 's|^PROJECT_ID=.*|PROJECT_ID="${{ vars.PROJECT_ID }}"|' .env
+          sed -i 's|^REGION=.*|REGION="${{ vars.REGION || 'us-central1' }}"|' .env
+          sed -i 's|^DATASET_ID=.*|DATASET_ID="${{ vars.DATASET_ID || 'agent_logs' }}"|' .env
+          sed -i 's|^DATASET_LOCATION=.*|DATASET_LOCATION="${{ vars.DATASET_LOCATION || 'us-central1' }}"|' .env
+          sed -i 's|^TABLE_ID=.*|TABLE_ID="${{ vars.TABLE_ID || 'agent_events' }}"|' .env
+          echo "" >> .env
+          echo "DEPLOY_COMMIT=${{ github.sha }}" >> .env
+          echo "SUPERVISOR_VERTEX_PROMPT_ID=${{ vars.SUPERVISOR_VERTEX_PROMPT_ID }}" >> .env
+          echo "POLICY_VERTEX_PROMPT_ID=${{ vars.POLICY_VERTEX_PROMPT_ID }}" >> .env
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            "google-adk>=1.32.0,<2.0.0" \
+            google-cloud-aiplatform \
+            python-dotenv \
+            requests \
+            "bigquery-agent-analytics[llm]>=0.4.0"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Sync Skill Registry with merged skills
+        # Idempotent: records the merged SKILL.md as the latest registry
+        # revision (skips agents whose registry copy already matches), so the
+        # registry always equals reviewed main before agents redeploy.
+        run: |
+          set -a
+          source .env
+          set +a
+          python eval/skill_evolution/registry_sync.py seed
+
+      - name: Deploy all agents
+        run: bash scripts/deploy/deploy_gcp.sh
+
+      - name: Post deployment summary
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true   # a failed comment must not fail a green deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATUS="${{ job.status }}"
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+            MSG="All agents deployed successfully."
+          else
+            EMOJI="❌"
+            MSG="Deployment failed. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+          fi
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "${EMOJI} **Deploy:** ${MSG}"

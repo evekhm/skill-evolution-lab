@@ -1,0 +1,36 @@
+[project]
+name = "knowledge-supervisor"
+version = "0.1.0"
+description = "Multi-agent knowledge supervisor with A2A sub-agents, BigQuery analytics, and load testing"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "google-adk>=1.28.0,<2.0.0",
+    "google-cloud-aiplatform[agent-engines,a2a]>=1.130.0",
+    "google-cloud-logging>=3.12.0,<4.0.0",
+    "a2a-sdk>=0.3.26,<1.0.0",
+    "python-dotenv>=1.0.0",
+    "protobuf>=6.31.1,<7.0.0",
+    "nest-asyncio>=1.6.0,<2.0.0",
+    "httpx",
+    "PyGithub>=2.3.0",
+    "google-cloud-secret-manager>=2.20.0",
+    "bigquery-agent-analytics[llm]>=0.4.0",
+    "numpy>=2.4.6",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4,<9.0.0",
+    "pytest-asyncio>=0.23.8,<1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agents"]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+asyncio_default_fixture_loop_scope = "function"

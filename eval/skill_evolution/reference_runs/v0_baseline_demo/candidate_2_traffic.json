@@ -1,0 +1,678 @@
+{
+  "metrics": {
+    "total_conversations": 22,
+    "elapsed_seconds": 131.4,
+    "concurrency": 10,
+    "total_corrections": 0,
+    "total_verifications": 0,
+    "correction_rate": 0.0,
+    "verify_rate": 0.0,
+    "avg_user_turns": 2.5,
+    "avg_tool_calls": 2.5,
+    "error_count": 0
+  },
+  "conversations": [
+    {
+      "question": "I want to use sick days as PTO since I never get sick. Is that allowed?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I want to use sick days as PTO since I never get sick. Is that allowed?"
+        },
+        {
+          "role": "agent",
+          "text": "That's a great question! Our current sick leave policy states that employees receive 10 sick days per year, and a doctor's note is required for absences longer than 3 consecutive days. However, the policy doesn't explicitly mention whether sick days can be used as PTO.\n\nFor clarification on whether you can use your sick days as PTO, I recommend reaching out to HR directly. They can provide the most accurate and up-to-date information regarding this specific scenario!"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 40024.2,
+      "session_id": "conv_a19308ff",
+      "final_response": "That's a great question! Our current sick leave policy states that employees receive 10 sick days per year, and a doctor's note is required for absences longer than 3 consecutive days. However, the policy doesn't explicitly mention whether sick days can be used as PTO.\n\nFor clarification on whether you can use your sick days as PTO, I recommend reaching out to HR directly. They can provide the most accurate and up-to-date information regarding this specific scenario!"
+    },
+    {
+      "question": "Can I work from home on a holiday to save my PTO for later?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Can I work from home on a holiday to save my PTO for later?"
+        },
+        {
+          "role": "agent",
+          "text": "That's an interesting question! Our company observes 11 paid holidays per year, meaning those are typically days off with pay, separate from your PTO.\n\nThe remote work policy allows employees to work remotely up to 3 days per week with manager approval, and remote work arrangements need to be documented.\n\nHowever, the policies don't explicitly cover working on a paid holiday to \"save\" your PTO. Generally, paid holidays are observed as specific days off. If you're looking to work on a holiday and save your PTO for other uses, I'd recommend discussing this directly with your manager or HR to understand if such an arrangement is possible and how it would be compensated, as it might fall outside of standard policy."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for the clarification on the number of holidays and remote work policy, and for the advice on discussing this with my manager.",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 63296.9,
+      "session_id": "conv_f3a31227",
+      "final_response": "That's an interesting question! Our company observes 11 paid holidays per year, meaning those are typically days off with pay, separate from your PTO.\n\nThe remote work policy allows employees to work remotely up to 3 days per week with manager approval, and remote work arrangements need to be documented.\n\nHowever, the policies don't explicitly cover working on a paid holiday to \"save\" your PTO. Generally, paid holidays are observed as specific days off. If you're looking to work on a holiday and save your PTO for other uses, I'd recommend discussing this directly with your manager or HR to understand if such an arrangement is possible and how it would be compensated, as it might fall outside of standard policy."
+    },
+    {
+      "question": "I know we get 20 PTO days, but I think the rollover is 10 days, right?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I know we get 20 PTO days, but I think the rollover is 10 days, right?"
+        },
+        {
+          "role": "agent",
+          "text": "You're right that employees receive 20 PTO days per year! However, the rollover policy allows for a maximum of 5 unused PTO days to be carried over to the next year, not 10."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for clarifying! What's the policy for giving notice when taking PTO?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "I can definitely clarify that for you!\n\nAccording to our company policy, for any PTO period longer than 3 days, you'll need to submit your request at least 2 weeks in advance."
+        },
+        {
+          "role": "user",
+          "text": "That's clear, thanks! Can you tell me about the company's sick leave policy?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Of course! Here's our company's sick leave policy:\n\nEmployees receive 10 sick days per year. It's important to note that sick leave does not roll over from year to year. Also, if you're absent for more than 3 consecutive days due to illness, a doctor's note will be required."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's perfectly clear and matches what I remember!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 4,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 104101.2,
+      "session_id": "conv_235f4a37",
+      "final_response": "Of course! Here's our company's sick leave policy:\n\nEmployees receive 10 sick days per year. It's important to note that sick leave does not roll over from year to year. Also, if you're absent for more than 3 consecutive days due to illness, a doctor's note will be required."
+    },
+    {
+      "question": "Our 401k matches at 4% and vests immediately, correct?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Our 401k matches at 4% and vests immediately, correct?"
+        },
+        {
+          "role": "agent",
+          "text": "You're right about the 4% company match for our 401(k)! However, the policy states that it's fully vested after 1 year of employment, not immediately."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for clarifying that, I appreciate it!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 25858.3,
+      "session_id": "conv_053a6d53",
+      "final_response": "You're right about the 4% company match for our 401(k)! However, the policy states that it's fully vested after 1 year of employment, not immediately."
+    },
+    {
+      "question": "What's the next company holiday?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What's the next company holiday?"
+        },
+        {
+          "role": "agent",
+          "text": "Based on the current date, Tuesday, May 26, 2026, the next company holiday is **July 3, 2026**, which is observed for Independence Day."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's helpful!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 65999.2,
+      "session_id": "conv_b41addee",
+      "final_response": "Based on the current date, Tuesday, May 26, 2026, the next company holiday is **July 3, 2026**, which is observed for Independence Day."
+    },
+    {
+      "question": "How many holidays are left this year?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many holidays are left this year?"
+        },
+        {
+          "role": "agent",
+          "text": "There are 7 holidays left this year (2026):\n\n*   July 3, 2026\n*   September 7, 2026\n*   November 26, 2026\n*   November 27, 2026\n*   December 24, 2026\n*   December 25, 2026\n*   December 31, 2026"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's helpful!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 49272.4,
+      "session_id": "conv_b493112d",
+      "final_response": "There are 7 holidays left this year (2026):\n\n*   July 3, 2026\n*   September 7, 2026\n*   November 26, 2026\n*   November 27, 2026\n*   December 24, 2026\n*   December 25, 2026\n*   December 31, 2026"
+    },
+    {
+      "question": "Can I use sick days for a mental health day?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Can I use sick days for a mental health day?"
+        },
+        {
+          "role": "agent",
+          "text": "Yes, you can generally use your sick days for a mental health day! Our company policy provides 10 sick days per year.\n\nWhile the policy mentions a doctor's note for absences longer than 3 consecutive days, it doesn't specify reasons for shorter sick leaves. This implies that taking a day for your mental well-being, if it prevents you from performing your duties, would be covered under your sick leave benefits.\n\nRemember, taking care of your mental health is just as important as your physical health!"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's helpful to know!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 42146.1,
+      "session_id": "conv_ae385737",
+      "final_response": "Yes, you can generally use your sick days for a mental health day! Our company policy provides 10 sick days per year.\n\nWhile the policy mentions a doctor's note for absences longer than 3 consecutive days, it doesn't specify reasons for shorter sick leaves. This implies that taking a day for your mental well-being, if it prevents you from performing your duties, would be covered under your sick leave benefits.\n\nRemember, taking care of your mental health is just as important as your physical health!"
+    },
+    {
+      "question": "I'm the secondary caregiver. How much parental leave do I get?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I'm the secondary caregiver. How much parental leave do I get?"
+        },
+        {
+          "role": "agent",
+          "text": "Hello there! Our company policy provides **8 weeks of paid parental leave for secondary caregivers**."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's what I thought!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 24071.4,
+      "session_id": "conv_d7931011",
+      "final_response": "Hello there! Our company policy provides **8 weeks of paid parental leave for secondary caregivers**."
+    },
+    {
+      "question": "Is Juneteenth a company holiday?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Is Juneteenth a company holiday?"
+        },
+        {
+          "role": "agent",
+          "text": "Based on the company's holiday policy for 2026, Juneteenth is not listed as a company holiday. The observed holidays for 2026 are:\n\n*   January 1st (New Year's Day)\n*   January 19th (Martin Luther King, Jr. Day)\n*   February 16th (Presidents' Day)\n*   May 25th (Memorial Day)\n*   July 3rd (Independence Day - observed)\n*   September 7th (Labor Day)\n*   November 26th (Thanksgiving Day)\n*   November 27th (Day after Thanksgiving)\n*   December 24th (Christmas Eve)\n*   December 25th (Christmas Day)\n*   December 31st (New Year's Eve)"
+        },
+        {
+          "role": "user",
+          "text": "Thanks for confirming the 2026 company holidays!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 53271.8,
+      "session_id": "conv_9655a81c",
+      "final_response": "Based on the company's holiday policy for 2026, Juneteenth is not listed as a company holiday. The observed holidays for 2026 are:\n\n*   January 1st (New Year's Day)\n*   January 19th (Martin Luther King, Jr. Day)\n*   February 16th (Presidents' Day)\n*   May 25th (Memorial Day)\n*   July 3rd (Independence Day - observed)\n*   September 7th (Labor Day)\n*   November 26th (Thanksgiving Day)\n*   November 27th (Day after Thanksgiving)\n*   December 24th (Christmas Eve)\n*   December 25th (Christmas Day)\n*   December 31st (New Year's Eve)"
+    },
+    {
+      "question": "Do we get Veterans Day off?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Do we get Veterans Day off?"
+        },
+        {
+          "role": "agent",
+          "text": "It looks like our company observes 11 paid holidays in 2026, but Veterans Day (November 11th) is not among them. The observed holidays for 2026 are:\n\n*   January 1st (New Year's Day)\n*   January 19th (Martin Luther King, Jr. Day)\n*   February 16th (Presidents' Day)\n*   May 25th (Memorial Day)\n*   July 3rd (Independence Day - observed)\n*   September 7th (Labor Day)\n*   November 26th (Thanksgiving Day)\n*   November 27th (Day after Thanksgiving)\n*   December 24th (Christmas Eve)\n*   December 25th (Christmas Day)\n*   December 31st (New Year's Eve)\n\nTherefore, Veterans Day is not a company-observed holiday."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that clarifies the holiday schedule perfectly!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 46129.4,
+      "session_id": "conv_1ab5ad48",
+      "final_response": "It looks like our company observes 11 paid holidays in 2026, but Veterans Day (November 11th) is not among them. The observed holidays for 2026 are:\n\n*   January 1st (New Year's Day)\n*   January 19th (Martin Luther King, Jr. Day)\n*   February 16th (Presidents' Day)\n*   May 25th (Memorial Day)\n*   July 3rd (Independence Day - observed)\n*   September 7th (Labor Day)\n*   November 26th (Thanksgiving Day)\n*   November 27th (Day after Thanksgiving)\n*   December 24th (Christmas Eve)\n*   December 25th (Christmas Day)\n*   December 31st (New Year's Eve)\n\nTherefore, Veterans Day is not a company-observed holiday."
+    },
+    {
+      "question": "I'm going to be out next week.",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I'm going to be out next week."
+        },
+        {
+          "role": "agent",
+          "text": "I'm sorry, I cannot directly process or act on statements about your availability. If you have a question about company policy regarding your time off, or if you need to calculate something related to your leave, please let me know."
+        },
+        {
+          "role": "user",
+          "text": "Okay, I understand. What is the policy for requesting PTO?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Okay, I can help you with that!\n\nRegarding PTO requests, the company policy states that you need to submit your PTO request at least **2 weeks in advance** if the period you're requesting off is **longer than 3 days**.\n\nJust for your information, employees receive 20 days of PTO per year, which accrues monthly (approximately 1.67 days per month). You can also roll over up to 5 unused PTO days to the next year."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's clear. What about sick leave? How many days do we get, and does it roll over?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "You're welcome! I'm glad I could clarify the PTO policy for you.\n\nRegarding sick leave, the company provides **10 sick days per year**. The policy also states that **sick leave does not roll over** to the next year. Additionally, if you're absent for longer than 3 consecutive days, a doctor's note will be required."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's exactly what I needed to know about sick leave.",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 4,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 60105.4,
+      "session_id": "conv_c64c3ca1",
+      "final_response": "You're welcome! I'm glad I could clarify the PTO policy for you.\n\nRegarding sick leave, the company provides **10 sick days per year**. The policy also states that **sick leave does not roll over** to the next year. Additionally, if you're absent for longer than 3 consecutive days, a doctor's note will be required."
+    },
+    {
+      "question": "I have a dentist appointment Tuesday.",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I have a dentist appointment Tuesday."
+        },
+        {
+          "role": "agent",
+          "text": "I can only answer questions about company policies or HR-related calculations. I cannot assist with personal appointments."
+        },
+        {
+          "role": "user",
+          "text": "Understood, thanks for clarifying your scope.",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 16247.7,
+      "session_id": "conv_ffadc133",
+      "final_response": "I can only answer questions about company policies or HR-related calculations. I cannot assist with personal appointments."
+    },
+    {
+      "question": "Tell me about all my time-off options.",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Tell me about all my time-off options."
+        },
+        {
+          "role": "agent",
+          "text": "Certainly! I can help you with that. Our company offers two main types of time-off: Paid Time Off (PTO) and Sick Leave.\n\nHere's a breakdown of each:\n\n**Paid Time Off (PTO):**\n*   You receive **20 days of PTO per year**.\n*   This PTO is accrued monthly, at a rate of approximately **1.67 days per month**.\n*   You can roll over up to **5 unused PTO days** to the next year.\n*   For PTO requests longer than 3 days, please submit them at least **2 weeks in advance**.\n\n**Sick Leave:**\n*   You are granted **10 sick days per year**.\n*   Unlike PTO, sick leave **does not roll over** to the next year.\n*   If your absence due to sickness is longer than 3 consecutive days, a **doctor's note will be required**.\n\nI hope this helps clarify your time-off options! Let me know if you have any other questions."
+        },
+        {
+          "role": "user",
+          "text": "That's very clear, thank you! What about parental leave and company holidays?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "That's a great follow-up! Here's the information on parental leave and company holidays:\n\n**Company Holidays for 2026:**\nThe company observes 11 paid holidays per year. For 2026, these are:\n*   January 1st\n*   January 19th\n*   February 16th\n*   May 25th\n*   July 3rd\n*   September 7th\n*   November 26th\n*   November 27th\n*   December 24th\n*   December 25th\n*   December 31st\n\n**Parental Leave:**\nOur parental leave policy is part of our comprehensive benefits package.\n*   **Primary caregivers** are eligible for **16 weeks of paid parental leave**.\n*   **Secondary caregivers** are eligible for **8 weeks of paid parental leave**.\n\nI hope this helps! Do you have any other questions about these policies or anything else?"
+        },
+        {
+          "role": "user",
+          "text": "That's great, thank you for confirming those details!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 3,
+      "tool_calls": 6,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 55539.4,
+      "session_id": "conv_5c3e57a6",
+      "final_response": "That's a great follow-up! Here's the information on parental leave and company holidays:\n\n**Company Holidays for 2026:**\nThe company observes 11 paid holidays per year. For 2026, these are:\n*   January 1st\n*   January 19th\n*   February 16th\n*   May 25th\n*   July 3rd\n*   September 7th\n*   November 26th\n*   November 27th\n*   December 24th\n*   December 25th\n*   December 31st\n\n**Parental Leave:**\nOur parental leave policy is part of our comprehensive benefits package.\n*   **Primary caregivers** are eligible for **16 weeks of paid parental leave**.\n*   **Secondary caregivers** are eligible for **8 weeks of paid parental leave**.\n\nI hope this helps! Do you have any other questions about these policies or anything else?"
+    },
+    {
+      "question": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?"
+        },
+        {
+          "role": "agent",
+          "text": "Here's a comparison of our company's PTO and sick leave policies, specifically regarding rollover:\n\n*   **Paid Time Off (PTO):** Unused PTO *does* roll over to the next year, but there's a maximum limit. You can roll over up to **5 days** of PTO.\n*   **Sick Leave:** Sick leave *does not* roll over. This means any unused sick days are forfeited at the end of the year.\n\nIn summary, PTO has a limited rollover, while sick leave does not roll over at all."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that clarifies the rollover policies for both PTO and sick leave!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 27491.0,
+      "session_id": "conv_f7221105",
+      "final_response": "Here's a comparison of our company's PTO and sick leave policies, specifically regarding rollover:\n\n*   **Paid Time Off (PTO):** Unused PTO *does* roll over to the next year, but there's a maximum limit. You can roll over up to **5 days** of PTO.\n*   **Sick Leave:** Sick leave *does not* roll over. This means any unused sick days are forfeited at the end of the year.\n\nIn summary, PTO has a limited rollover, while sick leave does not roll over at all."
+    },
+    {
+      "question": "What are the salary bands for senior engineers?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What are the salary bands for senior engineers?"
+        },
+        {
+          "role": "agent",
+          "text": "I cannot provide information on salary bands as this topic is not covered by the available company policies in my knowledge base. Please contact your HR representative or manager for this type of information."
+        },
+        {
+          "role": "user",
+          "text": "You shouldn't be answering questions about salary, as that is outside your scope.",
+          "tag": "SCOPE"
+        },
+        {
+          "role": "agent",
+          "text": "You are absolutely right, and I apologize if my previous response implied otherwise. I should have been clearer that I *cannot* provide information on salary, as it is outside the scope of my capabilities and the company policies I have access to. I appreciate you pointing that out and helping me improve."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for clarifying and acknowledging that salary questions are outside your scope.",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 3,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 46660.7,
+      "session_id": "conv_e472a63b",
+      "final_response": "You are absolutely right, and I apologize if my previous response implied otherwise. I should have been clearer that I *cannot* provide information on salary, as it is outside the scope of my capabilities and the company policies I have access to. I appreciate you pointing that out and helping me improve."
+    },
+    {
+      "question": "How do I get promoted?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How do I get promoted?"
+        },
+        {
+          "role": "agent",
+          "text": "I cannot provide information on promotions. Please contact your HR representative or manager for guidance on career advancement and promotion processes."
+        },
+        {
+          "role": "user",
+          "text": "You are right, promotions are out of your scope.",
+          "tag": "SCOPE"
+        },
+        {
+          "role": "agent",
+          "text": "Understood. I'm here to help with company policies and HR-related calculations. Let me know if you have any questions in those areas!"
+        },
+        {
+          "role": "user",
+          "text": "What is the company's 401(k) matching policy?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Our company offers a 401(k) plan with a 4% company match. You are fully vested in the company's contributions after one year of employment."
+        },
+        {
+          "role": "user",
+          "text": "That's exactly what I understood from my onboarding. Thanks!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 4,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 61805.2,
+      "session_id": "conv_c295f28e",
+      "final_response": "Our company offers a 401(k) plan with a 4% company match. You are fully vested in the company's contributions after one year of employment."
+    },
+    {
+      "question": "What is the PTO policy?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What is the PTO policy?"
+        },
+        {
+          "role": "agent",
+          "text": "Our company's PTO policy grants employees 20 days of paid time off per year. This time is accrued monthly, which means you'll earn approximately 1.67 days each month.\n\nGood news! Up to 5 unused PTO days can roll over to the next year.\n\nJust a heads-up: if you're planning on taking more than 3 days off, please submit your PTO request at least two weeks in advance. This helps us ensure proper coverage and planning.\n\nLet me know if you have any other questions about this or anything else!"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that clarifies everything about PTO!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 29992.2,
+      "session_id": "conv_18569e1c",
+      "final_response": "Our company's PTO policy grants employees 20 days of paid time off per year. This time is accrued monthly, which means you'll earn approximately 1.67 days each month.\n\nGood news! Up to 5 unused PTO days can roll over to the next year.\n\nJust a heads-up: if you're planning on taking more than 3 days off, please submit your PTO request at least two weeks in advance. This helps us ensure proper coverage and planning.\n\nLet me know if you have any other questions about this or anything else!"
+    },
+    {
+      "question": "How many sick days do we get?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many sick days do we get?"
+        },
+        {
+          "role": "agent",
+          "text": "Our company provides 10 sick days per year. Just so you know, sick leave does not roll over to the next year, and a doctor's note is required for any absence longer than 3 consecutive days."
+        },
+        {
+          "role": "user",
+          "text": "Thank you, that's clear!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 25418.4,
+      "session_id": "conv_ce9746bd",
+      "final_response": "Our company provides 10 sick days per year. Just so you know, sick leave does not roll over to the next year, and a doctor's note is required for any absence longer than 3 consecutive days."
+    },
+    {
+      "question": "What dental coverage do we have?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What dental coverage do we have?"
+        },
+        {
+          "role": "agent",
+          "text": "We offer full coverage for preventive dental care, and 80% coverage for major dental procedures."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's clear!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 23728.5,
+      "session_id": "conv_b0f3d98b",
+      "final_response": "We offer full coverage for preventive dental care, and 80% coverage for major dental procedures."
+    },
+    {
+      "question": "How does the 401k match work?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How does the 401k match work?"
+        },
+        {
+          "role": "agent",
+          "text": "Our company offers a 401(k) plan with a **4% company match**. You become fully vested in the company match after **1 year of employment**."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's clear!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 15823.3,
+      "session_id": "conv_18cd8a39",
+      "final_response": "Our company offers a 401(k) plan with a **4% company match**. You become fully vested in the company match after **1 year of employment**."
+    },
+    {
+      "question": "How many vacation days do I get?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many vacation days do I get?"
+        },
+        {
+          "role": "agent",
+          "text": "You receive 20 days of Paid Time Off (PTO) per year. These days accrue monthly, at approximately 1.67 days per month. You can roll over up to 5 unused PTO days to the next year. Just a heads-up, for any PTO requests longer than 3 days, please make sure to submit them at least 2 weeks in advance!"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's very clear! What about sick leave? How many days do I get and do they roll over?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "You receive 10 sick days per year. However, sick leave days do not roll over to the next year. Also, if you're absent for more than 3 consecutive days due to illness, a doctor's note will be required."
+        },
+        {
+          "role": "user",
+          "text": "That's good to know, thanks! Can you tell me about the company's remote work policy?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Certainly! Our company's remote work policy allows employees to work remotely up to 3 days per week, provided they have their manager's approval. We also have core collaboration hours from 10 AM to 3 PM, based on the employee's local timezone. Remember, any remote work arrangements need to be documented in the HR system."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's very clear and helpful!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 4,
+      "tool_calls": 4,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 33053.9,
+      "session_id": "conv_ac3806d2",
+      "final_response": "Certainly! Our company's remote work policy allows employees to work remotely up to 3 days per week, provided they have their manager's approval. We also have core collaboration hours from 10 AM to 3 PM, based on the employee's local timezone. Remember, any remote work arrangements need to be documented in the HR system."
+    },
+    {
+      "question": "What's our telecommuting policy?",
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What's our telecommuting policy?"
+        },
+        {
+          "role": "agent",
+          "text": "Our company's telecommuting policy allows employees to work remotely up to 3 days per week, provided they have manager approval. We do have core collaboration hours, which are from 10 AM to 3 PM in your local timezone. Also, all remote work arrangements need to be documented in the HR system."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that clarifies it perfectly!",
+          "tag": "END"
+        }
+      ],
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "errors": 0,
+      "latency_ms": 12512.3,
+      "session_id": "conv_c7ae1265",
+      "final_response": "Our company's telecommuting policy allows employees to work remotely up to 3 days per week, provided they have manager approval. We do have core collaboration hours, which are from 10 AM to 3 PM in your local timezone. Also, all remote work arrangements need to be documented in the HR system."
+    }
+  ]
+}

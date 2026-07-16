@@ -1,0 +1,54 @@
+### Python ###
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+### Environment ###
+.env
+!.env.example
+
+### IDE ###
+.idea/
+.vscode/
+*.iml
+out/
+.claude/
+
+### OS ###
+.DS_Store
+
+### ADK ###
+.adk/
+
+### Auto-cloned SDK ###
+.sdk/
+
+### Reports ###
+reports/
+dry_run_output/
+remediation_output/
+
+### Logs ###
+logs/
+.gstack/
+
+
+### Eval artifacts (generated at runtime) ###
+eval/runs/
+eval/load_test_results.json
+eval/synthetic_traffic.json
+eval/ci_traffic.json
+skill_evolution_output/
+/eval/runs/2026-05-17_054710/
+/.antigravitycli/
+
+### Loose run logs and backups (outputs belong in eval/runs/<timestamp>/) ###
+eval/*.log
+eval/*_traffic.json
+eval/*_report.json
+*.bak
+*.v0bak
+*.orig.json

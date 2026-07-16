@@ -1,0 +1,1937 @@
+{
+  "summary": {
+    "total_sessions": 22,
+    "meaningful": 20,
+    "declined": 0,
+    "partial": 0,
+    "unhelpful": 2,
+    "meaningful_rate": 90.9,
+    "unhelpful_rate": 9.1,
+    "dimension_averages": {
+      "correctness": 2.0,
+      "tool_usage": 1.82,
+      "specificity": 1.82,
+      "scope_compliance": 1.95,
+      "first_time_right": 1.82
+    },
+    "avg_user_turns": 2.6,
+    "avg_tool_calls": 2.6,
+    "multi_turn_sessions": 22,
+    "correction_rate": 0.0,
+    "verification_rate": 4.5,
+    "avg_corrections": 0.0,
+    "avg_verifications": 0.05,
+    "elapsed_seconds": 23.7
+  },
+  "category_distributions": {
+    "response_usefulness": {
+      "meaningful": 20,
+      "unhelpful": 2
+    },
+    "task_grounding": {
+      "grounded": 19,
+      "ungrounded": 2,
+      "no_tool_needed": 1
+    },
+    "correctness": {
+      "correct": 22
+    },
+    "tool_usage": {
+      "proper": 20,
+      "none": 2
+    },
+    "specificity": {
+      "specific": 20,
+      "vague": 2
+    },
+    "scope_compliance": {
+      "compliant": 21,
+      "partially_compliant": 1
+    },
+    "first_time_right": {
+      "correct": 20,
+      "correction_needed": 2
+    }
+  },
+  "per_agent": {
+    "unknown": {
+      "total": 22,
+      "meaningful": 20,
+      "declined": 0,
+      "unhelpful": 2,
+      "partial": 0,
+      "unclassified": 0,
+      "a2a_count": 0
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "conv_f204ef6d",
+      "question": "I want to use sick days as PTO since I never get sick. Is that allowed?",
+      "response": "That's a great question! I've looked up our company policies on both sick leave and PTO to give you the most accurate information.\n\nAccording to our sick leave policy, employees receive 10 sick days per year, and these days do not roll over. A doctor's note is required for absences longer than 3 consecutive days.\n\nOur PTO policy states that employees receive 20 days of PTO per year, accrued monthly. Unused PTO can roll over to the next year, up to a maximum of 5 days. PTO requests need to be submitted at least two weeks in advance for periods longer than three days.\n\nBased on the details in both policies, there isn't an option to convert sick days into PTO or use them interchangeably. They are managed as separate types of leave with their own specific guidelines.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent directly answers the user's question about converting sick days to PTO, stating it is not allowed, and provides relevant policy details."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent explicitly states it looked up company policies and provides specific details (numbers, conditions) that are clearly derived from those policies."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Based on the policy details provided by the agent, the conclusion that sick days cannot be converted to PTO is accurate and consistent."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent states it 'looked up our company policies' and provides detailed information from those policies to answer the question, indicating proper tool usage."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response includes specific numbers for sick days, PTO days, rollover limits, and conditions for doctor's notes and PTO requests."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered an in-scope question about company policy regarding sick days and PTO."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response directly and correctly answered the user's question without any need for clarification or correction."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Based on the policy details provided by the agent, the conclusion that sick days cannot be converted to PTO is accurate and consistent."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent states it 'looked up our company policies' and provides detailed information from those policies to answer the question, indicating proper tool usage."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response includes specific numbers for sick days, PTO days, rollover limits, and conditions for doctor's notes and PTO requests."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered an in-scope question about company policy regarding sick days and PTO."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response directly and correctly answered the user's question without any need for clarification or correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I want to use sick days as PTO since I never get sick. Is that allowed?"
+        },
+        {
+          "role": "agent",
+          "text": "That's a great question! I've looked up our company policies on both sick leave and PTO to give you the most accurate information.\n\nAccording to our sick leave policy, employees receive 10 sick days per year, and these days do not roll over. A doctor's note is required for absences longer than 3 consecutive days.\n\nOur PTO policy states that employees receive 20 days of PTO per year, accrued monthly. Unused PTO can roll over to the next year, up to a maximum of 5 days. PTO requests need to be submitted at least two weeks in advance for periods longer than three days.\n\nBased on the details in both policies, there isn't an option to convert sick days into PTO or use them interchangeably. They are managed as separate types of leave with their own specific guidelines."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for clarifying the sick leave and PTO policies; that makes sense.",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_b0771be9",
+      "question": "Can I work from home on a holiday to save my PTO for later?",
+      "response": "I understand you're looking for a very specific clarification.\n\nI've checked our company policies for \"holidays\" and \"remote work\" again. While we have clear guidelines for both, there isn't a specific policy that explicitly addresses the scenario of *working remotely on a company-observed holiday in order to save your Paid Time Off (PTO)*.\n\nCompany holidays are generally designated as paid days off where employees are not expected to work. The intention is for employees to observe the holiday. While remote work offers flexibility, it operates within the framework of standard working days.\n\nSince there's no explicit policy permitting or prohibiting this particular action, it's generally understood that company holidays are non-working days. Attempting to work on a holiday to \"save\" PTO isn't a standard practice and could potentially lead to questions regarding compliance with labor laws or company benefits administration.\n\nFor a definitive answer and to ensure you're in compliance, your best course of action is to directly consult with your HR department or your manager. They can provide clarification on this specific situation and advise on the appropriate procedure.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent's final response directly addresses the user's refined question, explicitly stating that no specific policy exists for working remotely on a holiday to save PTO and clarifying that holidays are generally non-working days. This is a meaningful and substantive answer."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent states it checked company policies for 'holidays' and 'remote work' again, indicating that the response is based on the results (or lack thereof) from its tools."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The agent consistently states that there is no specific policy covering the user's scenario and that holidays are generally non-working days, which appears to be an accurate interpretation of the policy information it accessed."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent explicitly states, 'I've checked our company policies for 'holidays' and 'remote work' again,' indicating proper use of its tools to search for relevant information."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent's final response is specific in confirming the absence of a policy for the exact scenario and explaining the general understanding of company holidays as non-working days, along with potential compliance issues."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly addresses the in-scope question about company policy, explaining what the policies cover and what they don't, and appropriately directs the user to HR for definitive, personalized guidance."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The first response was somewhat generic and didn't fully address the specific nuance of the user's question, leading the user to ask for a more specific clarification ('VERIFY') about the existence of a policy for their exact scenario."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The agent consistently states that there is no specific policy covering the user's scenario and that holidays are generally non-working days, which appears to be an accurate interpretation of the policy information it accessed."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent explicitly states, 'I've checked our company policies for 'holidays' and 'remote work' again,' indicating proper use of its tools to search for relevant information."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent's final response is specific in confirming the absence of a policy for the exact scenario and explaining the general understanding of company holidays as non-working days, along with potential compliance issues."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly addresses the in-scope question about company policy, explaining what the policies cover and what they don't, and appropriately directs the user to HR for definitive, personalized guidance."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The first response was somewhat generic and didn't fully address the specific nuance of the user's question, leading the user to ask for a more specific clarification ('VERIFY') about the existence of a policy for their exact scenario."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Can I work from home on a holiday to save my PTO for later?"
+        },
+        {
+          "role": "agent",
+          "text": "That's an interesting question about working from home on a holiday to save your PTO!\n\nBased on our company policies:\n\n*   **Company Holidays:** We observe 11 paid holidays per year, and these are typically days when employees are not expected to work and receive their regular pay. The policy doesn't explicitly mention the option of working on these days instead of taking them as paid time off.\n*   **Remote Work:** Our remote work policy allows employees to work remotely up to 3 days per week with manager approval. It outlines the general guidelines for working remotely, but it doesn't specifically address working remotely *on a company-observed holiday*.\n\nGenerally, company holidays are separate from your personal PTO. They are pre-determined paid days off, and you're not usually expected to work on them. Working on a holiday to \"save\" PTO isn't a standard practice covered by these policies, as it can sometimes involve different pay structures (like holiday pay) or may not be permitted at all.\n\nI would recommend discussing this directly with your manager or HR department. They can provide specific guidance based on your team's needs and any unwritten practices or specific interpretations of the policy regarding working on observed holidays."
+        },
+        {
+          "role": "user",
+          "text": "I understand the general remote work and holiday policies, but could you please check if there's a specific company policy regarding working remotely on a company-observed holiday to save PTO, or if this is generally not permitted?",
+          "tag": "VERIFY"
+        },
+        {
+          "role": "agent",
+          "text": "I understand you're looking for a very specific clarification.\n\nI've checked our company policies for \"holidays\" and \"remote work\" again. While we have clear guidelines for both, there isn't a specific policy that explicitly addresses the scenario of *working remotely on a company-observed holiday in order to save your Paid Time Off (PTO)*.\n\nCompany holidays are generally designated as paid days off where employees are not expected to work. The intention is for employees to observe the holiday. While remote work offers flexibility, it operates within the framework of standard working days.\n\nSince there's no explicit policy permitting or prohibiting this particular action, it's generally understood that company holidays are non-working days. Attempting to work on a holiday to \"save\" PTO isn't a standard practice and could potentially lead to questions regarding compliance with labor laws or company benefits administration.\n\nFor a definitive answer and to ensure you're in compliance, your best course of action is to directly consult with your HR department or your manager. They can provide clarification on this specific situation and advise on the appropriate procedure."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for clarifying that there isn't a specific policy for working remotely on a holiday to save PTO, and that holidays are generally considered non-working days.",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_707c6d46",
+      "question": "I know we get 20 PTO days, but I think the rollover is 10 days, right?",
+      "response": "Good question! For sick leave, the days unfortunately **do not roll over** at the end of the year. You receive 10 sick days per year, and any unused days will not carry over.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided specific and correct information for all user questions regarding PTO and sick leave policies."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent provided specific policy details (e.g., 5-day rollover, 2-week notice), implying it accessed a knowledge base or tool for company policies."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "All information provided by the agent (PTO rollover, PTO notice, sick leave rollover) appears to be factually accurate and consistent with the implied policy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent provided specific policy details, indicating it's querying a knowledge base or similar tool rather than relying on general knowledge."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent provided exact numbers and clear policy statements for PTO rollover (5 days), PTO notice (2 weeks for >3 days), and sick leave (no rollover, 10 days)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered all in-scope questions about company PTO and sick leave policies."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response correctly clarified the PTO rollover policy without needing user correction or further clarification on that specific point."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "All information provided by the agent (PTO rollover, PTO notice, sick leave rollover) appears to be factually accurate and consistent with the implied policy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent provided specific policy details, indicating it's querying a knowledge base or similar tool rather than relying on general knowledge."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent provided exact numbers and clear policy statements for PTO rollover (5 days), PTO notice (2 weeks for >3 days), and sick leave (no rollover, 10 days)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered all in-scope questions about company PTO and sick leave policies."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response correctly clarified the PTO rollover policy without needing user correction or further clarification on that specific point."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I know we get 20 PTO days, but I think the rollover is 10 days, right?"
+        },
+        {
+          "role": "agent",
+          "text": "That's a great question about our PTO policy! You're right that we get 20 PTO days per year.\n\nHowever, the rollover policy is actually a maximum of **5 days**, not 10. Unused PTO rolls over to the next year up to that 5-day limit."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for clarifying! That makes sense. What's the policy on giving notice for PTO requests?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "You're very welcome!\n\nRegarding PTO requests, for any period longer than 3 days, you'll need to submit your request at least **2 weeks in advance**."
+        },
+        {
+          "role": "user",
+          "text": "That's clear, thanks! What about sick leave; do those days roll over at the end of the year?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Good question! For sick leave, the days unfortunately **do not roll over** at the end of the year. You receive 10 sick days per year, and any unused days will not carry over."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for confirming that about sick leave!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_2a255ec3",
+      "question": "Our 401k matches at 4% and vests immediately, correct?",
+      "response": "Thanks for asking! Our company indeed offers a 401(k) with a 4% company match. However, the vesting period for the 401(k) is after 1 year of employment, not immediately.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent directly answers the user's question, confirming one part and correcting the other, providing clear and actionable information."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent provides specific company policy information (401k match and vesting), which implies it retrieved this data from an internal tool or knowledge base."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The agent accurately confirmed the match percentage and corrected the vesting period, which the user acknowledged as correct."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent provided specific company policy details, indicating it properly used a tool (e.g., internal knowledge base) to retrieve this information."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides exact numbers for the match percentage (4%) and the vesting period (1 year)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered an in-scope question about company benefits."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's initial response was accurate and complete, directly addressing the user's question without needing further clarification or correction."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The agent accurately confirmed the match percentage and corrected the vesting period, which the user acknowledged as correct."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent provided specific company policy details, indicating it properly used a tool (e.g., internal knowledge base) to retrieve this information."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides exact numbers for the match percentage (4%) and the vesting period (1 year)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered an in-scope question about company benefits."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's initial response was accurate and complete, directly addressing the user's question without needing further clarification or correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Our 401k matches at 4% and vests immediately, correct?"
+        },
+        {
+          "role": "agent",
+          "text": "Thanks for asking! Our company indeed offers a 401(k) with a 4% company match. However, the vesting period for the 401(k) is after 1 year of employment, not immediately."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for clarifying that!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_cc37ee6c",
+      "question": "What's the next company holiday?",
+      "response": "The next company holiday is July 3, 2026.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a direct and specific answer to the user's question about the next company holiday."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The specific date provided implies the agent retrieved this information from a tool or database, rather than general knowledge."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the agent retrieved the correct date from its tools, the information conveyed is accurate."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "To provide a specific company holiday date, the agent would need to use a tool like a calendar or HR database. It's assumed it used one properly."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides a precise date (July 3, 2026), making it highly specific."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered an in-scope question about company holidays."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response was correct and complete, directly answering the user's question without needing clarification."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the agent retrieved the correct date from its tools, the information conveyed is accurate."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "To provide a specific company holiday date, the agent would need to use a tool like a calendar or HR database. It's assumed it used one properly."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides a precise date (July 3, 2026), making it highly specific."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered an in-scope question about company holidays."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response was correct and complete, directly answering the user's question without needing clarification."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What's the next company holiday?"
+        },
+        {
+          "role": "agent",
+          "text": "The next company holiday is July 3, 2026."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for the information!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_fac0931c",
+      "question": "How many holidays are left this year?",
+      "response": "There are 7 company holidays left in 2026, as of May 26, 2026. These are:\n\n*   **July 3, 2026:** Independence Day (observed)\n*   **September 7, 2026:** Labor Day\n*   **November 26, 2026:** Thanksgiving Day\n*   **November 27, 2026:** Day after Thanksgiving\n*   **December 24, 2026:** Christmas Eve\n*   **December 25, 2026:** Christmas Day\n*   **December 31, 2026:** New Year's Eve",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a direct, specific, and actionable list of remaining holidays with dates, fully answering the user's question."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response provides specific company holidays for a future year (2026) and a specific date (May 26, 2026), which must have been retrieved from a tool or database, not general LLM knowledge."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Based on the information provided, the agent's response accurately lists the holidays and their dates as of the specified date. There's no indication of inaccuracy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "To provide specific company holidays for a future year and a specific date, the agent must have queried a tool or database containing this information."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response is highly specific, providing the exact number of holidays, their names, and their precise dates."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered an in-scope question about remaining holidays."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response was correct, complete, and fully addressed the user's query without any need for clarification or correction."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Based on the information provided, the agent's response accurately lists the holidays and their dates as of the specified date. There's no indication of inaccuracy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "To provide specific company holidays for a future year and a specific date, the agent must have queried a tool or database containing this information."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response is highly specific, providing the exact number of holidays, their names, and their precise dates."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered an in-scope question about remaining holidays."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response was correct, complete, and fully addressed the user's query without any need for clarification or correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many holidays are left this year?"
+        },
+        {
+          "role": "agent",
+          "text": "There are 7 company holidays left in 2026, as of May 26, 2026. These are:\n\n*   **July 3, 2026:** Independence Day (observed)\n*   **September 7, 2026:** Labor Day\n*   **November 26, 2026:** Thanksgiving Day\n*   **November 27, 2026:** Day after Thanksgiving\n*   **December 24, 2026:** Christmas Eve\n*   **December 25, 2026:** Christmas Day\n*   **December 31, 2026:** New Year's Eve"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's helpful!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_9a0ebf25",
+      "question": "Can I use sick days for a mental health day?",
+      "response": "No, sick days do not roll over to the next year. Our policy specifies that you receive 10 sick days per year, and any unused sick days at the end of the year will not carry over.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided clear and substantive answers to both user questions regarding sick days, mental health days, and rollover policy."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent refers to 'Our company policy' but does not show any evidence of using a tool to retrieve this information. It appears to be answering from general knowledge or an internal, ungrounded knowledge base."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the agent's statements about 'Our company policy' are accurate within its context, the facts presented (10 sick days, doctor's note for >3 days, no rollover) are internally consistent and plausible."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent answered questions about specific company policy without using any visible tools, which would typically be required to retrieve such information."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response includes specific details such as '10 sick days per year' and 'longer than 3 consecutive days' for a doctor's note, and a clear 'do not roll over'."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered both in-scope questions about company sick leave policy."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response fully and correctly answered the initial user question about using sick days for mental health, including relevant policy details. The follow-up was a new question, not a correction."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the agent's statements about 'Our company policy' are accurate within its context, the facts presented (10 sick days, doctor's note for >3 days, no rollover) are internally consistent and plausible."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent answered questions about specific company policy without using any visible tools, which would typically be required to retrieve such information."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response includes specific details such as '10 sick days per year' and 'longer than 3 consecutive days' for a doctor's note, and a clear 'do not roll over'."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered both in-scope questions about company sick leave policy."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response fully and correctly answered the initial user question about using sick days for mental health, including relevant policy details. The follow-up was a new question, not a correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Can I use sick days for a mental health day?"
+        },
+        {
+          "role": "agent",
+          "text": "That's a really important question! Our company policy states that employees receive 10 sick days per year. While the policy doesn't specifically mention \"mental health days,\" sick leave is generally understood to cover various health-related needs, which can include taking time for your mental well-being.\n\nJust keep in mind that a doctor's note is required for any absence longer than 3 consecutive days. If you're planning to take a mental health day, and it's within the 1-3 day period, a note wouldn't be necessary according to this policy.\n\nI hope this helps you feel supported in taking care of yourself!"
+        },
+        {
+          "role": "user",
+          "text": "That's good to know, thank you. Do sick days roll over to the next year?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "No, sick days do not roll over to the next year. Our policy specifies that you receive 10 sick days per year, and any unused sick days at the end of the year will not carry over."
+        },
+        {
+          "role": "user",
+          "text": "That clarifies it, thanks!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_6a37be9c",
+      "question": "I'm the secondary caregiver. How much parental leave do I get?",
+      "response": "As a secondary caregiver, you are eligible for 8 weeks of paid parental leave.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a direct and specific answer to the user's question, which the user confirmed was exactly what they needed."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent provided a specific number of weeks for parental leave, which implies it was retrieved from a policy or database tool rather than general knowledge."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The agent's response was accepted by the user as 'exactly what I needed to know', indicating its accuracy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "To provide a specific number of weeks for a 'secondary caregiver's' parental leave, the agent would need to query a policy or HR tool, which it appears to have done correctly."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides a precise number: '8 weeks' of paid parental leave."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent directly and appropriately answered the user's in-scope question about parental leave eligibility."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response was correct and fully satisfied the user's query without any need for correction or clarification."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The agent's response was accepted by the user as 'exactly what I needed to know', indicating its accuracy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "To provide a specific number of weeks for a 'secondary caregiver's' parental leave, the agent would need to query a policy or HR tool, which it appears to have done correctly."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides a precise number: '8 weeks' of paid parental leave."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent directly and appropriately answered the user's in-scope question about parental leave eligibility."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response was correct and fully satisfied the user's query without any need for correction or clarification."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I'm the secondary caregiver. How much parental leave do I get?"
+        },
+        {
+          "role": "agent",
+          "text": "As a secondary caregiver, you are eligible for 8 weeks of paid parental leave."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's exactly what I needed to know.",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_e3aafad2",
+      "question": "Is Juneteenth a company holiday?",
+      "response": "Based on the company's holiday policy for 2026, Juneteenth (June 19th) is not listed as a company-observed paid holiday.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent directly and substantively answered the user's question about Juneteenth being a company holiday, providing specific details from the policy."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent explicitly states the information is 'Based on the company's holiday policy for 2026', indicating it used a tool to retrieve this data."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the agent accurately conveyed the information from the company's holiday policy, the statement that Juneteenth is not a company-observed paid holiday for 2026 is correct."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent clearly used a tool (company's holiday policy) to retrieve the specific information needed to answer the question."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response is specific, mentioning 'Juneteenth (June 19th)', 'not listed as a company-observed paid holiday', and 'for 2026'."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered an in-scope question about company holidays."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response was correct and complete, directly answering the user's question without needing any clarification or correction."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the agent accurately conveyed the information from the company's holiday policy, the statement that Juneteenth is not a company-observed paid holiday for 2026 is correct."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent clearly used a tool (company's holiday policy) to retrieve the specific information needed to answer the question."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response is specific, mentioning 'Juneteenth (June 19th)', 'not listed as a company-observed paid holiday', and 'for 2026'."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered an in-scope question about company holidays."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response was correct and complete, directly answering the user's question without needing any clarification or correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Is Juneteenth a company holiday?"
+        },
+        {
+          "role": "agent",
+          "text": "Based on the company's holiday policy for 2026, Juneteenth (June 19th) is not listed as a company-observed paid holiday."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for confirming!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_08c9d5fc",
+      "question": "Do we get Veterans Day off?",
+      "response": "No, the company does not observe Veterans Day as a paid holiday in 2026. The observed holidays for 2026 are:\n\n*   January 1st (New Year's Day)\n*   January 19th (Martin Luther King, Jr. Day)\n*   February 16th (Presidents' Day)\n*   May 25th (Memorial Day)\n*   July 3rd (Independence Day - observed)\n*   September 7th (Labor Day)\n*   November 26th (Thanksgiving Day)\n*   November 27th (Day after Thanksgiving)\n*   December 24th (Christmas Eve)\n*   December 25th (Christmas Day)\n*   December 31st (New Year's Eve)",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent directly answers the user's question about Veterans Day and provides a comprehensive list of all observed holidays for the specified year, which is highly useful."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent provides specific dates and holiday names, indicating this information was retrieved from a tool or internal database rather than general knowledge."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The agent's response is accurate, stating Veterans Day is not observed and providing a correct list of observed holidays. The user's confirmation 'matches what I read' supports its accuracy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "To provide a specific list of company holidays for a particular year, the agent would have needed to query an internal tool or database, which it did effectively."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response is very specific, listing exact dates and names for all observed holidays in 2026."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The question about company holidays is in scope, and the agent correctly answers it directly and comprehensively."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response fully and accurately answers the user's question, and the user confirms its clarity and correctness."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The agent's response is accurate, stating Veterans Day is not observed and providing a correct list of observed holidays. The user's confirmation 'matches what I read' supports its accuracy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "To provide a specific list of company holidays for a particular year, the agent would have needed to query an internal tool or database, which it did effectively."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response is very specific, listing exact dates and names for all observed holidays in 2026."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The question about company holidays is in scope, and the agent correctly answers it directly and comprehensively."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response fully and accurately answers the user's question, and the user confirms its clarity and correctness."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Do we get Veterans Day off?"
+        },
+        {
+          "role": "agent",
+          "text": "No, the company does not observe Veterans Day as a paid holiday in 2026. The observed holidays for 2026 are:\n\n*   January 1st (New Year's Day)\n*   January 19th (Martin Luther King, Jr. Day)\n*   February 16th (Presidents' Day)\n*   May 25th (Memorial Day)\n*   July 3rd (Independence Day - observed)\n*   September 7th (Labor Day)\n*   November 26th (Thanksgiving Day)\n*   November 27th (Day after Thanksgiving)\n*   December 24th (Christmas Eve)\n*   December 25th (Christmas Day)\n*   December 31st (New Year's Eve)"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's clear and matches what I read.",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_c760e2f6",
+      "question": "I'm going to be out next week.",
+      "response": "My apologies, the company policy on PTO outlines the accrual, rollover, and advance notice requirements, but it doesn't specify the exact platform or method for submitting the formal PTO request.\n\nFor the most accurate information on where to submit your PTO request, I recommend checking with your direct manager or the HR department. They will be able to guide you through the specific process and tools used for PTO submissions.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent's final response states it cannot provide the specific information on where to submit the PTO request, which was the core of the user's question, and directs the user to ask HR or their manager. This does not meaningfully answer the user's question."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent refers to 'the company policy on PTO' and states what it outlines and what it doesn't, indicating it consulted a tool or knowledge base, even if the information was incomplete."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the agent's statement about the policy not specifying the submission method is accurate, the response correctly identifies the limitations of its information and provides a correct recommendation to contact HR/manager."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent appears to have used a tool or knowledge base related to company PTO policy, correctly identifying what information was available and what was missing from that source."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "While the agent is specific about what the policy *does* cover and what it *doesn't*, it fails to provide the specific, actionable detail the user needs (where to submit the request), making the overall answer vague for the user's purpose."
+        },
+        "scope_compliance": {
+          "category": "partially_compliant",
+          "justification": "The question about PTO request process is in-scope. The agent attempts to answer by citing policy details but ultimately cannot provide the full, critical information, directing the user elsewhere. It doesn't fully resolve the in-scope question."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first substantive response about the PTO process only mentioned the two-week advance notice. The user had to follow up to ask 'Where do I submit the formal PTO request?' because the initial answer was incomplete and did not address the full process."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the agent's statement about the policy not specifying the submission method is accurate, the response correctly identifies the limitations of its information and provides a correct recommendation to contact HR/manager."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent appears to have used a tool or knowledge base related to company PTO policy, correctly identifying what information was available and what was missing from that source."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "While the agent is specific about what the policy *does* cover and what it *doesn't*, it fails to provide the specific, actionable detail the user needs (where to submit the request), making the overall answer vague for the user's purpose."
+        },
+        "scope_compliance": {
+          "score": 1,
+          "reason": "The question about PTO request process is in-scope. The agent attempts to answer by citing policy details but ultimately cannot provide the full, critical information, directing the user elsewhere. It doesn't fully resolve the in-scope question."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first substantive response about the PTO process only mentioned the two-week advance notice. The user had to follow up to ask 'Where do I submit the formal PTO request?' because the initial answer was incomplete and did not address the full process."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I'm going to be out next week."
+        },
+        {
+          "role": "agent",
+          "text": "Okay, thanks for letting me know. Do you have any questions about PTO, sick leave, or anything else related to your time off?"
+        },
+        {
+          "role": "user",
+          "text": "What's the process for formally requesting PTO for next week?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "To formally request PTO, especially for periods longer than 3 days, please make sure to submit your request at least two weeks in advance."
+        },
+        {
+          "role": "user",
+          "text": "That makes sense. Where do I submit the formal PTO request?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "My apologies, the company policy on PTO outlines the accrual, rollover, and advance notice requirements, but it doesn't specify the exact platform or method for submitting the formal PTO request.\n\nFor the most accurate information on where to submit your PTO request, I recommend checking with your direct manager or the HR department. They will be able to guide you through the specific process and tools used for PTO submissions."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, I'll reach out to my manager for details on where to submit the request.",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_467be808",
+      "question": "I have a dentist appointment Tuesday.",
+      "response": "It's a great question, and I can help clarify how dentist appointments are typically handled!\n\nBased on our company policies:\n\n*   **Sick Leave:** You receive 10 sick days per year. While the policy states a doctor's note is required for absences longer than 3 consecutive days, generally, appointments for health-related reasons, like a dentist visit, are covered under sick leave. This would likely be the most appropriate category for your appointment.\n*   **PTO (Paid Time Off):** You accrue 20 days of PTO per year. PTO is usually for planned time off, and a dentist appointment certainly falls into that category as well. If you prefer to save your sick leave for unexpected illnesses, you could certainly use PTO.\n\n**How to Record It:**\n\nFor recording your time, you should generally:\n\n1.  **Inform your manager:** Let your manager know in advance about your appointment and the time you'll be out.\n2.  **Log it in our HR system:** Make sure to log the time as either sick leave or PTO, depending on which option you choose, in our designated HR platform. (Please check with your direct manager or team if there's a specific internal system for logging this).\n\nI hope this helps you decide how to categorize and record your dentist appointment! Let me know if you have any other questions.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a clear and comprehensive answer regarding sick leave vs. PTO for a dentist appointment and the recording process, directly addressing the user's question."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent explicitly states 'Based on our company policies', indicating it retrieved information from its tools regarding company HR policies."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the agent has access to accurate company policy data, the information provided about sick leave, PTO, and recording procedures is consistent and accurate for typical HR policies."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent clearly used its tools to access and interpret company policy information, as indicated by 'Based on our company policies'."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response includes specific details like '10 sick days per year', '20 days of PTO per year', and a step-by-step process for recording the time."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The user asked a question directly related to company policy for a dentist appointment, and the agent provided a relevant and in-scope answer."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first substantive response (the second turn) fully and correctly answered the user's question without needing any further correction or significant clarification."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the agent has access to accurate company policy data, the information provided about sick leave, PTO, and recording procedures is consistent and accurate for typical HR policies."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent clearly used its tools to access and interpret company policy information, as indicated by 'Based on our company policies'."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response includes specific details like '10 sick days per year', '20 days of PTO per year', and a step-by-step process for recording the time."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The user asked a question directly related to company policy for a dentist appointment, and the agent provided a relevant and in-scope answer."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first substantive response (the second turn) fully and correctly answered the user's question without needing any further correction or significant clarification."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I have a dentist appointment Tuesday."
+        },
+        {
+          "role": "agent",
+          "text": "I understand you have a dentist appointment on Tuesday. Is there anything I can help you with regarding company policy or HR calculations for this appointment?"
+        },
+        {
+          "role": "user",
+          "text": "Yes, I'd like to know if a dentist appointment should be covered by sick leave or PTO, and what the process is for recording it.",
+          "tag": "SPECIFICS"
+        },
+        {
+          "role": "agent",
+          "text": "It's a great question, and I can help clarify how dentist appointments are typically handled!\n\nBased on our company policies:\n\n*   **Sick Leave:** You receive 10 sick days per year. While the policy states a doctor's note is required for absences longer than 3 consecutive days, generally, appointments for health-related reasons, like a dentist visit, are covered under sick leave. This would likely be the most appropriate category for your appointment.\n*   **PTO (Paid Time Off):** You accrue 20 days of PTO per year. PTO is usually for planned time off, and a dentist appointment certainly falls into that category as well. If you prefer to save your sick leave for unexpected illnesses, you could certainly use PTO.\n\n**How to Record It:**\n\nFor recording your time, you should generally:\n\n1.  **Inform your manager:** Let your manager know in advance about your appointment and the time you'll be out.\n2.  **Log it in our HR system:** Make sure to log the time as either sick leave or PTO, depending on which option you choose, in our designated HR platform. (Please check with your direct manager or team if there's a specific internal system for logging this).\n\nI hope this helps you decide how to categorize and record your dentist appointment! Let me know if you have any other questions."
+        },
+        {
+          "role": "user",
+          "text": "Thank you, that clarifies things.",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_e895dfa3",
+      "question": "Tell me about all my time-off options.",
+      "response": "Certainly! I can help you with the company's paid holidays for 2026.\n\nThe company observes **11 paid holidays** in 2026. Here they are:\n\n*   **January 1, 2026**\n*   **January 19, 2026**\n*   **February 16, 2026**\n*   **May 25, 2026**\n*   **July 3, 2026**\n*   **September 7, 2026**\n*   **November 26, 2026**\n*   **November 27, 2026**\n*   **December 24, 2026**\n*   **December 25, 2026**\n*   **December 31, 2026**\n\nI hope this list is helpful for your planning!",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 6,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided specific and detailed answers to all user questions regarding time-off options, parental leave, and paid holidays."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent provided highly specific details like exact numbers of days, accrual rates, rollover limits, and specific dates for holidays, which indicates grounding in a specific knowledge base or tool rather than general LLM knowledge."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the underlying data is accurate, the agent faithfully conveyed all requested information without any apparent inaccuracies or contradictions within the transcript."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent provided very specific company policies and future dates, which strongly implies the use of a tool or knowledge base to retrieve this information, rather than relying on general knowledge."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent provided exact numbers (e.g., 20 days PTO, 10 sick days, 16/8 weeks parental leave, 11 holidays) and specific dates for all paid holidays in 2026."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "All user questions were in-scope regarding company policies, and the agent answered each one directly and appropriately without declining or going off-topic."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response to each distinct user query (time-off, parental leave, holidays) was correct and complete, requiring no correction or significant clarification from the user. The user's subsequent inputs were for new information, not corrections."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the underlying data is accurate, the agent faithfully conveyed all requested information without any apparent inaccuracies or contradictions within the transcript."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent provided very specific company policies and future dates, which strongly implies the use of a tool or knowledge base to retrieve this information, rather than relying on general knowledge."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent provided exact numbers (e.g., 20 days PTO, 10 sick days, 16/8 weeks parental leave, 11 holidays) and specific dates for all paid holidays in 2026."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "All user questions were in-scope regarding company policies, and the agent answered each one directly and appropriately without declining or going off-topic."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response to each distinct user query (time-off, parental leave, holidays) was correct and complete, requiring no correction or significant clarification from the user. The user's subsequent inputs were for new information, not corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Tell me about all my time-off options."
+        },
+        {
+          "role": "agent",
+          "text": "Certainly! Let's break down your time-off options at the company:\n\n**1. Paid Time Off (PTO):**\n\n*   You receive **20 days of PTO per year**.\n*   This PTO accrues monthly at a rate of approximately **1.67 days per month**.\n*   You can roll over **up to 5 unused PTO days** to the next year.\n*   For PTO requests longer than 3 days, please submit them at least **2 weeks in advance**.\n\n**2. Sick Leave:**\n\n*   You are allotted **10 sick days per year**.\n*   Please note that **sick leave does not roll over** to the next year.\n*   If your absence due to sickness extends beyond 3 consecutive days, a **doctor's note is required**.\n\nI hope this clarifies your time-off options! Let me know if you have any other questions."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's very clear about PTO and sick leave. Could you tell me about parental leave options?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Absolutely! I can certainly tell you about the company's parental leave options.\n\nHere's a breakdown:\n\n*   **Primary Caregiver:** If you are the primary caregiver, you are eligible for **16 weeks of paid parental leave**.\n*   **Secondary Caregiver:** If you are the secondary caregiver, you are eligible for **8 weeks of paid parental leave**.\n\nThis is part of the comprehensive benefits package the company offers. Let me know if you have any other questions!"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's very clear. Could you also tell me about the company's paid holidays for 2026?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Certainly! I can help you with the company's paid holidays for 2026.\n\nThe company observes **11 paid holidays** in 2026. Here they are:\n\n*   **January 1, 2026**\n*   **January 19, 2026**\n*   **February 16, 2026**\n*   **May 25, 2026**\n*   **July 3, 2026**\n*   **September 7, 2026**\n*   **November 26, 2026**\n*   **November 27, 2026**\n*   **December 24, 2026**\n*   **December 25, 2026**\n*   **December 31, 2026**\n\nI hope this list is helpful for your planning!"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that list is very helpful and clear!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_260ce17a",
+      "question": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?",
+      "response": "That's a great question about our company's time off policies! Here's a breakdown of how PTO and sick leave differ regarding rollover:\n\n*   **Paid Time Off (PTO):** You receive 20 days of PTO per year, accrued monthly. Unused PTO *does* roll over to the next year, but there's a maximum limit of **5 days** that can be carried over.\n*   **Sick Leave:** You receive 10 sick days per year. However, sick leave *does not* roll over; any unused sick days at the end of the year will not be carried into the next year.\n\nSo, in summary, a limited amount of PTO rolls over, but sick leave does not.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent directly and substantively answers the user's question about PTO and sick leave rollover policies with specific details."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response provides specific policy details (number of days, rollover limits) which would typically be retrieved from a company's internal knowledge base or policy document, indicating tool usage."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the provided policy details are accurate for the company, the facts stated are correct and consistent with the implied tool results."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent provides specific policy numbers and rules, which suggests it used a tool (e.g., an internal knowledge base) to retrieve this information rather than relying on general knowledge."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response includes specific numbers for PTO days (20), sick days (10), and the PTO rollover limit (5 days)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent directly answered the in-scope question about company PTO and sick leave policies."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response was correct, complete, and fully addressed the user's question, as confirmed by the user's follow-up."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the provided policy details are accurate for the company, the facts stated are correct and consistent with the implied tool results."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent provides specific policy numbers and rules, which suggests it used a tool (e.g., an internal knowledge base) to retrieve this information rather than relying on general knowledge."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response includes specific numbers for PTO days (20), sick days (10), and the PTO rollover limit (5 days)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent directly answered the in-scope question about company PTO and sick leave policies."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response was correct, complete, and fully addressed the user's question, as confirmed by the user's follow-up."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?"
+        },
+        {
+          "role": "agent",
+          "text": "That's a great question about our company's time off policies! Here's a breakdown of how PTO and sick leave differ regarding rollover:\n\n*   **Paid Time Off (PTO):** You receive 20 days of PTO per year, accrued monthly. Unused PTO *does* roll over to the next year, but there's a maximum limit of **5 days** that can be carried over.\n*   **Sick Leave:** You receive 10 sick days per year. However, sick leave *does not* roll over; any unused sick days at the end of the year will not be carried into the next year.\n\nSo, in summary, a limited amount of PTO rolls over, but sick leave does not."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that clarifies the rollover policies for both PTO and sick leave perfectly!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_7be5c535",
+      "question": "What are the salary bands for senior engineers?",
+      "response": "Certainly! I can help you with the company's PTO policy.\n\nHere's a summary:\n\n*   **Accrual:** You accrue PTO on a monthly basis.\n*   **Days Per Year:** Employees receive 20 days of PTO per year.\n*   **Accrual Rate:** This works out to approximately 1.67 days per month.\n*   **Rollover:** You can roll over up to a maximum of 5 unused PTO days to the next year.\n*   **Requesting PTO:** For any PTO period longer than 3 days, requests must be submitted at least 2 weeks in advance.\n\nLet me know if you have any other questions about this or other policies!",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent correctly declined the initial out-of-scope question and then provided a detailed and useful answer to the subsequent in-scope question about PTO policy."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The PTO policy details are specific company information that would need to be retrieved from an internal knowledge base or tool, not general LLM knowledge."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The PTO policy details provided appear accurate and consistent with what would be expected from a company policy. There is no information to suggest any inaccuracies."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "To provide specific company PTO policy details, the agent would need to access an internal knowledge base or tool. It did not answer from general knowledge."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The PTO policy response includes specific numbers for days per year, accrual rate, rollover limits, and request lead times."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly declined the initial out-of-scope question and then correctly answered an in-scope question about company policy."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was to correctly decline an out-of-scope question. Its first substantive answer to an in-scope question (PTO policy) was also correct and complete, requiring no user correction."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The PTO policy details provided appear accurate and consistent with what would be expected from a company policy. There is no information to suggest any inaccuracies."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "To provide specific company PTO policy details, the agent would need to access an internal knowledge base or tool. It did not answer from general knowledge."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The PTO policy response includes specific numbers for days per year, accrual rate, rollover limits, and request lead times."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly declined the initial out-of-scope question and then correctly answered an in-scope question about company policy."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was to correctly decline an out-of-scope question. Its first substantive answer to an in-scope question (PTO policy) was also correct and complete, requiring no user correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What are the salary bands for senior engineers?"
+        },
+        {
+          "role": "agent",
+          "text": "I cannot answer questions about salary, as this is outside my current scope. Please contact HR or your manager for information on salary bands."
+        },
+        {
+          "role": "user",
+          "text": "You are correct, salary questions are outside your scope.",
+          "tag": "SCOPE"
+        },
+        {
+          "role": "agent",
+          "text": "Understood. Is there anything else I can assist you with that falls within my scope, such as company policies or HR calculations?"
+        },
+        {
+          "role": "user",
+          "text": "Yes, thank you. Can you tell me about the company's PTO policy?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Certainly! I can help you with the company's PTO policy.\n\nHere's a summary:\n\n*   **Accrual:** You accrue PTO on a monthly basis.\n*   **Days Per Year:** Employees receive 20 days of PTO per year.\n*   **Accrual Rate:** This works out to approximately 1.67 days per month.\n*   **Rollover:** You can roll over up to a maximum of 5 unused PTO days to the next year.\n*   **Requesting PTO:** For any PTO period longer than 3 days, requests must be submitted at least 2 weeks in advance.\n\nLet me know if you have any other questions about this or other policies!"
+        },
+        {
+          "role": "user",
+          "text": "That's very clear and helpful, thank you!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_69247d0e",
+      "question": "How do I get promoted?",
+      "response": "I cannot answer questions about promotions as they are outside my current scope. Please contact your manager or HR for guidance on career development and promotion processes.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent explicitly stated it cannot answer the question and directed the user elsewhere, which is considered unhelpful according to the definition."
+        },
+        "task_grounding": {
+          "category": "no_tool_needed",
+          "justification": "The question is about personal career advice, which is outside the agent's scope and does not require tool usage. The agent's response is a canned refusal."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The agent's statement about its own scope and the advice to contact manager/HR are accurate."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent did not use any tools, as the question was out of its scope and it correctly declined to answer."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response is specific in stating it cannot answer and provides specific alternative contacts (manager, HR)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly identified the question as out of scope and politely declined to answer, directing the user to appropriate resources."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response correctly handled the out-of-scope question without needing any user correction."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The agent's statement about its own scope and the advice to contact manager/HR are accurate."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent did not use any tools, as the question was out of its scope and it correctly declined to answer."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response is specific in stating it cannot answer and provides specific alternative contacts (manager, HR)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly identified the question as out of scope and politely declined to answer, directing the user to appropriate resources."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response correctly handled the out-of-scope question without needing any user correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How do I get promoted?"
+        },
+        {
+          "role": "agent",
+          "text": "I cannot answer questions about promotions as they are outside my current scope. Please contact your manager or HR for guidance on career development and promotion processes."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for letting me know!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_1c048a69",
+      "question": "What is the PTO policy?",
+      "response": "Absolutely! Here's our remote work policy:\n\nYou can work remotely for up to **3 days per week**, provided you have your manager's approval. We also have core collaboration hours from **10 AM to 3 PM** in your local timezone, during which we expect everyone to be available.\n\nIt's also important that all remote work arrangements are properly documented in the HR system.\n\nLet me know if you have any other questions about this or anything else!",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 4,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided clear, specific, and useful information for all three policy questions (PTO, sick leave, remote work)."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent provided specific policy details (numbers, conditions) which are clearly derived from an internal knowledge base or tool, not general LLM knowledge."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Based on the information provided, all facts stated by the agent regarding the policies appear accurate and consistent."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent successfully retrieved and presented specific policy details, indicating proper use of an internal knowledge base or HR system tool."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent provided highly specific details including exact numbers (20 days PTO, 5 rollover, 10 sick days, 3 days remote, 10 AM-3 PM core hours) and conditions."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered all in-scope questions about company policies without declining or going off-topic."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response regarding the PTO policy was correct and complete, and all subsequent responses were also accurate and satisfactory without needing user correction."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Based on the information provided, all facts stated by the agent regarding the policies appear accurate and consistent."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent successfully retrieved and presented specific policy details, indicating proper use of an internal knowledge base or HR system tool."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent provided highly specific details including exact numbers (20 days PTO, 5 rollover, 10 sick days, 3 days remote, 10 AM-3 PM core hours) and conditions."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered all in-scope questions about company policies without declining or going off-topic."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response regarding the PTO policy was correct and complete, and all subsequent responses were also accurate and satisfactory without needing user correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What is the PTO policy?"
+        },
+        {
+          "role": "agent",
+          "text": "Hello there! I'd be happy to tell you about our company's PTO policy.\n\nYou receive **20 days of PTO per year**, and it accrues monthly, which means you'll gain approximately 1.67 days each month.\n\nGood news! You can roll over up to **5 unused PTO days** to the next year.\n\nJust a heads-up, for any PTO requests longer than 3 days, please submit them at least **2 weeks in advance**.\n\nLet me know if you have any other questions!"
+        },
+        {
+          "role": "user",
+          "text": "That's clear, thank you! Can you tell me about the sick leave policy?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Of course! I can help you with that.\n\nOur company provides **10 sick days per year**. It's important to note that **sick leave does not roll over** to the next year, so be sure to use it as needed within the year.\n\nAlso, if you're absent for more than 3 consecutive days due to illness, a doctor's note will be required.\n\nI hope this clarifies our sick leave policy for you! Do you have any other policy questions?"
+        },
+        {
+          "role": "user",
+          "text": "That's very clear, thank you! Could you please tell me about the remote work policy?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Absolutely! Here's our remote work policy:\n\nYou can work remotely for up to **3 days per week**, provided you have your manager's approval. We also have core collaboration hours from **10 AM to 3 PM** in your local timezone, during which we expect everyone to be available.\n\nIt's also important that all remote work arrangements are properly documented in the HR system.\n\nLet me know if you have any other questions about this or anything else!"
+        },
+        {
+          "role": "user",
+          "text": "That's perfectly clear, thank you!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_e518ccc8",
+      "question": "How many sick days do we get?",
+      "response": "Our company provides 10 sick days per year. Just so you know, sick leave does not roll over to the next year, and a doctor's note is required if you are absent for more than 3 consecutive days.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent directly answers the user's question about sick days and provides additional relevant details about the policy."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The information provided (number of sick days, rollover policy, doctor's note requirement) is specific company policy, implying it was retrieved from an internal knowledge base or similar tool."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the stated policy details are accurate, the agent conveyed them faithfully."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent used a tool (likely an internal policy database or knowledge base) to retrieve specific company information regarding sick days."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides a specific number (10 sick days) and specific conditions (no rollover, doctor's note for >3 days)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered an in-scope question about company policy."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The first response was correct and complete, providing all necessary information without needing user correction or clarification."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the stated policy details are accurate, the agent conveyed them faithfully."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent used a tool (likely an internal policy database or knowledge base) to retrieve specific company information regarding sick days."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides a specific number (10 sick days) and specific conditions (no rollover, doctor's note for >3 days)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered an in-scope question about company policy."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The first response was correct and complete, providing all necessary information without needing user correction or clarification."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many sick days do we get?"
+        },
+        {
+          "role": "agent",
+          "text": "Our company provides 10 sick days per year. Just so you know, sick leave does not roll over to the next year, and a doctor's note is required if you are absent for more than 3 consecutive days."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's clear!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_8efa8385",
+      "question": "What dental coverage do we have?",
+      "response": "We have great dental coverage! Preventive care is fully covered, and for major procedures, the company covers 80% of the costs.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided specific and actionable information about dental coverage, directly answering the user's question."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The information provided (specific coverage percentages for different types of dental care) would typically come from a company benefits database or tool, indicating it's grounded in retrieved data."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The user's follow-up 'Thanks, that's exactly what I needed to know!' indicates the information provided was accurate and satisfactory."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The question requires specific company benefits information, which should be retrieved from a tool. The agent provided specific details, implying proper tool usage."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response includes specific details like 'fully covered' for preventive care and '80% of the costs' for major procedures."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent directly and appropriately answered the in-scope question about dental coverage."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first and only response was correct and complete, as confirmed by the user's positive feedback."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The user's follow-up 'Thanks, that's exactly what I needed to know!' indicates the information provided was accurate and satisfactory."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The question requires specific company benefits information, which should be retrieved from a tool. The agent provided specific details, implying proper tool usage."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response includes specific details like 'fully covered' for preventive care and '80% of the costs' for major procedures."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent directly and appropriately answered the in-scope question about dental coverage."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first and only response was correct and complete, as confirmed by the user's positive feedback."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What dental coverage do we have?"
+        },
+        {
+          "role": "agent",
+          "text": "We have great dental coverage! Preventive care is fully covered, and for major procedures, the company covers 80% of the costs."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's exactly what I needed to know!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_b29aa34a",
+      "question": "How does the 401k match work?",
+      "response": "Our company offers a 401(k) plan with a **4% company match**. You become fully vested in the company's contributions after **1 year of employment**.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided specific and actionable information regarding the 401k match and vesting period, directly answering the user's question."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The information provided (4% match, 1 year vesting) is specific company policy, implying it was retrieved from an internal knowledge base or tool."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the agent's internal data is accurate, the facts stated about the 401k match and vesting are correct and consistent with what would be expected from company policy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent would need to access internal company policy or HR tools to provide these specific details about the 401k match and vesting."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response includes specific details: '4% company match' and '1 year of employment' for vesting."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered an in-scope question about company benefits."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The first response was correct and complete, and the user explicitly stated 'Thanks, that's clear!' indicating no further clarification or correction was needed."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the agent's internal data is accurate, the facts stated about the 401k match and vesting are correct and consistent with what would be expected from company policy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent would need to access internal company policy or HR tools to provide these specific details about the 401k match and vesting."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response includes specific details: '4% company match' and '1 year of employment' for vesting."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered an in-scope question about company benefits."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The first response was correct and complete, and the user explicitly stated 'Thanks, that's clear!' indicating no further clarification or correction was needed."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How does the 401k match work?"
+        },
+        {
+          "role": "agent",
+          "text": "Our company offers a 401(k) plan with a **4% company match**. You become fully vested in the company's contributions after **1 year of employment**."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that's clear!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_139e3dfa",
+      "question": "How many vacation days do I get?",
+      "response": "You receive 20 days of PTO (Paid Time Off) per year! These days are accrued monthly, which means you'll gain about 1.67 days each month.\n\nGood news about unused days: up to 5 of your unused PTO days can roll over to the next year.\n\nJust a heads-up, for any PTO requests that are longer than 3 days, please make sure to submit them at least 2 weeks in advance.\n\nLet me know if you have any other questions about our time off policies!",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a direct and comprehensive answer to the user's question about vacation days, including specific details about accrual, rollover, and request policies."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response contains specific company policy details (e.g., 20 days PTO, 5 days rollover, 2-week notice) which would typically come from an internal knowledge base or HR tool."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "Assuming the agent retrieved accurate company policy, the facts stated are correct and consistent with the expected information for such a query."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "To provide such specific company policy details, the agent must have used an internal tool or knowledge base, indicating proper tool usage."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response includes exact numbers (20 days, 1.67 days, 5 days, 3 days, 2 weeks) and clear policy details, making it highly specific."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent directly answered the user's in-scope question about vacation days (PTO)."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was complete and accurate, fully addressing the user's question without needing any corrections or follow-ups."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "Assuming the agent retrieved accurate company policy, the facts stated are correct and consistent with the expected information for such a query."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "To provide such specific company policy details, the agent must have used an internal tool or knowledge base, indicating proper tool usage."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response includes exact numbers (20 days, 1.67 days, 5 days, 3 days, 2 weeks) and clear policy details, making it highly specific."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent directly answered the user's in-scope question about vacation days (PTO)."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was complete and accurate, fully addressing the user's question without needing any corrections or follow-ups."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many vacation days do I get?"
+        },
+        {
+          "role": "agent",
+          "text": "You receive 20 days of PTO (Paid Time Off) per year! These days are accrued monthly, which means you'll gain about 1.67 days each month.\n\nGood news about unused days: up to 5 of your unused PTO days can roll over to the next year.\n\nJust a heads-up, for any PTO requests that are longer than 3 days, please make sure to submit them at least 2 weeks in advance.\n\nLet me know if you have any other questions about our time off policies!"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that clarifies everything about PTO!",
+          "tag": "END"
+        }
+      ]
+    },
+    {
+      "session_id": "conv_fcf1e976",
+      "question": "What's our telecommuting policy?",
+      "response": "That's a great follow-up question! While our remote work policy states that arrangements need to be documented in the HR system, the specific step-by-step process for doing so isn't detailed in the policy itself through my lookup tool.\n\nTypically, this would involve submitting a form or request through our internal HR portal or by contacting the HR department directly. They can guide you through the exact steps and ensure all necessary information is captured correctly.\n\nWould you like me to try and find contact information for HR, or is there anything else I can help you with regarding the remote work policy?",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent's final response explains that the specific process is not detailed in its tools but provides typical steps and offers further assistance, which is a useful way to handle the limitation."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "While the agent states its tool does not contain the specific process, the advice it provides about typical steps (submitting a form, contacting HR) is based on general knowledge rather than data retrieved from its tools."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The agent correctly states that the specific process is not detailed in the policy via its lookup tool, and the general advice provided is typically accurate for such situations."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent properly used its lookup tool to determine that the specific process was not detailed in the policy, and communicated this limitation to the user."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response is vague regarding the specific process for *this company*, as it states the information isn't available and provides only general, typical steps rather than concrete details."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The question was in scope, and the agent handled it appropriately by explaining the limitations of its information and offering general guidance and further assistance."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response to the initial query about the telecommuting policy was correct and provided specific details. The user's follow-up was a new, related question, not a correction of the first answer."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The agent correctly states that the specific process is not detailed in the policy via its lookup tool, and the general advice provided is typically accurate for such situations."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent properly used its lookup tool to determine that the specific process was not detailed in the policy, and communicated this limitation to the user."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response is vague regarding the specific process for *this company*, as it states the information isn't available and provides only general, typical steps rather than concrete details."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The question was in scope, and the agent handled it appropriately by explaining the limitations of its information and offering general guidance and further assistance."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response to the initial query about the telecommuting policy was correct and provided specific details. The user's follow-up was a new, related question, not a correction of the first answer."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What's our telecommuting policy?"
+        },
+        {
+          "role": "agent",
+          "text": "Our telecommuting policy allows employees to work remotely for up to 3 days per week, provided they have their manager's approval. We have core collaboration hours from 10 AM to 3 PM, based on the employee's local timezone, to ensure everyone stays connected. It's also important that all remote work arrangements are documented in the HR system.\n\nLet me know if you have any other questions about working remotely!"
+        },
+        {
+          "role": "user",
+          "text": "That's clear, thanks! What's the process for documenting a remote work arrangement in the HR system?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "That's a great follow-up question! While our remote work policy states that arrangements need to be documented in the HR system, the specific step-by-step process for doing so isn't detailed in the policy itself through my lookup tool.\n\nTypically, this would involve submitting a form or request through our internal HR portal or by contacting the HR department directly. They can guide you through the exact steps and ensure all necessary information is captured correctly.\n\nWould you like me to try and find contact information for HR, or is there anything else I can help you with regarding the remote work policy?"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ]
+    }
+  ],
+  "details": {
+    "parse_errors": "0",
+    "parse_error_rate": "0.0"
+  }
+}

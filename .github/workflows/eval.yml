@@ -1,0 +1,159 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Eval & Load Test Gate — PR acceptance checks.
+#
+# Two jobs run in parallel:
+#   1. eval       — golden eval cases (routing, tool use, out-of-scope)
+#   2. load-test  — synthetic traffic with budget enforcement
+#
+# Both must pass for a PR to be mergeable.
+
+name: Eval & Load Test Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Job 1: Golden eval cases (routing, tool use, out-of-scope)
+  # -----------------------------------------------------------------------
+  eval:
+    name: Golden Eval
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate .env from .env.example
+        run: |
+          cp .env.example .env
+          sed -i 's|^PROJECT_ID=.*|PROJECT_ID="${{ vars.PROJECT_ID }}"|' .env
+          sed -i 's|^REGION=.*|REGION="${{ vars.REGION || 'us-central1' }}"|' .env
+          sed -i 's|^DATASET_ID=.*|DATASET_ID="${{ vars.TEST_DATASET_ID || 'logging_test' }}"|' .env
+          sed -i 's|^DATASET_LOCATION=.*|DATASET_LOCATION="${{ vars.DATASET_LOCATION || 'us-central1' }}"|' .env
+          sed -i 's|^TABLE_ID=.*|TABLE_ID="${{ vars.TEST_TABLE_ID || 'agent_events' }}"|' .env
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            "google-adk>=1.32.0,<2.0.0" \
+            google-cloud-aiplatform \
+            google-cloud-bigquery-storage \
+            pyarrow \
+            python-dotenv \
+            pytest \
+            pytest-asyncio \
+            pytest-rerunfailures \
+            "bigquery-agent-analytics[llm]>=0.2.3"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      # --only-rerun scopes retries to Vertex quota errors (this job shares
+      # project quota with the load test running in parallel); genuine
+      # assertion failures still fail on the first attempt.
+      - name: Run golden eval tests
+        run: |
+          pytest eval/tests/test_eval.py -v --tb=short \
+            --reruns 2 --reruns-delay 30 --only-rerun "RESOURCE_EXHAUSTED" \
+            2>&1 | tee eval_results.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval_results.txt
+
+  # -----------------------------------------------------------------------
+  # Job 2: Load test — quality + operational budget checks
+  # -----------------------------------------------------------------------
+  load-test:
+    name: Load Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate .env from .env.example
+        run: |
+          cp .env.example .env
+          sed -i 's|^PROJECT_ID=.*|PROJECT_ID="${{ vars.PROJECT_ID }}"|' .env
+          sed -i 's|^REGION=.*|REGION="${{ vars.REGION || 'us-central1' }}"|' .env
+          sed -i 's|^DATASET_ID=.*|DATASET_ID="${{ vars.TEST_DATASET_ID || 'logging_test' }}"|' .env
+          sed -i 's|^DATASET_LOCATION=.*|DATASET_LOCATION="${{ vars.DATASET_LOCATION || 'us-central1' }}"|' .env
+          sed -i 's|^TABLE_ID=.*|TABLE_ID="${{ vars.TEST_TABLE_ID || 'agent_events' }}"|' .env
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            "google-adk>=1.32.0,<2.0.0" \
+            google-cloud-aiplatform \
+            google-cloud-bigquery-storage \
+            pyarrow \
+            python-dotenv \
+            pytest \
+            pytest-asyncio \
+            "bigquery-agent-analytics[llm]>=0.2.3"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Run load test (quality gate)
+        env:
+          LOAD_TEST_COUNT: "20"
+          LOAD_TEST_THRESHOLD: "0.8"
+        run: |
+          pytest eval/tests/test_load.py -v --tb=short -s 2>&1 | tee load_test_output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: |
+            load_test_output.txt
+            eval/load_test_report.json

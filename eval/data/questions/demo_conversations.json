@@ -1,0 +1,827 @@
+{
+  "name": "demo_full_rebalanced",
+  "eval_set_id": "demo_full_rebalanced",
+  "description": "All cleanly-answerable + declines + labeled gap section (~10) for retro",
+  "eval_cases": [
+    {
+      "id": "halluc_15",
+      "question": "I heard new employees get a signing bonus of $5,000. Can you confirm?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_16",
+      "question": "Someone said we get an extra floating holiday for our birthday. True?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_19",
+      "question": "My colleague said there's a gym membership reimbursement benefit. True?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_20",
+      "question": "I heard we have a sabbatical program after 5 years. Is that real?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_12",
+      "question": "Does the company cover 100% of health insurance premiums?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "halluc_03",
+      "question": "Is the 401k match 6% or 8%?",
+      "category": "hallucination_trap"
+    },
+    {
+      "id": "synonym_01",
+      "question": "How many vacation days do I get?",
+      "category": "synonym"
+    },
+    {
+      "id": "synonym_02",
+      "question": "What's our telecommuting policy?",
+      "category": "synonym"
+    },
+    {
+      "id": "synonym_03",
+      "question": "Tell me about our WFH rules.",
+      "category": "synonym"
+    },
+    {
+      "id": "synonym_04",
+      "question": "What's covered under our medical plan?",
+      "category": "synonym"
+    },
+    {
+      "id": "scope_01",
+      "question": "What are the salary bands for senior engineers?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_02",
+      "question": "How do I get promoted?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_03",
+      "question": "What's the dress code?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_04",
+      "question": "How do I reset my laptop password?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_06",
+      "question": "When are performance reviews?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_07",
+      "question": "What training budget do we have?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_08",
+      "question": "Can you help me with my VPN connection?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_09",
+      "question": "What's the policy on bringing pets to the office?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_10",
+      "question": "How do I order a new monitor for my desk?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_11",
+      "question": "What's the company's stock option vesting schedule?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_12",
+      "question": "Who should I talk to about a raise?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_13",
+      "question": "How do I file a harassment complaint?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_14",
+      "question": "What's on the company cafeteria menu?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_15",
+      "question": "Can I get a standing desk?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_16",
+      "question": "What's the policy on moonlighting or side projects?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_17",
+      "question": "How do I request a transfer to another team?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "scope_18",
+      "question": "What's the company's policy on political activities?",
+      "category": "out_of_scope"
+    },
+    {
+      "id": "date_01",
+      "question": "What's the next company holiday?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_02",
+      "question": "How many holidays are left this year?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_03",
+      "question": "Do we have any holidays coming up this month?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_04",
+      "question": "Is there a long weekend coming up soon?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_05",
+      "question": "When is our next day off?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_06",
+      "question": "How many PTO days have I likely accrued by now if I started in January?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_07",
+      "question": "What holiday do we have in November?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "date_08",
+      "question": "Are we off for Christmas Eve this year?",
+      "category": "date_dependent"
+    },
+    {
+      "id": "multi_01",
+      "question": "Tell me about all my time-off options.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_02",
+      "question": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_03",
+      "question": "I'm planning a trip in July. What do I need to know about PTO, expenses, and any holidays?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_04",
+      "question": "Give me the full rundown on all our insurance benefits.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_05",
+      "question": "I'm a new hire. Walk me through PTO, sick leave, and remote work policies.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_06",
+      "question": "What's the difference between PTO and sick leave? Can I use PTO when I'm sick?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_07",
+      "question": "I need to travel for work next month. What should I know about expenses, remote work, and holidays?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_08",
+      "question": "List everything I need to know about our financial benefits \u2014 401k, insurance, all of it.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_09",
+      "question": "How do PTO rollover and sick leave rollover compare?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_10",
+      "question": "I'm expecting a baby. Tell me about parental leave and health insurance for dependents.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_12",
+      "question": "Compare all our insurance options \u2014 health, dental, vision.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_13",
+      "question": "What are all the things that expire or reset at year end?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_14",
+      "question": "I'm planning a work trip with some personal days attached. What policies apply?",
+      "category": "multi_topic"
+    },
+    {
+      "id": "multi_15",
+      "question": "Walk me through the full financial picture \u2014 401k, insurance costs, and expense policies.",
+      "category": "multi_topic"
+    },
+    {
+      "id": "bereavement_general_01",
+      "question": "What's the bereavement leave policy?",
+      "category": "straightforward"
+    },
+    {
+      "id": "eap_general_01",
+      "question": "Do we have an employee assistance program for counseling?",
+      "category": "straightforward"
+    },
+    {
+      "id": "straight_01",
+      "question": "What is the PTO policy?",
+      "category": "straightforward"
+    },
+    {
+      "id": "straight_02",
+      "question": "How many sick days do we get?",
+      "category": "straightforward"
+    },
+    {
+      "id": "straight_03",
+      "question": "What's the remote work policy?",
+      "category": "straightforward"
+    },
+    {
+      "id": "bait_01",
+      "question": "I know we get 20 PTO days, but I think the rollover is 10 days, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_02",
+      "question": "Our 401k matches at 4% and vests immediately, correct?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_03",
+      "question": "We can work from home 3 days a week without any approval needed, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_04",
+      "question": "Sick leave is 10 days and rolls over like PTO, doesn't it?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_05",
+      "question": "The meal limit is $75 and receipts are required over $50, correct?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_06",
+      "question": "Parental leave is 16 weeks for both primary and secondary caregivers, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_07",
+      "question": "The company pays 80% of insurance premiums for employees and dependents alike, yes?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_08",
+      "question": "I need to submit PTO requests 1 week in advance for any length of time off, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_09",
+      "question": "We get 3 floating holidays per year, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_10",
+      "question": "The vision plan covers $300 for frames every year, doesn't it?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_11",
+      "question": "Remote work is limited to 2 days per week, correct?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_12",
+      "question": "Expenses under $100 don't need any documentation, right?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "bait_13",
+      "question": "The company matches 401k contributions dollar for dollar up to 6%, yes?",
+      "category": "correction_bait"
+    },
+    {
+      "id": "route_04",
+      "question": "My wife is due in September.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_05",
+      "question": "I need to see an eye doctor.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_11",
+      "question": "I'm thinking about starting a family soon.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_12",
+      "question": "My glasses broke and I need new ones.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_15",
+      "question": "I'll be in the hospital for a procedure next month.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_16",
+      "question": "I'm getting married in October.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_18",
+      "question": "My back has been killing me and I might need surgery.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_19",
+      "question": "I have three kids and my spouse just lost their job.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_20",
+      "question": "I'm adopting a child from overseas next spring.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_21",
+      "question": "I just had a fender bender on my way to a client meeting.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_01",
+      "question": "I'm going to be out next week.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_03",
+      "question": "I spent $80 on dinner with a client last night.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_08",
+      "question": "I'm not feeling well today.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "route_22",
+      "question": "I need to buy a plane ticket for next week's conference.",
+      "category": "implicit_routing"
+    },
+    {
+      "id": "compound_01",
+      "question": "I want to use sick days as PTO since I never get sick. Is that allowed?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_05",
+      "question": "Can I convert unused sick days to PTO at year end?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_06",
+      "question": "My manager said I can ignore the 2-week advance notice for PTO. Is that valid?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_07",
+      "question": "I'm on parental leave but want to work part-time remotely. Is that possible?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_09",
+      "question": "Can I expense meals on days I work from home?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_10",
+      "question": "I want to take 3 weeks off but only have 10 PTO days. Can I use sick days for the rest?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_11",
+      "question": "My flight was $600 but I found a $400 option with a connection. Can I book the direct flight?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_12",
+      "question": "I'm a secondary caregiver but my partner doesn't work. Do I qualify as primary?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_13",
+      "question": "Can I stack PTO with holidays to get 3 weeks off in December?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_17",
+      "question": "Can I borrow PTO from next year if I've used all of mine this year?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_18",
+      "question": "I'm both an expectant parent and planning a work trip next month. What policies overlap?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_20",
+      "question": "Can I take parental leave in non-consecutive blocks spread over 6 months?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "compound_21",
+      "question": "My manager approved an expense over the threshold without pre-approval. Is that okay?",
+      "category": "adversarial_compound"
+    },
+    {
+      "id": "casual_phrasing_01",
+      "question": "Hey quick question \u2014 how does time off work around here?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "casual_phrasing_02",
+      "question": "So what's the deal with working from home?",
+      "category": "casual_phrasing"
+    },
+    {
+      "id": "near_scope_decline_03",
+      "question": "Is there a student loan repayment benefit?",
+      "category": "near_scope_decline"
+    },
+    {
+      "id": "near_scope_decline_04",
+      "question": "What's our severance policy?",
+      "category": "near_scope_decline"
+    },
+    {
+      "id": "cross_policy_02",
+      "question": "Can I use the $75 meal allowance when I'm working remotely, or only when traveling?",
+      "category": "cross_policy"
+    },
+    {
+      "id": "edge_17",
+      "question": "What happens to my accrued PTO if I resign mid-year?",
+      "category": "knowledge_gap_demo"
+    },
+    {
+      "id": "procedural_04",
+      "question": "What paperwork do I need to file for parental leave?",
+      "category": "knowledge_gap_demo"
+    },
+    {
+      "id": "subtopic_13",
+      "question": "What's the orthodontia coverage under our dental plan?",
+      "category": "knowledge_gap_demo"
+    },
+    {
+      "id": "subtopic_14",
+      "question": "Is there a maximum out-of-pocket for our health plan?",
+      "category": "knowledge_gap_demo"
+    },
+    {
+      "id": "subtopic_15",
+      "question": "What's the company contribution for HSA accounts?",
+      "category": "knowledge_gap_demo"
+    },
+    {
+      "id": "toolgap_bereavement_extended",
+      "question": "How many days of bereavement leave do we get for extended family?",
+      "category": "tool_gap_demo"
+    },
+    {
+      "id": "toolgap_bereavement_leave",
+      "question": "What's the bereavement leave policy if a parent passes?",
+      "category": "tool_gap_demo"
+    },
+    {
+      "id": "toolgap_jury_duty",
+      "question": "If I get called for jury duty, do I still get paid?",
+      "category": "tool_gap_demo"
+    },
+    {
+      "id": "toolgap_tuition_amount",
+      "question": "How much tuition reimbursement can I get per year?",
+      "category": "tool_gap_demo"
+    },
+    {
+      "id": "toolgap_tuition_reimbursement",
+      "question": "Does the company reimburse tuition for degree programs?",
+      "category": "tool_gap_demo"
+    },
+    {
+      "id": "routing_stress_01",
+      "question": "I'm having a baby this fall \u2014 what time off and benefits do I get?",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_02",
+      "question": "Compare my PTO with my parental leave \u2014 which gives more time off?",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_03",
+      "question": "What paperwork do I file for parental leave, and how much PTO do I keep?",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_04",
+      "question": "I need time off for surgery next month \u2014 what's covered and how do I get paid?",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_05",
+      "question": "Compare my expense limits with my health plan's out-of-pocket maximum.",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_06",
+      "question": "If I resign mid-year, what happens to my PTO payout and my 401k?",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_07",
+      "question": "Walk me through both my insurance options and my vacation days.",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_08",
+      "question": "Does tuition reimbursement come out of my PTO, or is it separate?",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_09",
+      "question": "Is jury duty paid like bereavement leave, and does either affect my benefits?",
+      "category": "routing_stress"
+    },
+    {
+      "id": "routing_stress_10",
+      "question": "How do flex time and remote work differ, and do they change my HSA contribution?",
+      "category": "routing_stress"
+    },
+    {
+      "id": "xd_01",
+      "question": "I'm having a baby this fall. How much parental leave do I get, and are the company holidays during my leave still paid?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_02",
+      "question": "I'm scheduled for surgery next month. What does short-term disability pay, and can I use sick days for the waiting period?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_03",
+      "question": "Compare my annual PTO with my 401k vesting timeline.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_04",
+      "question": "If I resign mid-year, what happens to my unused PTO and to my 401k match?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_05",
+      "question": "I'm taking a work trip to the NY office. What's the meal allowance, and what's my health plan's out-of-pocket max if I get sick there?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_06",
+      "question": "Walk me through both my vision coverage and how many sick days I have.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_07",
+      "question": "Does tuition reimbursement count against my PTO, or is it separate?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_08",
+      "question": "How do flex time and remote work differ, and does either change my HSA contribution?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_09",
+      "question": "Is jury duty paid, and does serving affect my health insurance premiums?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_10",
+      "question": "Compare bereavement leave with parental leave - which is longer and how do I file each?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_11",
+      "question": "What's the orthodontia coverage, and how many days of bereavement leave would I get for a grandparent?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_12",
+      "question": "I'm a new hire. Walk me through PTO, remote work, and how the 401k match works.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_13",
+      "question": "Tell me about everything that resets or rolls over at year end - PTO, sick days, and my HSA.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_14",
+      "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_15",
+      "question": "I need surgery and recovery time. How does short-term disability work, and do company holidays during my leave still count as paid?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_16",
+      "question": "How much notice do I need for PTO, and what paperwork do I file for parental leave?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_17",
+      "question": "Do I get paid for jury duty, and is there an EAP I can use if the case is stressful?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_18",
+      "question": "I'm adopting internationally next spring. What leave applies, and can I add PTO on top of it?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_19",
+      "question": "My spouse just lost their job and we have three kids. What does the EAP offer, and can I add them to my health plan, and can I work remotely more for a while?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_20",
+      "question": "Compare dental and vision coverage under our plan.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_21",
+      "question": "How do the HSA and 401k company contributions compare?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_22",
+      "question": "What's the difference between bereavement and jury duty leave?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_23",
+      "question": "Compare PTO and sick leave - the days and what rolls over for each.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_24",
+      "question": "I want three weeks off in December. Given the company holidays that month, how many PTO days would I actually need to use, and will it affect my 401k contributions?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_25",
+      "question": "What's the per-diem meal cap, and does the health plan have an out-of-pocket maximum I should know about before traveling?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_26",
+      "question": "I just had a baby. How do I file for parental leave, how long is it, and when can I enroll the baby in our health plan?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_27",
+      "question": "How does flex time work, and separately, what's the company HSA contribution?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_28",
+      "question": "Compare expense pre-approval rules with the parental-leave paperwork deadline.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_29",
+      "question": "I broke my glasses and I'll also be out sick tomorrow. What's my vision frame allowance and how many sick days do I have?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_30",
+      "question": "How does tuition reimbursement work, and can I also take flex time to attend classes?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_31",
+      "question": "Compare what the company pays toward my health insurance with what it matches on my 401k.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_32",
+      "question": "If a parent passes away, how many bereavement days do I get, and is there counseling support through our benefits?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_33",
+      "question": "What's the remote-work limit, and does working from home change my meal expense eligibility?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_34",
+      "question": "I'm planning to take a course and travel for a conference. What's my tuition cap and what travel expenses are covered?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_35",
+      "question": "Compare how much parental leave a primary versus secondary caregiver gets, and tell me the PTO notice period.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_36",
+      "question": "Does the company cap jury-duty pay, and what's the dental coverage for major procedures?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_37",
+      "question": "I'm coming back from parental leave and want to ease in. Can I work remotely most days, and is there a phased return through short-term disability?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_38",
+      "question": "What are the core hours for remote work, and what's the EAP hotline for if I'm overwhelmed?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_39",
+      "question": "Compare the orthodontia lifetime max with the annual tuition reimbursement cap.",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_40",
+      "question": "I started in January. Roughly how many PTO days have I accrued so far, and how many can roll into next year?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_41",
+      "question": "How many paid holidays are left this year, and do holidays reduce the PTO I need for a long break?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_42",
+      "question": "Compare sick leave and short-term disability - when would I use each?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_43",
+      "question": "What's the HSA family contribution, and how much bereavement leave for a sibling?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_44",
+      "question": "I'm getting married in October and going on a honeymoon. What time-off applies, and does marriage let me change my benefits enrollment?",
+      "category": "compound_xdomain"
+    },
+    {
+      "id": "xd_45",
+      "question": "Compare what happens to unused PTO versus unused sick days if I leave the company.",
+      "category": "compound_xdomain"
+    }
+  ]
+}

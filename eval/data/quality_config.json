@@ -1,0 +1,16 @@
+{
+  "description": "Quality agent and evolution pipeline configuration. Env vars QUALITY_URGENT_BELOW, QUALITY_WARNING_BELOW, and EVOLUTION_MIN_OPEN_ISSUES override.",
+  "thresholds": {
+    "urgent_below": 80,
+    "warning_below": 95
+  },
+  "labels": ["quality"],
+  "issue_creation": {
+    "always_create_sub_issues": true,
+    "urgent_below": 80
+  },
+  "evolution": {
+    "min_open_issues": 10,
+    "bigquery_window_strategy": "from_earliest_open_issue"
+  }
+}

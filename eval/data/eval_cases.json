@@ -1,0 +1,79 @@
+{
+  "eval_set_id": "knowledge_supervisor_quality",
+  "name": "Knowledge Supervisor Golden Eval",
+  "description": "Baseline regression test cases (V0).",
+  "eval_cases": [
+    {
+      "id": "pto_policy",
+      "question": "What is the PTO policy?",
+      "category": "pto",
+      "expected_agent": "policy_agent"
+    },
+    {
+      "id": "sick_leave_policy",
+      "question": "What is the sick leave policy?",
+      "category": "sick_leave",
+      "expected_agent": "policy_agent"
+    },
+    {
+      "id": "remote_work_policy",
+      "question": "What is the remote work policy?",
+      "category": "remote_work",
+      "expected_agent": "policy_agent"
+    },
+    {
+      "id": "expenses_policy",
+      "question": "What is the expense reimbursement policy?",
+      "category": "expenses",
+      "expected_agent": "policy_agent"
+    },
+    {
+      "id": "holidays_policy",
+      "question": "What are the company holidays?",
+      "category": "holidays",
+      "expected_agent": "policy_agent"
+    },
+    {
+      "id": "pto_balance",
+      "question": "How many PTO days do I have left?",
+      "category": "pto_calc",
+      "expected_agent": "hr_calculator"
+    },
+    {
+      "id": "benefits_401k",
+      "question": "What is the company 401k match?",
+      "category": "benefits",
+      "expected_agent": "benefits_agent"
+    },
+    {
+      "id": "benefits_health_insurance",
+      "question": "What does our health insurance plan cover?",
+      "category": "benefits",
+      "expected_agent": "benefits_agent"
+    },
+    {
+      "id": "compound_meal_hsa",
+      "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
+      "category": "compound_xdomain",
+      "expected_agents": ["policy_agent", "benefits_agent"]
+    },
+    {
+      "id": "compound_bereavement_parental",
+      "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
+      "category": "compound_xdomain",
+      "expected_agents": ["policy_agent", "benefits_agent"]
+    },
+    {
+      "id": "oos_severance",
+      "question": "What is our severance policy?",
+      "category": "out_of_scope",
+      "expected_behavior": "decline_gracefully"
+    },
+    {
+      "id": "oos_standing_desk",
+      "question": "Can I get a standing desk for my home office?",
+      "category": "out_of_scope",
+      "expected_behavior": "decline_gracefully"
+    }
+  ]
+}

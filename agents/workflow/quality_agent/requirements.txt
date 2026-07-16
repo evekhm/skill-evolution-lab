@@ -1,0 +1,10 @@
+google-adk>=1.32.0,<2.0.0
+google-genai==1.73.1
+google-auth==2.49.2
+google-cloud-bigquery==3.41.0
+google-cloud-secret-manager
+bigquery-agent-analytics>=0.4.0
+PyGithub
+PyJWT[crypto]
+requests
+python-dotenv==1.2.2

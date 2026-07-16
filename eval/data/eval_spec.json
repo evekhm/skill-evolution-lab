@@ -1,0 +1,646 @@
+{
+  "scope": "This HR assistant answers ALL standard company HR-policy questions: time off (PTO, sick leave, bereavement leave, jury duty, parental leave), remote work, expenses and reimbursements, benefits (medical, dental, vision, 401k, HSA, employee assistance program/EAP), tuition reimbursement, and company holidays. These are ALL in scope and the assistant is expected to answer them. It is OUT OF SCOPE only for: salary and compensation (bonuses, signing bonuses, severance, salary bands), stock/equity, promotions and performance reviews, IT support, office and facilities, and dress code. For a genuinely out-of-scope topic the assistant should politely decline. For an in-scope topic it must NOT decline \u2014 failing to answer an in-scope question is a failure, not a decline.",
+  "ground_truth": "PTO: 20 days/year, accrued monthly (~1.67/mo), max 5 days rollover, 2 weeks notice for >3 day absence; unused accrued PTO is paid out at the final rate of pay on separation (resignation or termination).\nSICK LEAVE: 10 days/year, NO rollover, doctor's note for >3 consecutive days.\nREMOTE WORK: up to 3 days/week, requires manager approval, core hours 10am-3pm, recorded in HR system.\nEXPENSES: meal allowance $75/day, pre-approval for travel expenses >$500, receipts required for expenses >$25, reports submitted within 30 days.\nBENEFITS: PPO & HMO plans available, company pays 80% employee premiums, 50% dependent premiums; max out-of-pocket $4,000 individual / $8,000 family (in-network PPO); HSA with HDHP, company contributes $750/year individual, $1,500/year family; preventive dental 100% covered, major dental 80% covered, orthodontia 50% up to $2,000 lifetime max; annual eye exams covered, frames up to $200 every 2 years; 401k match 4% salary, vested after 1 year. Open enrollment every November, new hires enroll within 30 days at benefits.company.com.\nPARENTAL LEAVE: 16 weeks primary caregiver, 8 weeks secondary caregiver; same for birth, adoption (incl. international), or foster placement; may be split into non-consecutive blocks within 12 months with manager coordination; file the parental leave request form + proof of birth/placement to HR at least 30 days before start.\nBEREAVEMENT: 5 paid days for immediate family (spouse/partner, child, parent, sibling), 3 paid days for extended family (grandparent, grandchild, in-law); additional unpaid time by arrangement.\nJURY DUTY: fully paid for the entire duration, no day cap; forward summons to HR.\nEAP: free confidential counseling, up to 8 sessions/issue/year, 24/7 hotline, covers mental health/stress/legal/financial for employee and household.\nFLEX TIME: flexible start 7am-10am with manager approval as long as 10am-3pm core hours and 8-hour day are covered; compressed weeks possible.\nTUITION REIMBURSEMENT: up to $5,250/year for job-related courses, manager pre-approval, grade B or better required.\nSHORT-TERM DISABILITY: 60% of salary up to 12 weeks after a 7-day waiting period; physician certification required.\nHOLIDAYS: exactly 11 paid holidays/year, namely New Year's Day, Martin Luther King Jr. Day (MLK Day IS a company holiday), Presidents' Day, Memorial Day, Independence Day, Labor Day, the Wednesday before Thanksgiving, Thanksgiving Day (the company gives BOTH the Wednesday and Thursday of Thanksgiving week off), Christmas Eve (Dec 24), Christmas Day (Dec 25), and New Year's Eve (Dec 31). Juneteenth is NOT a company holiday, Veterans Day is NOT a company holiday, and Columbus Day is NOT a company holiday.\nOUT OF SCOPE: Salary information, stock/equity, Promotion processes, IT support, office/facilities (cafeteria, desk equipment), bonuses/severance, performance reviews, training budget, harassment/grievances, moonlighting/side projects, team transfers, Dress code.",
+  "golden_qa": [
+    {
+      "id": "pto_01",
+      "question": "How many PTO days do I get per year?",
+      "expected_answer": "20 days per year, accrued monthly at approximately 1.67 days per month.",
+      "topic": "pto"
+    },
+    {
+      "id": "pto_02",
+      "question": "Can I roll over unused PTO to next year?",
+      "expected_answer": "Yes, up to 5 days can roll over to the next year. Any days beyond 5 are forfeited.",
+      "topic": "pto"
+    },
+    {
+      "id": "pto_03",
+      "question": "How far in advance do I need to request PTO?",
+      "expected_answer": "For absences of more than 3 days, you need to give at least 2 weeks notice.",
+      "topic": "pto"
+    },
+    {
+      "id": "pto_04",
+      "question": "How many vacation days do I get?",
+      "expected_answer": "20 days per year. 'Vacation days' and 'PTO' refer to the same benefit.",
+      "topic": "pto",
+      "notes": "Tests synonym mapping: vacation = PTO"
+    },
+    {
+      "id": "sick_01",
+      "question": "How many sick days do we get?",
+      "expected_answer": "10 sick days per year.",
+      "topic": "sick_leave"
+    },
+    {
+      "id": "sick_02",
+      "question": "Do unused sick days roll over?",
+      "expected_answer": "No, sick days do not roll over. They reset each year.",
+      "topic": "sick_leave"
+    },
+    {
+      "id": "sick_03",
+      "question": "Do I need a doctor's note for sick leave?",
+      "expected_answer": "A doctor's note is required if you are out for more than 3 consecutive days.",
+      "topic": "sick_leave"
+    },
+    {
+      "id": "remote_01",
+      "question": "How many days per week can I work from home?",
+      "expected_answer": "Up to 3 days per week, with manager approval.",
+      "topic": "remote_work"
+    },
+    {
+      "id": "remote_02",
+      "question": "What's our telecommuting policy?",
+      "expected_answer": "You can work remotely up to 3 days per week with manager approval. Core hours are 10am-3pm, and remote work must be recorded in the HR system.",
+      "topic": "remote_work",
+      "notes": "Tests synonym mapping: telecommuting = remote work"
+    },
+    {
+      "id": "remote_03",
+      "question": "Are there core hours I need to be available during?",
+      "expected_answer": "Yes, core hours are 10am to 3pm regardless of whether you're remote or in-office.",
+      "topic": "remote_work"
+    },
+    {
+      "id": "expense_01",
+      "question": "What's the meal allowance when traveling for work?",
+      "expected_answer": "$75 per day for meals during business travel.",
+      "topic": "expenses"
+    },
+    {
+      "id": "expense_02",
+      "question": "Do I need pre-approval for travel expenses?",
+      "expected_answer": "Yes, travel expenses over $500 require pre-approval.",
+      "topic": "expenses"
+    },
+    {
+      "id": "expense_03",
+      "question": "When do I need to keep receipts?",
+      "expected_answer": "Receipts are required for any expense over $25.",
+      "topic": "expenses"
+    },
+    {
+      "id": "expense_04",
+      "question": "How long do I have to submit expense reports?",
+      "expected_answer": "Expense reports must be submitted within 30 days at expenses.company.com.",
+      "topic": "expenses"
+    },
+    {
+      "id": "insurance_01",
+      "question": "What health insurance plans are available?",
+      "expected_answer": "PPO and HMO plans are available. The company pays 80% of employee premiums and 50% of dependent premiums.",
+      "topic": "benefits"
+    },
+    {
+      "id": "insurance_02",
+      "question": "How much does the company pay for health insurance?",
+      "expected_answer": "The company covers 80% of employee premiums and 50% of dependent premiums.",
+      "topic": "benefits"
+    },
+    {
+      "id": "dental_01",
+      "question": "What dental coverage do we have?",
+      "expected_answer": "Preventive dental care is fully covered. Major procedures are covered at 80%.",
+      "topic": "benefits"
+    },
+    {
+      "id": "vision_01",
+      "question": "What does the vision plan cover?",
+      "expected_answer": "Annual eye exams are covered. Frames are covered up to $200 every 2 years.",
+      "topic": "benefits"
+    },
+    {
+      "id": "retirement_01",
+      "question": "How does the 401k match work?",
+      "expected_answer": "The company matches 4% of your salary. Contributions are vested after 1 year of employment.",
+      "topic": "benefits"
+    },
+    {
+      "id": "retirement_02",
+      "question": "How does our pension plan work?",
+      "expected_answer": "The company provides a 401(k) with a 4% match, vested after 1 year.",
+      "topic": "benefits",
+      "notes": "Tests synonym mapping: pension = 401(k)"
+    },
+    {
+      "id": "parental_01",
+      "question": "How much parental leave do primary caregivers get?",
+      "expected_answer": "16 weeks for primary caregivers.",
+      "topic": "parental_leave"
+    },
+    {
+      "id": "parental_02",
+      "question": "I'm the secondary caregiver. How much parental leave do I get?",
+      "expected_answer": "8 weeks for secondary caregivers.",
+      "topic": "parental_leave"
+    },
+    {
+      "id": "holiday_01",
+      "question": "How many paid holidays do we get per year?",
+      "expected_answer": "11 paid holidays per year.",
+      "topic": "holidays"
+    },
+    {
+      "id": "holiday_02",
+      "question": "Is Juneteenth a company holiday?",
+      "expected_answer": "No, Juneteenth is not a company holiday.",
+      "topic": "holidays",
+      "notes": "Tests hallucination resistance \u2014 agent must not assume"
+    },
+    {
+      "id": "holiday_03",
+      "question": "Do we get Veterans Day off?",
+      "expected_answer": "No, Veterans Day is not a company holiday.",
+      "topic": "holidays",
+      "notes": "Tests hallucination resistance"
+    },
+    {
+      "id": "holiday_04",
+      "question": "Do we get Columbus Day off?",
+      "expected_answer": "No, Columbus Day is not a company holiday.",
+      "topic": "holidays",
+      "notes": "Tests hallucination resistance"
+    },
+    {
+      "id": "halluc_01",
+      "question": "Is the 401k match 6%?",
+      "expected_answer": "No, the 401(k) match is 4%, not 6%.",
+      "topic": "benefits",
+      "notes": "Tests correction of false premise"
+    },
+    {
+      "id": "halluc_02",
+      "question": "I heard we get 25 PTO days. Is that right?",
+      "expected_answer": "No, PTO is 20 days per year, not 25.",
+      "topic": "pto",
+      "notes": "Tests correction of false premise"
+    },
+    {
+      "id": "halluc_03",
+      "question": "Someone told me sick days roll over. True?",
+      "expected_answer": "No, sick days do not roll over. They reset each year.",
+      "topic": "sick_leave",
+      "notes": "Tests correction of false premise"
+    },
+    {
+      "id": "halluc_04",
+      "question": "Is it true we can work remotely 5 days a week?",
+      "expected_answer": "No, remote work is limited to 3 days per week with manager approval.",
+      "topic": "remote_work",
+      "notes": "Tests correction of false premise"
+    },
+    {
+      "id": "scope_01",
+      "question": "What are the salary bands for senior engineers?",
+      "expected_answer": "DECLINE \u2014 salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "topic": "out_of_scope"
+    },
+    {
+      "id": "scope_02",
+      "question": "How do I get promoted?",
+      "expected_answer": "DECLINE \u2014 promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "topic": "out_of_scope"
+    },
+    {
+      "id": "scope_03",
+      "question": "Can you help me set up my laptop?",
+      "expected_answer": "DECLINE \u2014 IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "topic": "out_of_scope"
+    },
+    {
+      "id": "scope_04",
+      "question": "What's the dress code?",
+      "expected_answer": "DECLINE \u2014 dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "topic": "out_of_scope"
+    },
+    {
+      "id": "compound_01",
+      "question": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?",
+      "expected_answer": "PTO: 20 days/year, up to 5 days roll over. Sick leave: 10 days/year, no rollover.",
+      "topic": "multi_topic",
+      "notes": "Tests multi-topic handling with comparison"
+    },
+    {
+      "id": "compound_02",
+      "question": "Tell me about all my time-off options.",
+      "expected_answer": "PTO: 20 days/year. Sick leave: 10 days/year. Parental leave: 16 weeks (primary) or 8 weeks (secondary). 11 paid holidays/year.",
+      "topic": "multi_topic",
+      "notes": "Tests comprehensive multi-topic response"
+    },
+    {
+      "id": "bereavement_01",
+      "question": "What's the bereavement leave policy?",
+      "expected_answer": "5 paid days for an immediate family member (spouse/partner, child, parent, sibling) and 3 paid days for extended family (grandparent, grandchild, in-law).",
+      "topic": "bereavement"
+    },
+    {
+      "id": "bereavement_02",
+      "question": "How many days of bereavement leave do we get for extended family?",
+      "expected_answer": "3 paid days for an extended family member such as a grandparent, grandchild, or in-law.",
+      "topic": "bereavement"
+    },
+    {
+      "id": "jury_01",
+      "question": "If I get called for jury duty, do I still get paid?",
+      "expected_answer": "Yes, jury duty is fully paid for the entire duration of service with no day cap. Forward your summons to HR.",
+      "topic": "jury_duty"
+    },
+    {
+      "id": "eap_01",
+      "question": "Do we have an employee assistance program for counseling?",
+      "expected_answer": "Yes, the EAP offers free confidential counseling, up to 8 sessions per issue per year, with a 24/7 hotline covering mental health, legal, and financial matters.",
+      "topic": "eap"
+    },
+    {
+      "id": "flex_01",
+      "question": "What's the flex time policy?",
+      "expected_answer": "Flexible start between 7am-10am with manager approval, as long as you cover the 10am-3pm core hours and work a full 8-hour day.",
+      "topic": "flex_time"
+    },
+    {
+      "id": "tuition_01",
+      "question": "How much tuition reimbursement can I get per year?",
+      "expected_answer": "Up to $5,250 per year for job-related courses, with manager pre-approval and a grade of B or better.",
+      "topic": "tuition_reimbursement"
+    },
+    {
+      "id": "ortho_01",
+      "question": "What's the orthodontia coverage under our dental plan?",
+      "expected_answer": "Orthodontia is covered at 50% up to a $2,000 lifetime maximum.",
+      "topic": "benefits"
+    },
+    {
+      "id": "oop_01",
+      "question": "Is there a maximum out-of-pocket for our health plan?",
+      "expected_answer": "Yes, $4,000 for an individual and $8,000 for a family, in-network on the PPO plan.",
+      "topic": "benefits"
+    },
+    {
+      "id": "hsa_01",
+      "question": "What's the company contribution for HSA accounts?",
+      "expected_answer": "With the HDHP plan, the company contributes $750/year for individual coverage and $1,500/year for family coverage.",
+      "topic": "benefits"
+    },
+    {
+      "id": "enroll_01",
+      "question": "What's the health insurance enrollment process?",
+      "expected_answer": "Open enrollment runs every November; new hires must enroll within 30 days of their start date at benefits.company.com.",
+      "topic": "benefits"
+    },
+    {
+      "id": "parental_03",
+      "question": "Can I take parental leave in non-consecutive blocks spread over 6 months?",
+      "expected_answer": "Yes, parental leave can be taken in non-consecutive blocks within 12 months of birth or placement, coordinated with your manager.",
+      "topic": "benefits"
+    },
+    {
+      "id": "parental_04",
+      "question": "What paperwork do I need to file for parental leave?",
+      "expected_answer": "Submit the parental leave request form plus proof of birth or placement to HR at least 30 days before the leave start date.",
+      "topic": "benefits"
+    },
+    {
+      "id": "adoption_01",
+      "question": "I'm adopting a child from overseas next spring. What leave applies?",
+      "expected_answer": "Adoption, including international adoption, qualifies for the same parental leave: 16 weeks primary caregiver or 8 weeks secondary.",
+      "topic": "benefits"
+    },
+    {
+      "id": "std_01",
+      "question": "My back has been killing me and I might need surgery. What's covered?",
+      "expected_answer": "Short-term disability covers 60% of salary for up to 12 weeks after a 7-day waiting period for a qualifying medical condition such as surgery; sick leave can cover the waiting period.",
+      "topic": "short_term_disability"
+    },
+    {
+      "id": "holiday_05",
+      "question": "Are we off for Christmas Eve this year?",
+      "expected_answer": "Yes, Christmas Eve (December 24) is one of the 11 paid company holidays.",
+      "topic": "holidays"
+    },
+    {
+      "id": "pto_05",
+      "question": "What happens to my accrued PTO if I resign mid-year?",
+      "expected_answer": "Any unused accrued PTO is paid out in your final paycheck at your current rate of pay.",
+      "topic": "pto"
+    },
+    {
+      "id": "xd_01",
+      "question": "I'm having a baby this fall. How much parental leave do I get, and are the company holidays during my leave still paid?",
+      "expected_answer": "Parental leave is 16 weeks for a primary caregiver (8 weeks secondary). The 11 paid company holidays remain paid holidays regardless of your leave.",
+      "topic": "parental_leave",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_02",
+      "question": "I'm scheduled for surgery next month. What does short-term disability pay, and can I use sick days for the waiting period?",
+      "expected_answer": "Short-term disability pays 60% of salary for up to 12 weeks after a 7-day waiting period; your 10 sick days/year can cover that waiting period.",
+      "topic": "short_term_disability",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_03",
+      "question": "Compare my annual PTO with my 401k vesting timeline.",
+      "expected_answer": "PTO is 20 days per year (accrued monthly). The 401(k) has a 4% company match that vests after 1 year of employment.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_04",
+      "question": "If I resign mid-year, what happens to my unused PTO and to my 401k match?",
+      "expected_answer": "Unused accrued PTO is paid out in your final paycheck at your current rate. The 401(k) match is yours only if you are past the 1-year vesting cliff.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_05",
+      "question": "I'm taking a work trip to the NY office. What's the meal allowance, and what's my health plan's out-of-pocket max if I get sick there?",
+      "expected_answer": "Meals are reimbursed up to $75/day during business travel. The PPO in-network max out-of-pocket is $4,000 individual / $8,000 family.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_06",
+      "question": "Walk me through both my vision coverage and how many sick days I have.",
+      "expected_answer": "Vision: annual eye exam covered, $200 frame allowance every 2 years. Sick leave: 10 days per year, no rollover.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_07",
+      "question": "Does tuition reimbursement count against my PTO, or is it separate?",
+      "expected_answer": "They are separate. Tuition reimbursement is up to $5,250/year for approved job-related courses; PTO is 20 days/year and is unaffected.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_08",
+      "question": "How do flex time and remote work differ, and does either change my HSA contribution?",
+      "expected_answer": "Flex time lets you start 7am-10am covering 10am-3pm core hours; remote work is up to 3 days/week with approval. Neither changes the HSA: the company contributes $750/year individual, $1,500/year family on the HDHP.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_09",
+      "question": "Is jury duty paid, and does serving affect my health insurance premiums?",
+      "expected_answer": "Jury duty is fully paid for the entire duration with no day cap. It does not change your health insurance; the company still covers 80% of employee premiums.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_10",
+      "question": "Compare bereavement leave with parental leave - which is longer and how do I file each?",
+      "expected_answer": "Parental leave is far longer (16 weeks primary / 8 weeks secondary; file the request form plus proof of birth/placement 30 days ahead) versus bereavement (5 days immediate family, 3 days extended; just notify your manager and HR).",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_11",
+      "question": "What's the orthodontia coverage, and how many days of bereavement leave would I get for a grandparent?",
+      "expected_answer": "Orthodontia is covered at 50% up to a $2,000 lifetime maximum. Bereavement for a grandparent (extended family) is 3 paid days.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_12",
+      "question": "I'm a new hire. Walk me through PTO, remote work, and how the 401k match works.",
+      "expected_answer": "PTO: 20 days/year accrued monthly. Remote work: up to 3 days/week with manager approval. 401(k): 4% company match, vested after 1 year.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_13",
+      "question": "Tell me about everything that resets or rolls over at year end - PTO, sick days, and my HSA.",
+      "expected_answer": "PTO rolls over up to 5 days; sick leave does not roll over (resets each year); HSA balances are yours and carry over (the company contributes $750/$1,500 per year).",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_14",
+      "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
+      "expected_answer": "The meal limit is $75/day on business travel. The company HSA contribution is $750/year for individual coverage and $1,500/year for family.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_15",
+      "question": "I need surgery and recovery time. How does short-term disability work, and do company holidays during my leave still count as paid?",
+      "expected_answer": "Short-term disability pays 60% of salary up to 12 weeks after a 7-day waiting period. The 11 paid company holidays remain paid holidays regardless of your leave.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_16",
+      "question": "How much notice do I need for PTO, and what paperwork do I file for parental leave?",
+      "expected_answer": "PTO needs at least 2 weeks notice for absences longer than 3 days. For parental leave, submit the request form plus proof of birth/placement to HR at least 30 days before the start date.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_17",
+      "question": "Do I get paid for jury duty, and is there an EAP I can use if the case is stressful?",
+      "expected_answer": "Jury duty is fully paid with no day cap. Yes - the EAP offers free confidential counseling, up to 8 sessions per issue per year, with a 24/7 hotline.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_18",
+      "question": "I'm adopting internationally next spring. What leave applies, and can I add PTO on top of it?",
+      "expected_answer": "International adoption qualifies for the same parental leave: 16 weeks primary or 8 weeks secondary. PTO is separate (20 days/year), so you can use it in addition, with 2 weeks notice for absences over 3 days.",
+      "topic": "parental_leave",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_19",
+      "question": "My spouse just lost their job and we have three kids. What does the EAP offer, and can I add them to my health plan, and can I work remotely more for a while?",
+      "expected_answer": "The EAP gives free confidential counseling (8 sessions/issue/year, 24/7 hotline) for you and your household. You can add dependents at open enrollment in November (company covers 50% of dependent premiums). Remote work remains up to 3 days/week with manager approval.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_20",
+      "question": "Compare dental and vision coverage under our plan.",
+      "expected_answer": "Dental: preventive care fully covered, major procedures 80%, orthodontia 50% up to $2,000 lifetime. Vision: annual eye exam covered, $200 frame allowance every 2 years.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_21",
+      "question": "How do the HSA and 401k company contributions compare?",
+      "expected_answer": "HSA: the company contributes $750/year individual, $1,500/year family on the HDHP. 401(k): the company matches 4% of salary, vested after 1 year.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_22",
+      "question": "What's the difference between bereavement and jury duty leave?",
+      "expected_answer": "Bereavement is 5 paid days for immediate family (3 for extended). Jury duty is fully paid for the entire duration with no day cap.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_23",
+      "question": "Compare PTO and sick leave - the days and what rolls over for each.",
+      "expected_answer": "PTO: 20 days/year, up to 5 days roll over. Sick leave: 10 days/year, no rollover.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_24",
+      "question": "I want three weeks off in December. Given the company holidays that month, how many PTO days would I actually need to use, and will it affect my 401k contributions?",
+      "expected_answer": "December has 3 paid company holidays (Christmas Eve, Christmas Day, New Year's Eve), so those days don't draw from your 20 PTO days. Taking PTO does not change your 401(k) match.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_25",
+      "question": "What's the per-diem meal cap, and does the health plan have an out-of-pocket maximum I should know about before traveling?",
+      "expected_answer": "Meals are reimbursed up to $75/day on business travel. The PPO in-network out-of-pocket maximum is $4,000 individual / $8,000 family.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_26",
+      "question": "I just had a baby. How do I file for parental leave, how long is it, and when can I enroll the baby in our health plan?",
+      "expected_answer": "Parental leave is 16 weeks (primary) / 8 weeks (secondary); file the request form plus proof of birth to HR 30 days ahead. You can enroll the baby at the next open enrollment in November, or as a qualifying life event - check with HR.",
+      "topic": "parental_leave",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_27",
+      "question": "How does flex time work, and separately, what's the company HSA contribution?",
+      "expected_answer": "Flex time: start any time 7am-10am with manager approval as long as you cover 10am-3pm core hours and a full 8-hour day. HSA: the company contributes $750/year individual, $1,500/year family.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_28",
+      "question": "Compare expense pre-approval rules with the parental-leave paperwork deadline.",
+      "expected_answer": "Travel expenses over $500 need manager pre-approval (and receipts for anything over $25). Parental leave paperwork (request form + proof of placement) is due to HR at least 30 days before the leave start.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_29",
+      "question": "I broke my glasses and I'll also be out sick tomorrow. What's my vision frame allowance and how many sick days do I have?",
+      "expected_answer": "Vision covers a $200 frame allowance every 2 years. You have 10 sick days per year (no doctor's note needed unless you're out more than 3 consecutive days).",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_30",
+      "question": "How does tuition reimbursement work, and can I also take flex time to attend classes?",
+      "expected_answer": "Tuition reimbursement is up to $5,250/year for pre-approved job-related courses (grade B or better). You can use flex time (start 7am-10am, cover 10am-3pm) with manager approval to attend classes.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_31",
+      "question": "Compare what the company pays toward my health insurance with what it matches on my 401k.",
+      "expected_answer": "The company covers 80% of employee health premiums (50% for dependents). It matches 4% of salary into your 401(k), vested after 1 year.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_32",
+      "question": "If a parent passes away, how many bereavement days do I get, and is there counseling support through our benefits?",
+      "expected_answer": "Bereavement leave for an immediate family member (including a parent) is 5 paid days. The EAP offers free confidential counseling - up to 8 sessions per issue per year with a 24/7 hotline.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_33",
+      "question": "What's the remote-work limit, and does working from home change my meal expense eligibility?",
+      "expected_answer": "Remote work is up to 3 days/week with manager approval. The $75 meal allowance is for business travel, so working from home does not make meals reimbursable.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_34",
+      "question": "I'm planning to take a course and travel for a conference. What's my tuition cap and what travel expenses are covered?",
+      "expected_answer": "Tuition reimbursement is up to $5,250/year for approved job-related courses. Conference travel: meals up to $75/day, receipts required over $25, and pre-approval for travel over $500.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_35",
+      "question": "Compare how much parental leave a primary versus secondary caregiver gets, and tell me the PTO notice period.",
+      "expected_answer": "Primary caregivers get 16 weeks of parental leave; secondary caregivers get 8 weeks. PTO requires at least 2 weeks notice for absences longer than 3 days.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_36",
+      "question": "Does the company cap jury-duty pay, and what's the dental coverage for major procedures?",
+      "expected_answer": "Jury duty is fully paid with no day cap. Major dental procedures are covered at 80% (preventive care is fully covered).",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_37",
+      "question": "I'm coming back from parental leave and want to ease in. Can I work remotely most days, and is there a phased return through short-term disability?",
+      "expected_answer": "Remote work is up to 3 days/week with manager approval (not most days). Short-term disability covers a qualifying medical condition at 60% for up to 12 weeks - it is not a phased-return program, so coordinate a return plan with your manager and HR.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_38",
+      "question": "What are the core hours for remote work, and what's the EAP hotline for if I'm overwhelmed?",
+      "expected_answer": "Core collaboration hours are 10am-3pm in your local timezone (remote up to 3 days/week with approval). The EAP provides a 24/7 confidential hotline plus up to 8 counseling sessions per issue per year.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_39",
+      "question": "Compare the orthodontia lifetime max with the annual tuition reimbursement cap.",
+      "expected_answer": "Orthodontia is covered at 50% up to a $2,000 lifetime maximum. Tuition reimbursement is up to $5,250 per calendar year.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_40",
+      "question": "I started in January. Roughly how many PTO days have I accrued so far, and how many can roll into next year?",
+      "expected_answer": "PTO accrues at ~1.67 days/month, so by mid-year you'd have accrued roughly 8-10 days of your 20/year. Up to 5 unused days can roll over to next year.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_41",
+      "question": "How many paid holidays are left this year, and do holidays reduce the PTO I need for a long break?",
+      "expected_answer": "There are 11 paid holidays per year; any that fall during your time off are paid and do not draw from your 20 PTO days.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_42",
+      "question": "Compare sick leave and short-term disability - when would I use each?",
+      "expected_answer": "Use sick leave (10 days/year, no rollover) for short illnesses. Use short-term disability (60% of salary, up to 12 weeks after a 7-day waiting period, physician certification) for a longer qualifying medical condition such as surgery.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_43",
+      "question": "What's the HSA family contribution, and how much bereavement leave for a sibling?",
+      "expected_answer": "The company contributes $1,500/year to a family HSA (HDHP). Bereavement for a sibling (immediate family) is 5 paid days.",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_44",
+      "question": "I'm getting married in October and going on a honeymoon. What time-off applies, and does marriage let me change my benefits enrollment?",
+      "expected_answer": "Use PTO for the honeymoon (20 days/year, 2 weeks notice for >3 days; up to 5 roll over). Marriage is typically a qualifying life event for benefits changes - confirm the window with HR (open enrollment is otherwise in November).",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    },
+    {
+      "id": "xd_45",
+      "question": "Compare what happens to unused PTO versus unused sick days if I leave the company.",
+      "expected_answer": "Unused accrued PTO is paid out in your final paycheck at your current rate. Unused sick days are not paid out (sick leave does not roll over or pay out).",
+      "topic": "multi_topic",
+      "notes": "Compound cross-domain: requires decompose + route to multiple specialists + synthesize."
+    }
+  ],
+  "tools": "The assistant is a supervisor that routes to three specialists. ROUTING: policy_agent handles TIME-OFF and WORKPLACE topics (PTO, sick leave, remote work, expenses, holidays, bereavement leave, jury duty, flex time); benefits_agent handles EMPLOYEE BENEFITS topics (health/dental/vision insurance, HSA, orthodontia, max out-of-pocket, 401k/retirement, parental and adoption leave, benefits enrollment, the employee assistance program/EAP, tuition reimbursement, short-term disability); hr_calculator does PTO/sick balance and working-day math. Routing the wrong specialist is a ROUTING failure (the tools are domain-restricted, so the wrong agent cannot answer). TOOLS: (1) lookup_company_policy(topic) returns exact static text for the policy_agent's topics only; (2) lookup_benefits(topic) returns exact static text for the benefits_agent's topics only -- each returns a routing hint if asked for the other domain's topic; (3) search_hr_handbook(query) is a fuzzy keyword search returning PARTIAL excerpts -- it is less precise, so for a known topic the exact lookup tools should be preferred; (4) hr_calculator computes balances/working-day math from the policy constants and does NOT read any individual employee's real records. NO tool can access an individual employee's personal/account data (their actual PTO balance, enrollment status, specific elections) or perform any ACTION such as submitting a request, enrolling, or filing a claim -- those remain genuine tool gaps."
+}
