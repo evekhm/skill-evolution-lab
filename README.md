@@ -634,7 +634,7 @@ Stop with `bash scripts/local/local_start.sh stop`.
 ### Manual step-by-step
 
 Each of the six pipeline stages, with its command and artifacts:
-[Bootstrap: V0 to production-ready](#the-evolution-cycle-from-v0-to-production-quality).
+[The evolution cycle: from V0 to production quality](#the-evolution-cycle-from-v0-to-production-quality).
 For a narrated walkthrough with pauses, see
 [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
 
@@ -1201,7 +1201,7 @@ bash scripts/demo/skill_evolution/run_demo.sh --quick
 
 Or run the six bootstrap stages one at a time against your agent —
 the exact commands are in
-[Bootstrap: V0 to production-ready](#the-evolution-cycle-from-v0-to-production-quality);
+[The evolution cycle: from V0 to production quality](#the-evolution-cycle-from-v0-to-production-quality);
 swap the questions file for yours.
 
 For full input schemas and pipeline details, see
