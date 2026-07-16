@@ -279,7 +279,10 @@ job's own report for what it actually did.
   application-default login`) and that `aiplatform.googleapis.com` is
   enabled (B2 does this).
 - **Gate red with RESOURCE_EXHAUSTED** — Vertex quota on a fresh
-  project; retry, or request a `gemini-2.5-flash` quota bump.
+  project; retry, or request a `gemini-2.5-flash` quota bump. Also
+  avoid pushing (which triggers the gate) while a deploy, rollback, or
+  evolution job is running — they share the project's model quota, and
+  the overlap alone can fail the load test.
 - **Traffic fails with "Quota exceeded ... Query Reasoning Engine
   requests"** — fresh projects allow 90 Agent Engine requests/min
   (session creation and streaming share it). The traffic generator
