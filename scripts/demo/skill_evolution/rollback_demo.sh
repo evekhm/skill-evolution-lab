@@ -64,7 +64,7 @@ fi
 
 # 2. Republish V0 to the Skill Registry (new latest revisions)
 echo "[2/4] Publishing V0 to the Skill Registry..."
-python "${PROJECT_ROOT}/eval/skill_evolution/registry_sync.py" seed
+uv run python "${PROJECT_ROOT}/eval/skill_evolution/registry_sync.py" seed
 
 # 3. Restart agents so they fetch the V0 revision
 if [ "${SKIP_REDEPLOY}" = false ]; then
@@ -78,7 +78,7 @@ fi
 # 4. Verify
 echo "[4/4] Verification:"
 for agent in policy_agent supervisor benefits_agent; do
-    python "${PROJECT_ROOT}/eval/skill_evolution/registry_sync.py" revisions --agent "${agent}" | head -1
+    uv run python "${PROJECT_ROOT}/eval/skill_evolution/registry_sync.py" revisions --agent "${agent}" | head -1
 done
 if [ "${SKIP_REDEPLOY}" = false ]; then
     echo "  Registry-read log lines (may take ~1 min to appear):"

@@ -246,10 +246,15 @@ gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
 ```
 
 Same loop, same registry push, same PR — one agent and a lighter
-validation set. Two observed behaviors to expect: when the BigQuery
-window has too few sessions the job first generates its own pre-flight
-traffic (~20 min), and when the baseline is very poor the pipeline can
-widen `--candidates` on its own (auto-selects 5 below ~30% meaningful).
+validation set. Observed behaviors to expect (tested live): when the
+BigQuery window has too few sessions the job first generates its own
+pre-flight traffic (~20 min); and the scoping flags are **advisory
+today** — the agentic orchestrator and its tools can widen candidates
+(auto-selects 5 below ~30% meaningful), add rounds, and pick a
+different target agent than `--mode` suggests when the bottleneck
+analysis disagrees. Making these overrides binding is a tracked
+hardening item; until then treat runtimes as estimates and read the
+job's own report for what it actually did.
 
 ---
 
