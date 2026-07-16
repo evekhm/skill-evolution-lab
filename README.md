@@ -82,12 +82,45 @@ Everything else is automated.
 
 ### The single input
 
-Golden Q&A (`eval/data/golden_evals.json`) feeds three consumers:
+Golden Q&A (`eval/data/golden_evals.json`) is a list of curated
+entries: a question, its `expected_answer`, and optionally
+`expected_behavior: decline` for topics the agent must refuse.
+
+**How it is used — similarity matching, exactly:** when the judge
+scores a conversation, every session question and every golden
+question is embedded, and each session is matched to its
+nearest golden entry by cosine similarity (threshold 0.92 — high on
+purpose, so only true paraphrases match: "How many vacation days do I
+get?" matches the PTO entry; a novel question matches nothing). Three
+outcomes:
+
+1. **Matched, in scope** — the golden `expected_answer` is injected
+   into the judge's prompt, and the response is graded against that
+   ground truth. This is what makes correctness scores trustworthy:
+   the judge compares against the known-right answer instead of its
+   own opinion.
+2. **Matched, decline entry** — the judge is told a polite refusal is
+   the correct outcome, so out-of-scope questions score as `declined`
+   when handled right rather than being punished as unhelpful.
+3. **No match (the question is absent from the list)** — the judge
+   still scores the session, but as an ungrounded LLM estimate, and
+   the report says so explicitly ("LLM estimates WITHOUT ground
+   truth"). These sessions also feed the `new-topic` flow: the quality
+   agent surfaces questions with no golden coverage and no history as
+   issues for a human decision — add a golden entry (and the
+   capability) or mark the topic out-of-scope.
+
+The list grows two ways: humans curate entries, and each evolution
+cycle extracts resolved failures into new entries automatically — so
+coverage tracks what users actually ask.
+
+Golden Q&A feeds three consumers:
 - **The user simulator** mirrors these facts to adversarially
-  stress-test the agent
-- **The LLM Judge** embedding-matches conversations to Golden Q&A to
-  inject expected answers into the scoring prompt
-- **The evolution engine** works on the T+/T- labels the judge produces
+  stress-test the agent (it knows the right answer, so it pushes back
+  on wrong ones)
+- **The LLM Judge** grades against matched entries as described above
+- **The evolution engine** works on the pass/fail labels the judge
+  produces
 
 ### Bootstrap: V0 to production-ready
 
