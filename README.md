@@ -684,6 +684,34 @@ fail on RESOURCE_EXHAUSTED; re-run it once the project is quiet.
 the target set, add rounds, nor grow the candidate pool beyond what
 you asked for.
 
+### Choosing which traces to evolve on (labels)
+
+Every BigQuery event carries `custom_tags`: `agent_version` (from the
+skill frontmatter), `sw_version` (git sha, stamped by the supervisor
+deploy), and — for generator traffic — `traffic_source=generator` plus
+a per-invocation `run_id`. Add your own with
+`TRACE_LABELS="k=v,k2=v2"` on any traffic run or deploy.
+
+The evolution job selects its input slice with the same vocabulary:
+
+```bash
+# Re-run the scheduled job on demand (default selector: current version)
+gcloud scheduler jobs run skill-evolution-weekly --location $REGION
+
+# Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
+# (the run prints its run_id label)
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
+```
+
+The selector (window, version, labels, app) is written to the run
+directory and printed in the PR body, so every evolved skill records
+exactly which traces taught it. This replaces per-round tables: one
+table, label-sliced, and longitudinal quality-by-version queries stay
+intact.
+
 ### Step 5: Merge to activate
 
 ```bash

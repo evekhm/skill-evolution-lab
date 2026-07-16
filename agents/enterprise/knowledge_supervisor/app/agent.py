@@ -305,9 +305,20 @@ _skill_dir = os.path.join(os.path.dirname(__file__), "skill")
 _skill_meta = load_skill_metadata(_skill_dir)
 _agent_version = os.getenv("AGENT_VERSION") or _skill_meta.get("metadata", {}).get("version", "unknown")
 
+# TRACE_LABELS ("k=v,k2=v2", set by deploy.sh — e.g. sw_version=<git sha>)
+# merges into every event's custom_tags so evolution runs can select
+# trace slices by label. (Tiny local parser: this app is packaged
+# standalone for Agent Engine, so it cannot import shared helpers.)
+_custom_tags = {"agent_version": _agent_version}
+for _pair in os.getenv("TRACE_LABELS", "").split(","):
+    if "=" in _pair:
+        _k, _v = _pair.split("=", 1)
+        if _k.strip():
+            _custom_tags[_k.strip()] = _v.strip()
+
 bq_config = BigQueryLoggerConfig(
     enabled=True, max_content_length=500 * 1024, batch_size=1, shutdown_timeout=10.0,
-    custom_tags={"agent_version": _agent_version},
+    custom_tags=_custom_tags,
 )
 bq_logging_plugin = BigQueryAgentAnalyticsPlugin(
     project_id=project_id,

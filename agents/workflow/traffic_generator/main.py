@@ -60,6 +60,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("traffic_generator")
 
+# One run_id per generator invocation - stamps every event this run
+# produces so evolution can select exactly this slice of traces.
+_RUN_ID = time.strftime("%Y%m%d-%H%M%S")
+
 env_path = os.path.join(os.path.dirname(__file__), "../../../.env")
 if os.path.exists(env_path):
     load_dotenv(dotenv_path=env_path, override=False)
@@ -585,6 +589,21 @@ def _build_bq_plugins() -> list:
             )
 
             agent_version = os.getenv("AGENT_VERSION", "unknown")
+            # Generator traffic is auto-labeled (traffic_source + a
+            # per-invocation run_id) and TRACE_LABELS ("k=v,k2=v2")
+            # merges on top — evolution runs can then select exactly
+            # this slice with --trace-labels.
+            custom_tags = {
+                "agent_version": agent_version,
+                "traffic_source": "generator",
+                "run_id": _RUN_ID,
+            }
+            for pair in os.getenv("TRACE_LABELS", "").split(","):
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    if k.strip():
+                        custom_tags[k.strip()] = v.strip()
+            logger.info("BQ custom_tags for this run: %s", custom_tags)
             bq_plugin = BigQueryAgentAnalyticsPlugin(
                 project_id=PROJECT_ID,
                 dataset_id=dataset_id,
@@ -593,7 +612,7 @@ def _build_bq_plugins() -> list:
                     enabled=True,
                     batch_size=1,
                     shutdown_timeout=10.0,
-                    custom_tags={"agent_version": agent_version},
+                    custom_tags=custom_tags,
                 ),
                 location=dataset_location,
             )

@@ -31,6 +31,7 @@ Usage:
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -152,6 +153,21 @@ def _bigquery_quality_report(run_dir: str) -> str | None:
     min_sessions = int(os.environ.get("MIN_SESSIONS", "20"))
     time_period = os.environ.get("EVAL_TIME_PERIOD", "7d")
     agent_version = os.environ.get("AGENT_VERSION") or None
+    labels = {}
+    for pair in os.environ.get("EVOLUTION_TRACE_LABELS", "").split(","):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            if k.strip():
+                labels[k.strip()] = v.strip()
+    selector = {
+        "time_period": time_period,
+        "agent_version": agent_version,
+        "labels": labels,
+        "app_name": os.environ.get("QUALITY_APP_NAME", "knowledge_supervisor"),
+    }
+    with open(os.path.join(run_dir, "trace_selector.json"), "w") as f:
+        json.dump(selector, f, indent=2)
+    logger.info("Trace selector for this run: %s", selector)
     try:
         from agents.workflow.quality_agent.tools import (
             run_quality_report as _bq_quality_report,
@@ -161,6 +177,7 @@ def _bigquery_quality_report(run_dir: str) -> str | None:
             time_period=time_period,
             output_dir=run_dir,
             agent_version=agent_version,
+            labels=labels or None,
         )
         total = result.get("summary", {}).get("total_sessions", 0)
         if total < min_sessions:
@@ -668,6 +685,12 @@ Examples:
         help="Minimum failures required to trigger evolution (default: agent decides)",
     )
     parser.add_argument(
+        "--trace-labels",
+        help="Evolve only traces matching these custom_tags labels, "
+        "comma-separated k=v (e.g. run_id=demo-r2,traffic_source=generator). "
+        "Binding: exported as EVOLUTION_TRACE_LABELS for the BQ pre-flight.",
+    )
+    parser.add_argument(
         "--quick",
         action="store_true",
         help="Use 22-question quick set for all traffic (faster, less signal)",
@@ -695,12 +718,15 @@ Examples:
         os.environ["EVOLUTION_MAX_ROUNDS"] = str(args.rounds)
     if args.mode not in ("auto", "coevolve"):
         os.environ["EVOLUTION_TARGET_AGENTS"] = args.mode
+    if getattr(args, "trace_labels", None):
+        os.environ["EVOLUTION_TRACE_LABELS"] = args.trace_labels
     bound = {
         k: os.environ[k]
         for k in (
             "EVOLUTION_CANDIDATES",
             "EVOLUTION_MAX_ROUNDS",
             "EVOLUTION_TARGET_AGENTS",
+            "EVOLUTION_TRACE_LABELS",
         )
         if k in os.environ
     }

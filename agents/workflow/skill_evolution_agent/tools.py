@@ -822,6 +822,20 @@ def _default_pr_body(
         f"| {m['evolved_unhelpful']}% |\n"
         f"| Skill size | | {evolved_size} chars |\n\n"
     )
+    selector_path = os.path.join(run_dir, "trace_selector.json")
+    if os.path.isfile(selector_path):
+        try:
+            with open(selector_path) as f:
+                sel = json.load(f)
+            labels = ", ".join(f"{k}={v}" for k, v in (sel.get("labels") or {}).items()) or "(none)"
+            body += (
+                f"### Trace Selector (reproducibility)\n\n"
+                f"Evolved from BigQuery traces where: app=`{sel.get('app_name')}`, "
+                f"agent_version=`{sel.get('agent_version') or 'any'}`, "
+                f"labels: {labels}, window: {sel.get('time_period')}\n\n"
+            )
+        except Exception:
+            pass
     if session_ids:
         body += f"### Failing Sessions ({len(session_ids)})\n\n"
         for sid in session_ids[:10]:

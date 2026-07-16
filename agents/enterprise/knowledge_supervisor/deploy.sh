@@ -95,6 +95,16 @@ SKILL_REGISTRY_LOCATION="${SKILL_REGISTRY_LOCATION}"
 GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY=true
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
 ENVEOF
+# Stamp the deployed code version into every BQ event (TRACE_LABELS
+# merges into custom_tags) so evolution selectors can pin traces to a
+# specific deployment. User-provided TRACE_LABELS are appended after.
+GIT_SHA=$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+SW_LABELS="sw_version=${GIT_SHA}"
+if [ -n "${TRACE_LABELS:-}" ]; then
+    SW_LABELS="${SW_LABELS},${TRACE_LABELS}"
+fi
+echo "TRACE_LABELS=\"${SW_LABELS}\"" >> "${ENV_TMP}"
+
 for optional_var in SUPERVISOR_VERTEX_PROMPT_ID POLICY_VERTEX_PROMPT_ID AGENT_VERSION; do
     value="${!optional_var:-}"
     if [ -n "${value}" ]; then

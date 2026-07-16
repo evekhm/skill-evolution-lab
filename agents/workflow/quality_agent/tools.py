@@ -271,6 +271,7 @@ def run_quality_report(
     output_dir: str | None = None,
     agent_version: str | None = None,
     app_name: str | None = None,
+    labels: dict | None = None,
 ) -> dict:
     """Run a quality report on recent agent sessions from BigQuery.
 
@@ -287,6 +288,8 @@ def run_quality_report(
         output_dir: If set, save the quality report JSON to this directory.
         agent_version: If set, filter sessions to this agent version
             (matches custom_tags.agent_version in BigQuery).
+        labels: Additional custom_tags filters (e.g. {"run_id": "X",
+            "traffic_source": "generator"}); combined with agent_version.
         app_name: Filter sessions to one agent app (BigQuery `agent`
             column). Defaults to QUALITY_APP_NAME env or
             'knowledge_supervisor' — the root agent's sessions are the
@@ -318,9 +321,10 @@ def run_quality_report(
         # run_evaluation uses asyncio.run() internally, which fails
         # when called from the ADK runner's event loop. Run it in a
         # separate thread so it gets its own event loop.
-        custom_labels = None
+        custom_labels = dict(labels) if labels else {}
         if agent_version:
-            custom_labels = {"agent_version": agent_version}
+            custom_labels["agent_version"] = agent_version
+        custom_labels = custom_labels or None
 
         if app_name is None:
             app_name = os.getenv("QUALITY_APP_NAME", "knowledge_supervisor")

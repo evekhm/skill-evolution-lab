@@ -249,7 +249,9 @@ gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
 ```
 
 Same loop, same registry push, same PR — one agent and a lighter
-validation set. The scoping flags are **binding**: `--mode`,
+validation set. Add `--trace-labels k=v` to evolve on one labeled
+trace slice (generator runs auto-stamp `run_id` + `traffic_source`;
+deploys stamp `sw_version`; the PR body records the selector). The scoping flags are **binding**: `--mode`,
 `--rounds`, and `--candidates` are enforced at the tool layer (env
 vars `EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
 `EVOLUTION_CANDIDATES`), so the orchestrating agent cannot widen the
