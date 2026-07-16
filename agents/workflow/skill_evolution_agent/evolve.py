@@ -935,7 +935,12 @@ def evolve(
     if prevalence:
         _save_artifact(artifacts_dir, "3d_prevalence.txt", prevalence)
 
-    # Auto-decide candidates based on quality score
+    # Auto-decide candidates based on quality score.
+    # EVOLUTION_CANDIDATES (set by main.py from --candidates) is BINDING:
+    # it wins over the rate-based auto-selection so demo runs stay bounded.
+    if candidates is None and os.getenv("EVOLUTION_CANDIDATES"):
+        candidates = int(os.environ["EVOLUTION_CANDIDATES"])
+        logger.info("Candidates bound by EVOLUTION_CANDIDATES=%d", candidates)
     if candidates is None:
         rate = summary.get("meaningful_rate", 0)
         if rate >= 90:

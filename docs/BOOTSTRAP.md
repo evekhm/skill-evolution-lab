@@ -246,15 +246,13 @@ gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
 ```
 
 Same loop, same registry push, same PR — one agent and a lighter
-validation set. Observed behaviors to expect (tested live): when the
+validation set. The scoping flags are **binding**: `--mode`,
+`--rounds`, and `--candidates` are enforced at the tool layer (env
+vars `EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
+`EVOLUTION_CANDIDATES`), so the orchestrating agent cannot widen the
+run beyond what you asked for. One behavior to expect: when the
 BigQuery window has too few sessions the job first generates its own
-pre-flight traffic (~20 min); and the scoping flags are **advisory
-today** — the agentic orchestrator and its tools can widen candidates
-(auto-selects 5 below ~30% meaningful), add rounds, and pick a
-different target agent than `--mode` suggests when the bottleneck
-analysis disagrees. Making these overrides binding is a tracked
-hardening item; until then treat runtimes as estimates and read the
-job's own report for what it actually did.
+pre-flight traffic (~20 min extra).
 
 ---
 

@@ -647,11 +647,39 @@ gate is version-aware: skills at version 0 are held to baseline
 expectations, while an evolved skill (version >= 1) must pass the full
 routing, fan-out, and quality assertions.
 
-The gate has teeth. In one live run the evolved supervisor skill scored
-80% on the evolve set by copying observed facts into its own summary
-and answering directly -- which broke the routing contract, so the gate
-refused it. A refused candidate stays in the registry history and in
-the PR record; the next evolution round learns from a wider window.
+The gate has teeth. In live runs, evolved supervisor skills repeatedly
+scored 78-86% on the evolve set by copying observed facts into their
+own summary and answering directly -- which broke the routing contract,
+so the gate refused them. A refused candidate stays in the registry
+history and in the PR record; the next evolution round learns from a
+wider window.
+
+**What a refusal looks like on GitHub.** The Actions tab shows a red
+"Eval & Load Test Gate" run on the PR's `skill-evolution/*` branch, and
+branch protection blocks the merge. That red run is the point: it is
+the audit record of why a skill was denied deployment. Close the PR to
+retire it (the red run stays in history), or fix and push to the PR
+branch to re-adjudicate. Red on main, by contrast, is always a real
+problem -- with one caveat: the gate shares the project's model quota
+with deploys and evolution jobs, so a gate run that overlaps one can
+fail on RESOURCE_EXHAUSTED; re-run it once the project is quiet.
+
+**Two layers keep refused-class skills in check:**
+
+- **In-run pre-check** -- when the evolution job scores a supervisor
+  candidate, it runs the same routing/fan-out asserts the gate will run
+  on the PR (`score_candidate` -> `_golden_gate_check`). A candidate
+  that fails has its score zeroed, so best-of-N selection drops it
+  before a PR ever opens.
+- **CI gate on the PR** -- the independent adjudication, version-aware:
+  evolved skills (version >= 1) face the full hard assertions.
+
+**Scoping a run is binding.** `--mode <agent>`, `--rounds N`, and
+`--candidates N` are enforced at the tool layer (env vars
+`EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
+`EVOLUTION_CANDIDATES`), so the orchestrating agent can neither widen
+the target set, add rounds, nor grow the candidate pool beyond what
+you asked for.
 
 ### Step 5: Merge to activate
 

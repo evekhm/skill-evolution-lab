@@ -685,6 +685,28 @@ Examples:
     )
     args = parser.parse_args()
 
+    # Make the scoping flags BINDING at the tool layer (the orchestrating
+    # agent treats prompt overrides as hints; these env vars are enforced
+    # by evolve.py / coevolve.py / run_coevolution regardless of what the
+    # agent decides).
+    if args.candidates:
+        os.environ["EVOLUTION_CANDIDATES"] = str(args.candidates)
+    if args.rounds:
+        os.environ["EVOLUTION_MAX_ROUNDS"] = str(args.rounds)
+    if args.mode not in ("auto", "coevolve"):
+        os.environ["EVOLUTION_TARGET_AGENTS"] = args.mode
+    bound = {
+        k: os.environ[k]
+        for k in (
+            "EVOLUTION_CANDIDATES",
+            "EVOLUTION_MAX_ROUNDS",
+            "EVOLUTION_TARGET_AGENTS",
+        )
+        if k in os.environ
+    }
+    if bound:
+        logger.info("Binding overrides (enforced in tools): %s", bound)
+
     if args.test:
         run_test()
         return

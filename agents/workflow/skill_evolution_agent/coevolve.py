@@ -140,6 +140,24 @@ def coevolve(
         )
         agents_to_evolve = [fallback]
 
+    # EVOLUTION_TARGET_AGENTS (set by main.py from --mode <agent>) is
+    # BINDING: it restricts evolution to the named agents regardless of the
+    # bottleneck recommendation, so a scoped demo run stays scoped.
+    target_env = os.getenv("EVOLUTION_TARGET_AGENTS", "").strip()
+    if target_env:
+        targets = [t.strip() for t in target_env.split(",") if t.strip()]
+        bound = [a for a in agents_to_evolve if a in targets]
+        dropped = [a for a in agents_to_evolve if a not in targets]
+        if not bound:
+            bound = [t for t in targets if t in configs]
+        if dropped or bound != agents_to_evolve:
+            logger.info(
+                "EVOLUTION_TARGET_AGENTS=%s binds scope: evolving %s "
+                "(bottleneck wanted %s)",
+                target_env, bound, agents_to_evolve,
+            )
+        agents_to_evolve = bound
+
     # Evolve the supervisor (routing) BEFORE the policy agent, so the policy
     # agent is scored against the already-improved routing (sequential
     # co-evolution, as the design intends).

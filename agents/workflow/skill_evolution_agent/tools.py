@@ -298,6 +298,9 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+_coevolution_rounds_run = 0  # EVOLUTION_MAX_ROUNDS guard (per process)
+
+
 def run_coevolution(
     quality_report_path: str,
     output_dir: str | None = None,
@@ -321,6 +324,26 @@ def run_coevolution(
         Dict with bottleneck recommendation, evolved agents, and timing.
     """
     from agents.workflow.skill_evolution_agent.coevolve import coevolve
+
+    # EVOLUTION_MAX_ROUNDS (set by main.py from --rounds) is BINDING: the
+    # orchestrating agent cannot add extra evolution rounds beyond it.
+    global _coevolution_rounds_run
+    max_rounds = os.getenv("EVOLUTION_MAX_ROUNDS")
+    if max_rounds and _coevolution_rounds_run >= int(max_rounds):
+        logger.warning(
+            "run_coevolution refused: EVOLUTION_MAX_ROUNDS=%s reached "
+            "(%d round(s) already run)", max_rounds, _coevolution_rounds_run,
+        )
+        return {
+            "status": "refused",
+            "reason": (
+                f"EVOLUTION_MAX_ROUNDS={max_rounds} reached "
+                f"({_coevolution_rounds_run} round(s) already run). "
+                "Do NOT evolve further — publish the best result so far "
+                "to the registry and open the PR."
+            ),
+        }
+    _coevolution_rounds_run += 1
 
     if not os.path.isfile(quality_report_path):
         return {"error": f"Quality report not found: {quality_report_path}"}
@@ -864,6 +887,22 @@ def _collect_quality_metrics(
         if os.path.isfile(path):
             evolved_report = path
             break
+
+    if evolved_report is None:
+        # Co-evolution runs score best-of-N candidates without writing a
+        # {version}_quality_report.json — fall back to the best candidate
+        # report so PR titles carry the real evolved rate instead of "?%".
+        best_rate = -1.0
+        for path in glob_mod.glob(
+            os.path.join(run_dir, "**", "candidate_*_report.json"),
+            recursive=True,
+        ):
+            try:
+                rate = float(_extract_rate(path, "meaningful_rate"))
+            except ValueError:
+                continue
+            if rate > best_rate:
+                best_rate, evolved_report = rate, path
 
     baseline_report = None
     baseline_label = "initial"
@@ -1889,7 +1928,7 @@ def score_candidate(
         report = json.load(f)
 
     summary = report.get("summary", {})
-    return {
+    result = {
         "status": "success",
         "candidate": cand_name,
         "meaningful_rate": summary.get("meaningful_rate"),
@@ -1899,6 +1938,60 @@ def score_candidate(
         "report_path": report_path,
         "elapsed_seconds": round(elapsed, 1),
     }
+
+    # CI-gate pre-check — SUPERVISOR candidates only. Routing and fan-out
+    # are supervisor behaviors: with the candidate still deployed on disk,
+    # run the same asserts the Eval Gate will run on the PR, so a candidate
+    # that scores well on the evolve set by absorbing facts instead of
+    # routing loses HERE, before a PR opens (meaningful_rate zeroed for
+    # selection). Policy/benefits candidates skip this: they cannot affect
+    # routing, and the V0 supervisor's flaky direct-answering would only
+    # add noise (verified live: V0 routing flakes 0-3 tests per run).
+    if "knowledge_supervisor" not in skill_dir:
+        return result
+    gate_passed, gate_summary = _golden_gate_check()
+    result["gate_passed"] = gate_passed
+    result["gate_summary"] = gate_summary
+    if gate_passed is False:
+        result["raw_meaningful_rate"] = result["meaningful_rate"]
+        result["meaningful_rate"] = 0.0
+        logger.warning(
+            "Candidate %s REFUSED by golden gate pre-check (%s); "
+            "meaningful_rate zeroed for selection (raw: %s)",
+            cand_name, gate_summary, result["raw_meaningful_rate"],
+        )
+    return result
+
+
+def _golden_gate_check(timeout: int = 1200) -> tuple[bool | None, str]:
+    """Run the CI gate's routing + compound asserts against the skills
+    currently on disk (same tests eval.yml runs on the PR).
+
+    Returns (passed, summary). passed is None when the check could not
+    run (pytest missing, unexpected crash) — treated as inconclusive so
+    scoring still works in degraded environments.
+    """
+    cmd = [
+        sys.executable, "-m", "pytest",
+        os.path.join("eval", "tests", "test_eval.py"),
+        "-k", "routing or compound",
+        "-q", "--tb=no", "-p", "no:cacheprovider",
+    ]
+    try:
+        r = subprocess.run(
+            cmd, cwd=_repo_root, capture_output=True, text=True,
+            timeout=timeout,
+        )
+    except FileNotFoundError:
+        return None, "pytest unavailable — gate pre-check skipped"
+    except subprocess.TimeoutExpired:
+        return None, "gate pre-check timed out — treated as inconclusive"
+    tail = (r.stdout or "").strip().split("\n")[-1] if r.stdout else ""
+    if r.returncode == 0:
+        return True, tail or "all gate asserts passed"
+    if "No module named pytest" in (r.stderr or ""):
+        return None, "pytest unavailable — gate pre-check skipped"
+    return False, tail or f"pytest exit {r.returncode}"
 
 
 # ---------------------------------------------------------------------------
