@@ -425,7 +425,13 @@ Golden Q&A feeds three consumers:
 - **The evolution engine** works on the pass/fail labels the judge
   produces
 
-### Bootstrap: V0 to production-ready
+### The evolution cycle: from V0 to production quality
+
+This is the SKILL's journey — how a deliberately weak V0 becomes a
+production-quality skill through repeated cycles. Setting up the
+environment (project, repo, deployment) is a separate, one-time thing:
+that lives in [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) and is only
+summarized in the prerequisites row below.
 
 **Prerequisites — one-time setup, before any cycle.** The six steps
 below assume a working environment. Set it up once:
@@ -628,7 +634,7 @@ Stop with `bash scripts/local/local_start.sh stop`.
 ### Manual step-by-step
 
 Each of the six pipeline stages, with its command and artifacts:
-[Bootstrap: V0 to production-ready](#bootstrap-v0-to-production-ready).
+[Bootstrap: V0 to production-ready](#the-evolution-cycle-from-v0-to-production-quality).
 For a narrated walkthrough with pauses, see
 [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
 
@@ -1195,7 +1201,7 @@ bash scripts/demo/skill_evolution/run_demo.sh --quick
 
 Or run the six bootstrap stages one at a time against your agent —
 the exact commands are in
-[Bootstrap: V0 to production-ready](#bootstrap-v0-to-production-ready);
+[Bootstrap: V0 to production-ready](#the-evolution-cycle-from-v0-to-production-quality);
 swap the questions file for yours.
 
 For full input schemas and pipeline details, see
