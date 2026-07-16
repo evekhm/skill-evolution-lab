@@ -1123,6 +1123,13 @@ docs/
   DESIGN.md                  Quality loop design
 ```
 
+## Backlog
+
+Measured issues and planned work live in
+[docs/BACKLOG.md](docs/BACKLOG.md) — currently headlined by the demo
+latency plan (73 min measured -> ~10 min target, with the per-phase
+numbers and fixes).
+
 ## Next Directions
 
 - **Gate-aware candidate scoring** -- run the golden eval gate inside
