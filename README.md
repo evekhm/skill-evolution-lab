@@ -555,10 +555,12 @@ gcloud logging read 'textPayload:"Loaded skill from registry"' \
 ### Step 2: Generate real traffic
 
 ```bash
-python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_evolve.json
-python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_corrections.json --multi-turn
+# --concurrency 2 respects the default Agent Engine quota on fresh
+# projects (90 requests/min; the generator also backs off on quota errors)
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_corrections.json --multi-turn --concurrency 2
 ```
 
 Drives questions through the deployed Agent Engine supervisor (omit

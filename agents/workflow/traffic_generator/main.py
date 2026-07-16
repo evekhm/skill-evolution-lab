@@ -854,9 +854,32 @@ async def run_deployed_multiturn(
     engine = engines[0]
     logger.info("Using Agent Engine: %s", engine.resource_name)
 
+    async def _with_quota_retry(fn):
+        # Fresh projects default to 90 QueryReasoningEngine requests/min
+        # (sessions + streams share it); back off instead of failing the
+        # conversation.
+        delays = [30, 60, 90, 120]
+        for attempt, delay in enumerate([0] + delays):
+            if delay:
+                logger.warning(
+                    "Agent Engine quota exhausted; retrying in %ds (%d/%d)",
+                    delay, attempt, len(delays),
+                )
+                await asyncio.sleep(delay)
+            try:
+                return await asyncio.to_thread(fn)
+            except Exception as e:
+                msg = str(e)
+                retryable = "RESOURCE_EXHAUSTED" in msg or "Quota exceeded" in msg
+                if not retryable or attempt == len(delays):
+                    raise
+        raise RuntimeError("unreachable")
+
     async def session_factory():
         user_id = f"conv_{uuid.uuid4().hex[:8]}"
-        session = await asyncio.to_thread(engine.create_session, user_id=user_id)
+        session = await _with_quota_retry(
+            lambda: engine.create_session(user_id=user_id)
+        )
         session_id = session["id"] if isinstance(session, dict) else session.id
         return user_id, session_id
 
@@ -876,7 +899,7 @@ async def run_deployed_multiturn(
                             response_text = part["text"]
             return response_text, tool_calls
 
-        return await asyncio.to_thread(_call)
+        return await _with_quota_retry(_call)
 
     # Simulator client for unscripted follow-ups
     sim_client = Client(project=PROJECT_ID, location=REGION)
@@ -992,29 +1015,19 @@ async def run_deployed(
     """Send questions to the deployed Reasoning Engine in batches."""
     global shutdown_requested
 
-    from google.cloud import aiplatform
     import vertexai
-    from vertexai.preview import reasoning_engines
+    from vertexai import agent_engines
 
-    aiplatform.init(project=PROJECT_ID, location=REGION)
     vertexai.init(project=PROJECT_ID, location=REGION)
 
     display_name = os.getenv("SUPERVISOR_DISPLAY_NAME", "knowledge-supervisor")
-    logger.info(f"Searching for Reasoning Engine '{display_name}'...")
-    engines = reasoning_engines.ReasoningEngine.list(
-        filter=f'display_name="{display_name}"'
-    )
+    logger.info(f"Searching for Agent Engine '{display_name}'...")
+    engines = list(agent_engines.list(filter=f'display_name="{display_name}"'))
     if not engines:
-        logger.error(f"ERROR: Reasoning Engine '{display_name}' not found!")
+        logger.error(f"ERROR: Agent Engine '{display_name}' not found!")
         return
-    engine_resource_name = engines[0].resource_name
-    logger.info(f"Using Reasoning Engine: {engine_resource_name}")
-
-    from google.cloud import aiplatform_v1
-
-    gapic_client = aiplatform_v1.ReasoningEngineExecutionServiceClient(
-        client_options={"api_endpoint": f"{REGION}-aiplatform.googleapis.com"}
-    )
+    engine = engines[0]
+    logger.info(f"Using Agent Engine: {engine.resource_name}")
 
     sem = asyncio.Semaphore(concurrency)
     start_time = time.time()
@@ -1031,21 +1044,23 @@ async def run_deployed(
 
             start_query_time = time.time()
             try:
-                from google.protobuf import struct_pb2
+                # AdkApp deployments register stream_query (a plain `query`
+                # class_method does not exist), so stream and keep the last
+                # text part as the answer.
+                def _call():
+                    text = ""
+                    for event in engine.stream_query(
+                        user_id=f"load_{uuid.uuid4().hex[:8]}", message=q,
+                    ):
+                        content = (
+                            event.get("content") if isinstance(event, dict) else None
+                        )
+                        for part in (content or {}).get("parts", []):
+                            if isinstance(part, dict) and part.get("text"):
+                                text = part["text"]
+                    return text
 
-                input_struct = struct_pb2.Struct()
-                input_struct.update({"query": q})
-
-                request = aiplatform_v1.QueryReasoningEngineRequest(
-                    name=engine_resource_name,
-                    input=input_struct,
-                    class_method="query",
-                )
-
-                response = await asyncio.to_thread(
-                    gapic_client.query_reasoning_engine, request=request
-                )
-                final_answer = response.output
+                final_answer = await asyncio.to_thread(_call)
             except Exception as e:
                 logger.info(f"[Query {current_query_num}] Error: {e}")
                 final_answer = f"Error: {e}"
@@ -1311,12 +1326,16 @@ async def main():
     else:
         # Run against deployed Reasoning Engine
         concurrency = args.concurrency or int(os.getenv("CONCURRENCY", "3"))
-        if args.multi_turn:
-            # One pass, scripted turns honored, one session per conversation.
+        if args.multi_turn or args.from_file:
+            # One pass over the question set, one Agent Engine session per
+            # conversation. --from-file without --multi-turn seeds each
+            # question as a single turn (max_turns=1 skips the simulator);
+            # the duration-based load loop below is reserved for generated
+            # topic traffic.
             result = await run_deployed_multiturn(
                 questions,
                 concurrency=concurrency,
-                max_turns=args.max_turns,
+                max_turns=args.max_turns if args.multi_turn else 1,
                 persona=args.persona,
             )
             _print_multiturn_metrics(result["metrics"])

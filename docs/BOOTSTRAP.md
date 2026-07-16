@@ -197,10 +197,13 @@ Short version:
 
 ```bash
 source .env
+# --concurrency 2: fresh projects default to 90 Agent Engine
+# requests/min (sessions + streams share the quota). The generator
+# backs off on quota errors, but low concurrency keeps the run smooth.
 uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_evolve.json
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
 uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_corrections.json --multi-turn
+  --from-file eval/data/questions/two_defect_corrections.json --multi-turn --concurrency 2
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait
 gh pr list   # the evolved-skill PR
 ```
@@ -233,6 +236,12 @@ hard assertions (the skill carries version >= 1); merging it triggers
   enabled (B2 does this).
 - **Gate red with RESOURCE_EXHAUSTED** — Vertex quota on a fresh
   project; retry, or request a `gemini-2.5-flash` quota bump.
+- **Traffic fails with "Quota exceeded ... Query Reasoning Engine
+  requests"** — fresh projects allow 90 Agent Engine requests/min
+  (session creation and streaming share it). The traffic generator
+  backs off automatically; keep `--concurrency 2` for seeding, or
+  request an increase on
+  `QueryReasoningEngineRequestsPerMinutePerProjectPerRegion`.
 - **Evolution job can't open a PR** — the `github-pat` secret is
   missing/expired, or the token lacks `repo` scope on this repo. Redo
   A5 + B3 step 6.
