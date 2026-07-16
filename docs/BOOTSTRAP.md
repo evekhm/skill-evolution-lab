@@ -242,7 +242,7 @@ agent with the quick scoring set:
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--mode,policy_agent,--candidates,3,--quick"
+  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
 ```
 
 Same loop, same registry push, same PR — one agent and a lighter
