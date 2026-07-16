@@ -74,31 +74,6 @@ documents — versioned, diffable, PR-reviewable — so "the agent
 learned something" is always a concrete artifact a human signed off
 on.
 
-## What are Skills?
-
-A **skill** is a structured markdown document (`SKILL.md`) that encodes
-everything an agent needs to know about its domain: role, tool-use
-instructions, topic expertise, scope boundaries, and response patterns.
-
-```text
-agents/enterprise/policy_agent/skill/
-  SKILL.md              # The skill document (loaded as system instruction)
-  references/           # Supporting data referenced by the skill
-```
-
-Skills turn agent behavior into a **learnable, versionable, reviewable**
-artifact:
-
-- **Human-readable** -- markdown a domain expert can read and edit
-- **Version-controlled** -- diffs show exactly what the agent learned
-- **PR-reviewable** -- domain experts approve changes before deployment
-- **Evolved** -- the system writes skills from execution experience
-
-At startup, each agent loads `SKILL.md` as its system instruction via
-`skill_loader.py` -- from the **Skill Registry** (newest revision) when
-`SKILL_SOURCE=registry`, with the packaged file as fallback. The skill
-document is the single source of truth for agent behavior.
-
 ## How Skills Evolve
 
 The system has one manual input: **Golden Q&A** -- curated
