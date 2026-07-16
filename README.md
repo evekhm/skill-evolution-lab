@@ -49,7 +49,10 @@ see.
    tagged with the skill version that produced it.
 2. **Detect** — a daily quality agent scores recent sessions against
    curated Golden Q&A and files GitHub issues for failures.
-3. **Learn** — a weekly evolution job reads the failing traces,
+3. **Learn** — an evolution job reads the failing traces — run it
+   on demand (a scoped run takes ~10-15 minutes), let accumulating
+   quality issues trigger it, or leave the scheduled tick (weekly by
+   default, one env var to change). The job
    dispatches a fleet of analyst agents to diagnose each failure,
    consolidates their patches into candidate `SKILL.md` documents, and
    keeps only the candidate that empirically scores best on replayed
@@ -134,8 +137,9 @@ Once deployed, two workflow agents maintain quality autonomously:
 - **Quality Agent** (daily sentinel) scores production sessions
   against Golden Q&A, detects regressions via BigQuery history,
   creates GitHub issues
-- **Skill Evolution Agent** (weekly healer) re-runs the evolution loop
-  when enough failures accumulate, using real production traces
+- **Skill Evolution Agent** (the healer) re-runs the evolution loop —
+  on demand, when enough quality issues accumulate, or on its
+  scheduled tick (weekly by default) — using real production traces
 
 New topics that Golden Q&A doesn't cover surface as `new-topic` issues
 for a human decision: add the capability or mark it out-of-scope.
@@ -252,7 +256,7 @@ rather than an agent that knows everything.
  users / simulator --> supervisor --> BigQuery agent_events
                                       (tagged agent_version)
                                               |
-                               (3) Cloud Scheduler (weekly)
+                               (3) trigger: on-demand | issues | schedule
                                               v
                                +--------------------------+
                                |   skill-evolution-agent  |  Cloud Run Job
@@ -323,7 +327,7 @@ evolved revisions stay in the append-only history.
 | policy_agent, hr_calculator | Cloud Run (A2A services) | supervisor fan-out |
 | traffic_generator | local CLI or Cloud Run Job | manual / demo scripts |
 | quality_agent | Cloud Run Job | Cloud Scheduler (daily) |
-| skill_evolution_agent | Cloud Run Job | Cloud Scheduler (weekly), quality issues, or manual |
+| skill_evolution_agent | Cloud Run Job | on-demand (`gcloud run jobs execute`), quality-issue threshold, or scheduled tick (default: weekly) |
 | Eval & Load Test Gate (`eval.yml`) | GitHub Actions | every PR and push to main |
 | Deploy to GCP (`deploy.yml`) | GitHub Actions (WIF) | merge to main |
 
@@ -363,8 +367,9 @@ the stack:
   Pulls recent BigQuery sessions filtered by `agent_version`, scores
   them with the LLM judge against Golden Q&A, and files GitHub issues
   for failures. Key files: `main.py`, `tools.py`, `quality_report.py`.
-- **skill_evolution_agent** — the weekly healer (Cloud Run Job +
-  Scheduler). One run: quality report from BigQuery → failure-count
+- **skill_evolution_agent** — the healer (Cloud Run Job; triggered
+  on demand, by quality-issue threshold, or by its scheduled tick —
+  weekly by default). One run: quality report from BigQuery → failure-count
   gate → bottleneck attribution (which agent caused each failure) →
   agentic analysts investigate each failure with tool access → patch
   scoring and consolidation → best-of-N candidate skills scored on the
@@ -679,9 +684,11 @@ figure, which is how parroting becomes observable in the traces.
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait
 ```
 
-The job also fires weekly from Cloud Scheduler (Mondays 09:00 UTC;
-override the cadence at deploy time with
-`EVOLUTION_SCHEDULE="*/30 * * * *"`). A full agent-decided run
+The manual trigger above is the primary way to drive a demo. The same
+job also has a scheduled tick (default: Mondays 09:00 UTC; set any
+cadence at deploy time with `EVOLUTION_SCHEDULE="*/30 * * * *"`) and an
+issue-threshold trigger — cadence is deployment policy, never a
+property of the loop. A full agent-decided run
 (3 skills, best-of-5, 55-question validation per candidate) takes
 ~3 hours; for a demo-speed run (~1h) scope it to one agent:
 
@@ -949,7 +956,8 @@ in the algorithm reference.
 After deployment, a closed-loop quality pipeline monitors agent
 performance and evolves skills automatically from production data.
 Two agents divide the work: a **daily sentinel** that monitors, and a
-**weekly healer** that evolves.
+**healer** that evolves — on demand, on an issue threshold, or on
+its scheduled tick.
 
 ### Quality Agent -- Daily Sentinel
 
