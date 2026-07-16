@@ -20,12 +20,28 @@ This repo is a complete, deployed demonstration of an agent system that
 improves itself from its own production traffic — with humans approving
 every change.
 
-**The product side** is an HR assistant: employees ask a supervisor
-agent about PTO, sick leave, expenses, benefits, or "how many working
-days until my leave starts", and the supervisor fans the question out
-to specialist agents and synthesizes one answer. It runs on Vertex AI
-Agent Engine and Cloud Run, with a chat UI available through Gemini
-Enterprise.
+**The product side** is an HR assistant built as a team of four named
+agents:
+
+- **`knowledge_supervisor`** — the root agent, deployed on **Vertex AI
+  Agent Engine**. It owns the conversation: receives every employee
+  question, decides which specialists are needed, calls them (several
+  in one turn for compound questions), and synthesizes one answer.
+- **`policy_agent`** — the company-policy specialist, deployed on
+  **Cloud Run** behind an **A2A** endpoint. Answers PTO, sick leave,
+  remote work, expense, and holiday questions using the
+  `lookup_company_policy` tool. Its `SKILL.md` is the main evolution
+  target.
+- **`hr_calculator`** — the math specialist, also on **Cloud Run**
+  behind A2A: PTO balances, working days between dates, disability
+  pay. Deterministic tools, no skill to evolve.
+- **`benefits_agent`** — the benefits specialist, defined by its skill
+  document; runs in-process in the local topology and joins the
+  deployed one when its service exists.
+
+Employees reach the supervisor through a Gemini Enterprise chat UI (or
+any API client); the specialists are implementation details they never
+see.
 
 **The learning side** is a closed loop around that assistant:
 
@@ -182,6 +198,52 @@ revision, and **GitHub** holds the review gate between the two.
 - The supervisor's **BigQuery Agent Analytics plugin** logs every event
   to the `agent_events` table, tagged with the skill version from the
   SKILL.md frontmatter (`custom_tags.agent_version`).
+
+### How a question flows (Agent Engine, AgentTool, A2A)
+
+Three pieces of vocabulary, then the lifecycle:
+
+- **Vertex AI Agent Engine** is the managed runtime hosting the root
+  agent: it owns sessions (multi-turn memory), scaling, and the
+  `stream_query` API that clients call. The supervisor lives here so
+  conversations survive across turns without any server of our own.
+- **A2A (Agent2Agent protocol)** is the open HTTP protocol agents use
+  to call each other. Each specialist is an independent Cloud Run
+  service exposing an A2A endpoint with an agent card describing what
+  it can do — the supervisor talks to specialists the same way any
+  external agent could.
+- **AgentTool** is the ADK wrapper that presents a whole remote agent
+  to the supervisor's LLM as a callable tool. Routing therefore IS
+  tool-calling: the model picks specialists the way it picks any tool,
+  which lets it call several in a single turn.
+
+Lifecycle of one compound question ("Compare my meal limit with the
+HSA contribution"):
+
+1. The client calls the supervisor's Agent Engine endpoint
+   (`stream_query`) inside a session.
+2. `knowledge_supervisor`'s LLM reads its `SKILL.md` (fetched from the
+   Skill Registry at startup) and plans: this needs `policy_agent`
+   (meal limit) AND `benefits_agent` (HSA).
+3. It emits two AgentTool calls. Each becomes an A2A HTTP request to
+   that specialist's Cloud Run service.
+4. Each specialist is a full ADK agent of its own: it loads its own
+   `SKILL.md`, runs its own LLM turn, calls its own tools
+   (`lookup_company_policy`, calculators), and returns its answer over
+   A2A.
+5. The supervisor synthesizes the specialist answers into one response
+   and streams it back.
+6. Every hop — supervisor turns, tool calls, specialist sessions — is
+   logged to BigQuery by the analytics plugins, version- and
+   label-tagged. This trace is what the quality and evolution agents
+   read.
+
+Why this topology: specialists deploy, scale, and **evolve
+independently** (each has its own SKILL.md and registry entry);
+failures surface at an ownership boundary (the bottleneck stage
+attributes each failure to supervisor routing vs a specialist's
+knowledge); and the supervisor stays thin — a router with conventions
+rather than an agent that knows everything.
 
 ### The evolution loop (end to end)
 
