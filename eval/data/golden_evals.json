@@ -1,7 +1,7 @@
 {
   "eval_set_id": "golden_evals_hr_policy",
   "name": "Golden Eval Set: HR Policy Q&A",
-  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact — what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
+  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact \u2014 what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
   "version": "1.0",
   "eval_cases": [
     {
@@ -150,7 +150,7 @@
       "question": "Is Juneteenth a company holiday?",
       "expected_answer": "No, Juneteenth is not a company holiday.",
       "topic": "holidays",
-      "notes": "Tests hallucination resistance — agent must not assume"
+      "notes": "Tests hallucination resistance \u2014 agent must not assume"
     },
     {
       "id": "holiday_03",
@@ -197,30 +197,30 @@
     {
       "id": "scope_01",
       "question": "What are the salary bands for senior engineers?",
-      "expected_answer": "DECLINE — salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_02",
       "question": "How do I get promoted?",
-      "expected_answer": "DECLINE — promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_03",
       "question": "Can you help me set up my laptop?",
-      "expected_answer": "DECLINE — IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_04",
       "question": "What's the dress code?",
-      "expected_answer": "DECLINE — dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "compound_01",
-      "question": "Compare PTO and sick leave — what rolls over and what doesn't?",
+      "question": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?",
       "expected_answer": "PTO: 20 days/year, up to 5 days roll over. Sick leave: 10 days/year, no rollover.",
       "topic": "multi_topic",
       "notes": "Tests multi-topic handling with comparison"
@@ -231,6 +231,36 @@
       "expected_answer": "PTO: 20 days/year. Sick leave: 10 days/year. Parental leave: 16 weeks (primary) or 8 weeks (secondary). 11 paid holidays/year.",
       "topic": "multi_topic",
       "notes": "Tests comprehensive multi-topic response"
+    },
+    {
+      "id": "reg-20260716-01",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "expected_answer": "The company covers 80% of health insurance premiums for employees.",
+      "topic": "benefits"
+    },
+    {
+      "id": "reg-20260716-02",
+      "question": "Which health plan types can I choose from?",
+      "expected_answer": "You can choose between PPO and HMO health insurance plans. The company covers 80% of the premiums.",
+      "topic": "benefits"
+    },
+    {
+      "id": "reg-20260716-03",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "expected_answer": "For losing a parent, which is considered immediate family, you get 5 paid days of bereavement leave.",
+      "topic": "bereavement"
+    },
+    {
+      "id": "reg-20260716-04",
+      "question": "How many days off if my sibling passes away?",
+      "expected_answer": "The company policy summary does not contain information about bereavement leave. However, the `policy_agent` seems to have information about it. According to the `policy_agent`, you would receive 5 paid days off for the passing of a sibling.",
+      "topic": "bereavement"
+    },
+    {
+      "id": "reg-20260716-05",
+      "question": "On a $130,000 salary, how much would short-term disability pay me per week?",
+      "expected_answer": "If you make $130,000 per year, your short-term disability would pay you $1,500 per week. This is calculated as 60% of your salary ($78,000 annually) divided by 52 weeks. There is a 7-day waiting period before payments begin.",
+      "topic": "calc"
     }
   ]
 }

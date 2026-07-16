@@ -55,13 +55,19 @@
       "id": "compound_meal_hsa",
       "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "compound_bereavement_parental",
       "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "oos_severance",
@@ -74,6 +80,486 @@
       "question": "Can I get a standing desk for my home office?",
       "category": "out_of_scope",
       "expected_behavior": "decline_gracefully"
+    },
+    {
+      "id": "regression_659783743193",
+      "question": "What does the company put in an HSA for a single employee?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "6597837431930617856",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is unhelpful."
+    },
+    {
+      "id": "regression_915127286753",
+      "question": "After how many days out sick is a doctor's note required?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "9151272867533422592",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_611144867217",
+      "question": "Is there a waiting period before short-term disability starts?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "6111448672174604288",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is unhelpful."
+    },
+    {
+      "id": "regression_471082918806",
+      "question": "How many counseling visits does the EAP cover?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4710829188062380032",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is unhelpful."
+    },
+    {
+      "id": "regression_152228065188",
+      "question": "Does the company pay me during jury duty, and is there a limit?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "1522280651884068864",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_897573803518",
+      "question": "What's covered for an eye exam and frames?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "8975738035182239744",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_881360844859",
+      "question": "What's the most a family pays out of pocket in-network?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "8813608448596901888",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_592219193470",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "5922191934708776960",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_393610449903",
+      "question": "What fraction of dependent premiums does the employer cover?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "3936104499038388224",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_329669890506",
+      "question": "Which health plan types can I choose from?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "3296698905068044288",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_181501462766",
+      "question": "If I make $130,000 and take the full 10 weeks of short-term disability, what's the total I'd receive?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "1815014627663151104",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have access to information about short-term disability benefits and recommended contacting HR, which is unhelpful."
+    },
+    {
+      "id": "regression_578776529949",
+      "question": "Can I get reimbursed for a job-related class, and up to how much?",
+      "category": "expenses",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "578776529949949952",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_774175173728",
+      "question": "What grade must I earn to get tuition reimbursed?",
+      "category": "expenses",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7741751737282723840",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_463426799439",
+      "question": "Is there a round-the-clock EAP support line?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4634267994397081600",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_720160187545",
+      "question": "If I quit before a year, do I keep the employer match?",
+      "category": "retirement",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "72016018754502656",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user to HR, which is not a useful answer from the agent's perspective."
+    },
+    {
+      "id": "regression_690858580621",
+      "question": "How long until I'm fully vested in the match?",
+      "category": "retirement",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "6908585806219182080",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user elsewhere, which is not a useful answer to the question."
+    },
+    {
+      "id": "regression_863786251001",
+      "question": "Are braces covered, and what's the cap?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "8637862510013186048",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have access to the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_365923867507",
+      "question": "Isn't the daily meal limit $100?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "3659238675071369216",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have information and directs the user to HR, without attempting to use any tools or provide a substantive answer."
+    },
+    {
+      "id": "regression_400376404656",
+      "question": "Do we get Juneteenth off?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4003764046565212160",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a useful answer from the agent's perspective."
+    },
+    {
+      "id": "regression_419291523091",
+      "question": "When can I sign up for benefits each year?",
+      "category": "benefits",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4192915230914772992",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_790388132386",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7903881323868061696",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have access to information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_598084428298",
+      "question": "What's the bereavement allowance for a grandparent?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "5980844282980859904",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a useful answer from the agent's perspective."
+    },
+    {
+      "id": "regression_749855735740",
+      "question": "How many days off if my sibling passes away?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7498557357404717056",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user to HR, which is not a useful answer."
+    },
+    {
+      "id": "regression_743550696262",
+      "question": "As a secondary caregiver, how much parental leave do I get?",
+      "category": "parental_leave",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7435506962621530112",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a useful answer from the agent's perspective."
+    },
+    {
+      "id": "regression_499005236495",
+      "question": "Is a routine dental cleaning covered?",
+      "category": "benefits",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4990052364959350784",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_752165115603",
+      "question": "I heard it's 12 sessions a year, isn't it?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "752165115603714048",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it did not have the information and directed the user to HR, without attempting to use any tools or provide a substantive answer."
+    },
+    {
+      "id": "regression_481441197949",
+      "question": "A colleague told me it's a 6% match -- that's right, isn't it?",
+      "category": "retirement",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4814411979491901440",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it cannot provide information and directs the user to HR, which is not a useful answer from an automated agent."
+    },
+    {
+      "id": "regression_692660020472",
+      "question": "On a $130,000 salary, how much would short-term disability pay me per week?",
+      "category": "compensation",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "6926600204728664064",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information and directed the user to HR, which is not a useful answer to the specific question asked."
+    },
+    {
+      "id": "regression_239147537996",
+      "question": "What portion of my pay does short-term disability replace?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "2391475379966574592",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_690408220659",
+      "question": "How much will the company reimburse for tuition each year?",
+      "category": "expenses",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "6904082206591811584",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a useful answer from the agent's perspective."
+    },
+    {
+      "id": "regression_890142864133",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "8901428641330626560",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user to HR, which is not a useful answer from the agent's perspective."
+    },
+    {
+      "id": "regression_454927540197",
+      "question": "What's the employer HSA contribution for family coverage?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "454927540197261312",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_774683113740",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "774683113740566528",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_820562249890",
+      "question": "What percentage does the company match on 401k?",
+      "category": "retirement",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "8205622498901884928",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is unhelpful."
+    },
+    {
+      "id": "regression_707521899243",
+      "question": "How much of a major dental procedure is covered?",
+      "category": "benefits",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7075218992431890432",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_144179165908",
+      "question": "Is a receipt needed for a $40 purchase?",
+      "category": "expenses",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "144179165908697088",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not find information and directed the user elsewhere, which is not a useful answer to the question."
+    },
+    {
+      "id": "regression_262115896096",
+      "question": "Is my unused PTO paid out if I resign?",
+      "category": "pto",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "2621158960962469888",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a useful answer from the agent's perspective."
+    },
+    {
+      "id": "regression_174746063325",
+      "question": "My manager said it's $10,000 a year -- can you confirm?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "1747460633252593664",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have the information and directs the user to HR, without attempting to use any tools or provide a substantive answer."
+    },
+    {
+      "id": "regression_796693171865",
+      "question": "What's the weekly short-term disability check on a $156,000 salary?",
+      "category": "compensation",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7966931718651248640",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_658657843286",
+      "question": "I earn $78,000. If I need 15 weeks of short-term disability, how much do I get in total?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "6586578432862191616",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information and directed the user elsewhere, which is unhelpful."
+    },
+    {
+      "id": "regression_281031014531",
+      "question": "What's the maximum duration of short-term disability?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "2810310145312030720",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_252207976916",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "2522079769160318976",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_535934753440",
+      "question": "Does booking a $700 flight need approval first?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "5359347534403731456",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information and directed the user to HR, which is not a useful answer."
+    },
+    {
+      "id": "regression_335582150071",
+      "question": "I'm pretty sure it's $2,000 a year for family, right?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "335582150071943168",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have the information and directs the user to HR, which is not a useful answer."
+    },
+    {
+      "id": "regression_738586181360",
+      "question": "How many weeks of leave does a primary caregiver get?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7385861813604188160",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have access to the information and directed the user to HR, which is not a useful answer from the agent itself."
+    },
+    {
+      "id": "regression_159433824592",
+      "question": "What's the individual in-network out-of-pocket cap?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "1594338245921996800",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a useful answer to the question.\n"
+    },
+    {
+      "id": "regression_269321655500",
+      "question": "What's the deadline to file an expense report?",
+      "category": "expenses",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "2693216555000397824",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
+    },
+    {
+      "id": "regression_489086762004",
+      "question": "When are the required overlap hours for remote staff?",
+      "category": "remote_work",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4890867620040933376",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user elsewhere, which is not a useful answer."
     }
   ]
 }
