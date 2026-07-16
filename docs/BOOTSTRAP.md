@@ -234,6 +234,20 @@ Verify: a PR titled `Evolve ... skill` exists; the gate runs on it with
 hard assertions (the skill carries version >= 1); merging it triggers
 `deploy.yml`, which reconciles the registry and redeploys.
 
+**Demo-speed variant (~25-30 min instead of ~3h).** The full run lets
+the job decide scope (often all three skills, best-of-5, 55-question
+validation per candidate — thorough, and slow). For a live demo,
+override the job args for one execution: evolve only the policy agent,
+best-of-3, 22-question scoring set:
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--mode,policy_agent,--candidates,3,--quick"
+```
+
+Same loop, same registry push, same PR — one agent and a lighter
+validation set.
+
 ---
 
 ## What you now have

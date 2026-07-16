@@ -619,7 +619,16 @@ gcloud run jobs execute skill-evolution-agent --region $REGION --wait
 
 The job also fires weekly from Cloud Scheduler (Mondays 09:00 UTC;
 override the cadence at deploy time with
-`EVOLUTION_SCHEDULE="*/30 * * * *"`). Inside one run:
+`EVOLUTION_SCHEDULE="*/30 * * * *"`). A full agent-decided run
+(3 skills, best-of-5, 55-question validation per candidate) takes
+~3 hours; for a demo-speed run (~25-30 min) scope it to one agent:
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--mode,policy_agent,--candidates,3,--quick"
+```
+
+Inside one run:
 
 | Stage | What happens |
 |-------|--------------|
