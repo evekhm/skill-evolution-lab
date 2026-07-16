@@ -147,6 +147,18 @@ def _find_agy() -> str | None:
     return None
 
 
+def _gh_repo_args() -> list:
+    """--repo flag for gh when GITHUB_REPO is set.
+
+    Deployed containers are not git checkouts, so gh cannot infer the
+    repository from cwd (observed live: the daily job's issue creation
+    failed with 'not a git repository'). Locally, without the env var,
+    gh keeps inferring from the checkout as before.
+    """
+    repo = os.getenv("GITHUB_REPO", "").strip()
+    return ["--repo", repo] if repo else []
+
+
 def _gh_available() -> bool:
     """Check if gh CLI is available and authenticated."""
     try:
@@ -330,6 +342,29 @@ def run_quality_report(
             app_name = os.getenv("QUALITY_APP_NAME", "knowledge_supervisor")
         app_name = app_name or None  # "" disables the filter
 
+        # Golden Q&A ground truth: load the eval spec so the judge grades
+        # matched questions against expected answers (see README, "The
+        # single input"). Without it every score is an ungrounded LLM
+        # estimate. EVAL_SPEC overrides; "" disables.
+        eval_spec = None
+        spec_path = os.getenv("EVAL_SPEC")
+        if spec_path is None:
+            spec_path = os.path.join(
+                _repo_root, "eval", "data", "two_defect_eval_spec.json",
+            )
+        if spec_path and os.path.isfile(spec_path):
+            with open(spec_path) as f:
+                eval_spec = json.load(f)
+            logger.info(
+                "Eval spec loaded: %s (golden_qa entries: %d)",
+                spec_path, len(eval_spec.get("golden_qa", [])),
+            )
+        else:
+            logger.warning(
+                "No eval spec at %s — judging WITHOUT golden ground truth",
+                spec_path,
+            )
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             result = pool.submit(
                 run_evaluation,
@@ -337,6 +372,7 @@ def run_quality_report(
                 limit=100,
                 custom_labels=custom_labels,
                 app_name=app_name,
+                eval_spec=eval_spec,
             ).result()
         report = result["report"]
         resolved_map = result["resolved_map"]
@@ -800,7 +836,7 @@ def _find_existing_issue(
 
     try:
         r = subprocess.run(
-            ["gh", "issue", "list", "--state", "open", *label_args,
+            ["gh", "issue", "list", *_gh_repo_args(), "--state", "open", *label_args,
              "--json", "number,title", "--limit", "50"],
             cwd=_repo_root, capture_output=True, text=True,
         )
@@ -869,7 +905,7 @@ def _update_existing_issue_gh(
 
     try:
         r = subprocess.run(
-            ["gh", "issue", "comment", str(issue_number),
+            ["gh", "issue", "comment", str(issue_number), *_gh_repo_args(),
              "--body", comment_body],
             cwd=_repo_root, capture_output=True, text=True,
         )
@@ -906,7 +942,7 @@ def _create_issue_gh(
             label_args.extend(["--label", label])
 
         r = subprocess.run(
-            ["gh", "issue", "create",
+            ["gh", "issue", "create", *_gh_repo_args(),
              "--title", title,
              "--body", body,
              *label_args],
@@ -917,7 +953,7 @@ def _create_issue_gh(
         if r.returncode != 0:
             logger.warning("gh issue create failed with labels: %s", r.stderr)
             r = subprocess.run(
-                ["gh", "issue", "create",
+                ["gh", "issue", "create", *_gh_repo_args(),
                  "--title", title,
                  "--body", body],
                 cwd=_repo_root,

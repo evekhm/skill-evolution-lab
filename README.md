@@ -47,8 +47,12 @@ see.
 
 1. **Observe** — every conversation turn is logged to BigQuery,
    tagged with the skill version that produced it.
-2. **Detect** — a daily quality agent scores recent sessions against
-   curated Golden Q&A and files GitHub issues for failures.
+2. **Detect** — **`quality_agent`** (`agents/workflow/quality_agent/`,
+   the Cloud Run Job `quality-agent`, daily scheduler at 08:00 UTC)
+   scores recent root-agent sessions with the LLM judge, matched
+   against the golden eval spec (scope + ground truth; full
+   expected-answer grading on the BigQuery path lands with SDK #358),
+   and files labeled GitHub issues for failures.
 3. **Learn** — an evolution job reads the failing traces — run it
    on demand (a scoped run takes ~10-15 minutes), let accumulating
    quality issues trigger it, or leave the scheduled tick (weekly by
@@ -333,6 +337,21 @@ the stack:
   fan-out, out-of-scope) and `test_load.py` (fresh-traffic quality,
   error rate, latency budgets), both version-aware via
   `skill_is_baseline()`.
+
+### The full cycle, actor by actor
+
+Every stage of the loop, who runs it, and how to watch it live:
+
+| Stage | Actor (code) | Trigger | Reads | Writes | Watch it |
+|---|---|---|---|---|---|
+| Serve | `knowledge_supervisor` (Agent Engine) + `policy_agent`/`hr_calculator` (Cloud Run, A2A) | user / API call | Skill Registry (SKILL.md at startup), tools | the answer | `bash scripts/test/smoke_test_deployed.sh` |
+| Observe | BigQuery Analytics plugins (in each agent) | every event | — | `agent_logs.agent_events`, tagged version + labels | `bq query` on `agent_events` grouped by `agent_version` |
+| Detect | `quality_agent` (Cloud Run Job) | daily 08:00 UTC scheduler, or `gcloud run jobs execute quality-agent` | BQ window, golden eval spec | quality report (GCS) + labeled GitHub issues | `gh issue list`; job logs |
+| Learn | `skill_evolution_agent` (Cloud Run Job) | on demand / issue threshold / weekly tick | BQ traces (selector), golden spec | evolved SKILL.md candidates, scores, regression cases | the 10-step table in [Demo Variants](#demo-variants--what-runs-what-is-cut-and-why) |
+| Propose | same job, final stage | end of a successful run | run artifacts | Skill Registry revision + the PR (skill + eval cases + selector) | `gh pr list` |
+| Adjudicate | Eval & Load Test Gate (GitHub Actions) | the PR | repo skills at PR state | green/red checks; branch protection blocks red | `gh pr checks <n>` |
+| Activate | Deploy to GCP workflow (GitHub Actions, WIF) | PR merge | merged repo | registry sync + redeploy; agents fetch the new revision | `gcloud logging read 'textPayload:"Loaded skill from registry"'` |
+| Roll back | `rollback_demo.sh` | you | SKILL.v0 files | V0 as newest registry revision; agents restarted | script prints verification |
 
 ## How Skills Evolve
 
@@ -958,10 +977,12 @@ its scheduled tick.
 
 ### Quality Agent -- Daily Sentinel
 
-Runs daily via Cloud Scheduler. Queries BigQuery for recent sessions
-(filtered by `agent_version` from SKILL.md frontmatter), scores each
-with an LLM judge against Golden Q&A ground truth, and creates GitHub
-issues for failures.
+Runs daily via Cloud Scheduler. Queries BigQuery for recent root-agent
+sessions (app-, version-, and label-filtered), scores each with the
+LLM judge using the golden eval spec for scope and ground-truth
+context (full per-answer grading on the BQ path arrives with SDK
+issue #358), and creates labeled GitHub issues for failures
+(`--repo` from `GITHUB_REPO`, so it works from the container).
 
 ```bash
 # Deploy

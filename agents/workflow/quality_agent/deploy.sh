@@ -40,6 +40,13 @@ echo "  Image:    $IMAGE_NAME"
 echo "========================================="
 echo ""
 
+# Issues target this repo; containers cannot infer it from cwd.
+if [ -z "${GITHUB_REPO:-}" ]; then
+    GITHUB_REPO=$(git -C "${SCRIPT_DIR}" remote get-url origin 2>/dev/null \
+        | sed 's|.*github.com[:/]\(.*\)\.git|\1|' || echo "")
+fi
+echo "  Issue target repo: ${GITHUB_REPO:-<none>}"
+
 echo "[1/9] Building container image..."
 # Copy files into build context:
 #   - ensure_sdk.py: SDK discovery/import (quality_report.py shim uses it)
@@ -109,7 +116,7 @@ gcloud run jobs deploy "$JOB_NAME" \
   --region="$REGION" \
   --task-timeout=600s \
   --max-retries=0 \
-  --set-env-vars="PROJECT_ID=${PROJECT_ID},REGION=${REGION},DATASET_ID=${DATASET_ID},DATASET_LOCATION=${DATASET_LOCATION},TABLE_ID=${TABLE_ID},GOOGLE_GENAI_USE_VERTEXAI=True,TIME_PERIOD=${TIME_PERIOD:-24h},DEPLOY_COMMIT=${DEPLOY_COMMIT:-local},GCS_BUCKET=${PROJECT_ID}-skill-evolution,GCS_UPLOAD=true,AGENT_VERSION=${AGENT_VERSION:-}" \
+  --set-env-vars="GITHUB_REPO=${GITHUB_REPO},PROJECT_ID=${PROJECT_ID},REGION=${REGION},DATASET_ID=${DATASET_ID},DATASET_LOCATION=${DATASET_LOCATION},TABLE_ID=${TABLE_ID},GOOGLE_GENAI_USE_VERTEXAI=True,TIME_PERIOD=${TIME_PERIOD:-24h},DEPLOY_COMMIT=${DEPLOY_COMMIT:-local},GCS_BUCKET=${PROJECT_ID}-skill-evolution,GCS_UPLOAD=true,AGENT_VERSION=${AGENT_VERSION:-}" \
   --set-secrets="GH_TOKEN=github-pat:latest" \
   --quiet || { echo "ERROR: job deploy failed"; exit 1; }
 echo "  Done."
