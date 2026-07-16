@@ -124,15 +124,84 @@ Golden Q&A feeds three consumers:
 
 ### Bootstrap: V0 to production-ready
 
-1. Deploy the agent with a deliberately minimal skill (V0)
-2. The user simulator generates adversarial traffic -- multi-turn
-   conversations that push back on wrong answers using Golden Q&A facts
-3. The LLM Judge scores each conversation against Golden Q&A ground
-   truth and partitions into successes (T+) and failures (T-)
-4. A parallel analyst fleet (~100 agents) examines trajectories and
-   proposes skill patches
-5. A patch consolidator merges patches into an evolved SKILL.md
-6. Redeploy, re-generate traffic, re-score, repeat
+The whole cycle in one command (local, ~15 min quick / ~1-2h full):
+
+```bash
+bash scripts/demo/skill_evolution/run_demo.sh --quick   # or --full
+```
+
+That script performs the six steps below; run them individually when
+you want to inspect each stage. Everything writes into one run folder:
+
+```bash
+source .env
+RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution" && mkdir -p "$RUN_DIR"
+```
+
+**1. Start from the V0 baseline skill** — the deliberately minimal
+skill is the permanent backup next to the live one:
+
+```bash
+cp agents/enterprise/policy_agent/skill/SKILL.v0.md \
+   agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**2. Generate adversarial traffic** — the simulated user asks the
+questions and, knowing the golden facts, pushes back on wrong answers
+(multi-turn):
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+    --local --local-agents --multi-turn \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
+```
+
+**3. Judge every conversation** — golden-matched ground truth (see
+"The single input" above); output partitions sessions into successes
+and failures:
+
+```bash
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v0_traffic.json" \
+    -o "$RUN_DIR/v0_quality_report.json" --report
+# printed summary: meaningful_rate, unhelpful_rate, failure count
+```
+
+**4 + 5. Analysts, patches, consolidation, best-of-N** — one command
+runs the whole evolution stage: an analyst per failure (each
+investigates with tool access), patch scoring, consolidation into
+candidate `SKILL.md` documents, and empirical scoring that keeps the
+best candidate:
+
+```bash
+uv run python agents/workflow/skill_evolution_agent/main.py \
+    --report "$RUN_DIR/v0_quality_report.json"
+# artifacts: $RUN_DIR/*_candidates/, the winning skill deployed to
+# agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**6. Re-score and compare** — fresh traffic against the evolved
+skill, then the before/after table:
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+    --local --local-agents --multi-turn \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v1_traffic.json" --concurrency 10
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v1_traffic.json" \
+    -o "$RUN_DIR/v1_quality_report.json" --report
+uv run python eval/scoring/score_conversations.py --compare \
+    "$RUN_DIR/v0_quality_report.json:V0" \
+    "$RUN_DIR/v1_quality_report.json:V1"
+```
+
+Repeat 2-6 for a V2 round (the gate keeps V2 only when it beats V1).
+For the DEPLOYED version of this cycle — real BigQuery traces, the
+Skill Registry, auto-PR — follow
+[Run the Production Loop Demo](#run-the-production-loop-demo) below;
+for a from-empty-project setup, [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md).
 
 Results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
 conversations. Inspired by [Trace2Skill](https://arxiv.org/abs/2603.25158)
