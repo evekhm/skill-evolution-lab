@@ -25,6 +25,7 @@ Library module — invoked via tools.py (ADK agent) or main.py (CLI).
 import json
 import logging
 import os
+from types import SimpleNamespace
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -114,7 +115,20 @@ def coevolve(
     )
 
     logger.info("Step 1: Detecting bottleneck...")
-    bottleneck = detect_bottleneck(report, client, model_id)
+    _bound_targets = os.getenv("EVOLUTION_TARGET_AGENTS", "").strip()
+    if _bound_targets:
+        # Target bound (--mode <agent>): skip the ~5-min LLM
+        # classification; agents_to_evolve is filtered to the bound
+        # targets below anyway.
+        logger.info(
+            "Skipping bottleneck classification: EVOLUTION_TARGET_AGENTS=%s",
+            _bound_targets,
+        )
+        bottleneck = SimpleNamespace(
+            recommendation="both", summary="skipped (target bound)",
+        )
+    else:
+        bottleneck = detect_bottleneck(report, client, model_id)
     result.bottleneck_recommendation = bottleneck.recommendation
     result.bottleneck_summary = bottleneck.summary
     logger.info("Bottleneck: %s", bottleneck.summary)
@@ -177,11 +191,20 @@ def coevolve(
         if not (select_by_score and output_dir):
             return None
 
+        _counter = {"n": 0}
+
         def _score(skill_content):
             from agents.workflow.skill_evolution_agent.tools import (
                 score_candidate,
             )
-            tmp = os.path.join(output_dir, "_score_candidate_tmp.md")
+            # Distinct name per candidate: score_candidate derives its
+            # report filename from this, so every candidate report
+            # survives for regression extraction and PR metrics (a
+            # shared tmp name left only the LAST report on disk).
+            _counter["n"] += 1
+            tmp = os.path.join(
+                output_dir, f"_score_candidate_{_counter['n']}.md",
+            )
             with open(tmp, "w") as fh:
                 fh.write(skill_content)
             res = score_candidate(

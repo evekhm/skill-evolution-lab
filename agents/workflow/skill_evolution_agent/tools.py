@@ -193,7 +193,7 @@ def run_evolution(
                     fh.write(skill_content)
                 res = score_candidate(
                     run_dir=_rd, candidate_path=tmp, skill_dir=_sd,
-                    questions_file=_QUESTIONS_FILE,
+                    questions_file=_questions_file(),
                 )
                 return float(res.get("meaningful_rate", 0.0))
 
@@ -250,6 +250,17 @@ def run_evolution(
 
 
 def detect_bottleneck_tool(quality_report_path: str) -> dict:
+    target_env = os.getenv("EVOLUTION_TARGET_AGENTS", "").strip()
+    if target_env:
+        # Target bound (--mode <agent>): classification would spend
+        # ~5 min of LLM calls concluding what was already decided.
+        return {
+            "recommendation": target_env,
+            "note": (
+                f"Skipped classification: EVOLUTION_TARGET_AGENTS={target_env} "
+                "binds the evolution target. Proceed directly to evolution."
+            ),
+        }
     """Detect which agent is the primary quality bottleneck.
 
     Classifies failures as routing, skill, tool, or architecture issues.
@@ -355,7 +366,7 @@ def run_coevolution(
             model_id=model_id,
             max_workers=max_workers,
             agentic=agentic,
-            questions_file=_QUESTIONS_FILE,
+            questions_file=_questions_file(),
             select_by_score=True,
         )
 
@@ -469,6 +480,13 @@ def read_current_eval_cases() -> dict:
 # Default questions file for evolution loop. Honor EVAL_QUESTIONS_FILE so the
 # demo (e.g. run_demo.sh --quick) can validate candidates against the smaller
 # quick set instead of the full 235-question set.
+def _questions_file() -> str:
+    """Resolve the scoring question set at CALL time, so bindings set by
+    main.py (e.g. the --quick profile) reach the tools even though this
+    module was imported earlier."""
+    return os.environ.get("EVAL_QUESTIONS_FILE") or _QUESTIONS_FILE
+
+
 _QUESTIONS_FILE = os.environ.get("EVAL_QUESTIONS_FILE") or os.path.join(
     _repo_root, "eval", "data", "questions", "demo_conversations.json"
 )
@@ -907,16 +925,17 @@ def _collect_quality_metrics(
         # {version}_quality_report.json — fall back to the best candidate
         # report so PR titles carry the real evolved rate instead of "?%".
         best_rate = -1.0
-        for path in glob_mod.glob(
-            os.path.join(run_dir, "**", "candidate_*_report.json"),
-            recursive=True,
-        ):
-            try:
-                rate = float(_extract_rate(path, "meaningful_rate"))
-            except ValueError:
-                continue
-            if rate > best_rate:
-                best_rate, evolved_report = rate, path
+        for pattern in ("candidate_*_report.json",
+                        "_score_candidate_*_report.json"):
+            for path in glob_mod.glob(
+                os.path.join(run_dir, "**", pattern), recursive=True,
+            ):
+                try:
+                    rate = float(_extract_rate(path, "meaningful_rate"))
+                except ValueError:
+                    continue
+                if rate > best_rate:
+                    best_rate, evolved_report = rate, path
 
     baseline_report = None
     baseline_label = "initial"
@@ -1519,7 +1538,9 @@ def extract_regression_cases(
         os.path.join(run_dir, "*_quality_report.json")
     ))
     if not reports:
-        return {"error": f"No baseline quality report in {run_dir}"}
+        # Clean skip (an "error" makes the orchestrator retry in a loop)
+        return {"status": "skipped",
+                "reason": f"No baseline quality report in {run_dir}"}
     with open(reports[0]) as f:
         baseline = json.load(f)
     failures = {
@@ -1531,18 +1552,23 @@ def extract_regression_cases(
 
     # Winning candidate = highest meaningful_rate candidate report
     best_report, best_rate = None, -1.0
-    for p in glob_mod.glob(
-        os.path.join(run_dir, "**", "candidate_*_report.json"),
-        recursive=True,
-    ):
-        try:
-            rate = float(_extract_rate(p, "meaningful_rate"))
-        except ValueError:
-            continue
-        if rate > best_rate:
-            best_rate, best_report = rate, p
+    # Two naming schemes: the orchestrator scoring calls
+    # (candidate_N_report.json) and coevolve internal scoring
+    # (_score_candidate_N_report.json).
+    patterns = ["candidate_*_report.json", "_score_candidate_*_report.json"]
+    for pattern in patterns:
+        for p in glob_mod.glob(
+            os.path.join(run_dir, "**", pattern), recursive=True,
+        ):
+            try:
+                rate = float(_extract_rate(p, "meaningful_rate"))
+            except ValueError:
+                continue
+            if rate > best_rate:
+                best_rate, best_report = rate, p
     if not best_report:
-        return {"error": f"No candidate reports in {run_dir}"}
+        return {"status": "skipped",
+                "reason": f"No candidate reports in {run_dir}"}
     with open(best_report) as f:
         winner = json.load(f)
     resolved = []
@@ -2055,7 +2081,7 @@ def score_candidate(
         return {"error": f"Skill directory not found: {skill_dir}"}
 
     if questions_file is None or not os.path.isfile(questions_file):
-        questions_file = _QUESTIONS_FILE
+        questions_file = _questions_file()
 
     os.makedirs(run_dir, exist_ok=True)
     cand_name = os.path.splitext(os.path.basename(candidate_path))[0]

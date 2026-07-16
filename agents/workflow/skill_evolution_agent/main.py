@@ -720,6 +720,18 @@ Examples:
         os.environ["EVOLUTION_TARGET_AGENTS"] = args.mode
     if getattr(args, "trace_labels", None):
         os.environ["EVOLUTION_TRACE_LABELS"] = args.trace_labels
+    if args.quick:
+        # BINDING quick profile — reaches the tool layer via env (the
+        # prompt-level "use the quick set" hint was ignored in
+        # practice): 25-question set, single-turn scoring, flash
+        # scoring supervisor. Measured: candidate validation went
+        # ~12.3 min -> ~2 min per candidate.
+        _repo = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))))
+        os.environ["EVAL_QUESTIONS_FILE"] = os.path.join(
+            _repo, "eval", "data", "questions", "two_defect_quick.json")
+        os.environ["EVAL_MAX_TURNS"] = "1"
+        os.environ["SUPERVISOR_MODEL_ID"] = "gemini-2.5-flash"
     bound = {
         k: os.environ[k]
         for k in (
@@ -727,6 +739,8 @@ Examples:
             "EVOLUTION_MAX_ROUNDS",
             "EVOLUTION_TARGET_AGENTS",
             "EVOLUTION_TRACE_LABELS",
+            "EVAL_QUESTIONS_FILE",
+            "EVAL_MAX_TURNS",
         )
         if k in os.environ
     }
