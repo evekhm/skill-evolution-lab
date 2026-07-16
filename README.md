@@ -637,12 +637,15 @@ Inside one run:
 | Bottleneck | Classifies each failure by source agent and picks which skill(s) to evolve |
 | Evolution | Error analysts study the failures, propose patches, and best-of-N candidate skills are scored on the evolve set |
 | Publish | The winning skills are pushed to the Skill Registry as new revisions |
-| PR | A pull request with the evolved `SKILL.md` opens on the repo (token-cloned inside the job container) |
+| Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge |
+| PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) |
 
 ### Step 4: Review the PR
 
 The PR body carries the baseline quality numbers; the diff is the
-evolved skill itself. CI runs the Eval & Load Test Gate on it, and the
+evolved skill plus any regression cases extracted from failures this
+skill resolved (they parametrize straight into the gate tests, so the
+PR's own CI run already exercises them). CI runs the Eval & Load Test Gate on it, and the
 gate is version-aware: skills at version 0 are held to baseline
 expectations, while an evolved skill (version >= 1) must pass the full
 routing, fan-out, and quality assertions.

@@ -231,8 +231,11 @@ gh pr list   # the evolved-skill PR
 ```
 
 Verify: a PR titled `Evolve ... skill` exists; the gate runs on it with
-hard assertions (the skill carries version >= 1); merging it triggers
-`deploy.yml`, which reconciles the registry and redeploys.
+hard assertions (the skill carries version >= 1); the PR may also add
+regression cases to `eval/data/eval_cases.json` + `golden_evals.json`
+(failures the winning skill resolved — the gate grows each cycle);
+merging it triggers `deploy.yml`, which reconciles the registry and
+redeploys.
 
 **Demo-speed variant (~1h instead of ~3h).** The full run lets
 the job decide scope (often all three skills, best-of-5, 55-question

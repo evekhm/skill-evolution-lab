@@ -1471,6 +1471,157 @@ def push_skill_to_registry(
         shutil.rmtree(staging, ignore_errors=True)
 
 
+def extract_regression_cases(
+    run_dir: str,
+    agent: str = "policy_agent",
+    max_cases: int = 5,
+) -> dict:
+    """Extract RESOLVED failures into the golden regression gate.
+
+    A resolved failure is a question the baseline quality report scored
+    unhelpful/partial but the WINNING candidate's report scored
+    meaningful. Each becomes:
+      - an eval/data/eval_cases.json entry (CI routing gate;
+        expected_agent from the question's category), and
+      - an eval/data/golden_evals.json entry (LLM-judge ground truth;
+        the winning candidate's judge-approved answer).
+
+    The gate grows each evolution cycle, so a future skill that
+    re-breaks a resolved case fails CI before it can merge. Call this
+    AFTER candidate selection and BEFORE create_evolution_pr — the PR
+    picks up the updated eval files automatically.
+    """
+    import glob as glob_mod
+
+    def _usefulness(session: dict) -> str:
+        return (
+            (session.get("metrics") or {})
+            .get("response_usefulness", {})
+            .get("category", "")
+        )
+
+    # Baseline report = earliest *_quality_report.json in the run dir
+    reports = sorted(glob_mod.glob(
+        os.path.join(run_dir, "*_quality_report.json")
+    ))
+    if not reports:
+        return {"error": f"No baseline quality report in {run_dir}"}
+    with open(reports[0]) as f:
+        baseline = json.load(f)
+    failures = {
+        s["question"]: s for s in baseline.get("sessions", [])
+        if _usefulness(s) in ("unhelpful", "partial") and s.get("question")
+    }
+    if not failures:
+        return {"status": "no_failures", "added": 0}
+
+    # Winning candidate = highest meaningful_rate candidate report
+    best_report, best_rate = None, -1.0
+    for p in glob_mod.glob(
+        os.path.join(run_dir, "**", "candidate_*_report.json"),
+        recursive=True,
+    ):
+        try:
+            rate = float(_extract_rate(p, "meaningful_rate"))
+        except ValueError:
+            continue
+        if rate > best_rate:
+            best_rate, best_report = rate, p
+    if not best_report:
+        return {"error": f"No candidate reports in {run_dir}"}
+    with open(best_report) as f:
+        winner = json.load(f)
+    resolved = []
+    for s in winner.get("sessions", []):
+        q = s.get("question", "")
+        if q in failures and _usefulness(s) == "meaningful" and s.get("response"):
+            resolved.append(s)
+    if not resolved:
+        return {"status": "no_resolved_failures", "added": 0}
+
+    # question -> category from the shipped question sets (deterministic)
+    q_category = {}
+    for qf in glob_mod.glob(
+        os.path.join(_repo_root, "eval", "data", "questions", "*.json")
+    ):
+        try:
+            with open(qf) as f:
+                qdata = json.load(f)
+            for item in qdata.get("questions", qdata if isinstance(qdata, list) else []):
+                if isinstance(item, dict) and item.get("question"):
+                    q_category[item["question"]] = item.get("category", "")
+        except Exception:
+            continue
+    agent_for_category = {"benefits": "benefits_agent", "calc": "hr_calculator"}
+
+    eval_cases_path = os.path.join(_repo_root, "eval", "data", "eval_cases.json")
+    golden_path = os.path.join(_repo_root, "eval", "data", "golden_evals.json")
+    new_eval_cases, new_golden = [], []
+    stamp = time.strftime("%Y%m%d")
+    for i, s in enumerate(resolved[:max_cases], 1):
+        q = s["question"]
+        category = q_category.get(q, "")
+        answer = " ".join(s["response"].split())
+        if len(answer) > 400:
+            answer = answer[:400].rsplit(". ", 1)[0] + "."
+        case_id = f"reg-{stamp}-{i:02d}"
+        new_eval_cases.append({
+            "id": case_id,
+            "question": q,
+            "category": category or "regression",
+            "expected_agent": agent_for_category.get(category, "policy_agent"),
+        })
+        new_golden.append({
+            "id": case_id,
+            "question": q,
+            "expected_answer": answer,
+            "topic": category or "regression",
+        })
+
+    added_eval = _append_regression_cases(eval_cases_path, new_eval_cases)
+    added_golden = _append_regression_cases(golden_path, new_golden)
+
+    marker = {
+        "added_eval_cases": added_eval,
+        "added_golden": added_golden,
+        "source_baseline": os.path.basename(reports[0]),
+        "source_candidate": os.path.basename(best_report),
+        "cases": [c["question"] for c in new_eval_cases[:added_eval]] if added_eval else [],
+    }
+    with open(os.path.join(run_dir, "regression_cases.json"), "w") as f:
+        json.dump(marker, f, indent=2)
+
+    logger.info(
+        "Extracted %d regression case(s) from %d resolved failure(s) "
+        "(gate grows: eval_cases +%d, golden +%d)",
+        added_eval, len(resolved), added_eval, added_golden,
+    )
+    return {"status": "success", **marker}
+
+
+def _append_regression_cases(path: str, new_cases: list[dict]) -> int:
+    """Append cases with id+question dedup. Handles both file shapes
+    ({"eval_cases": [...]} and bare list)."""
+    with open(path) as f:
+        data = json.load(f)
+    cases = data["eval_cases"] if isinstance(data, dict) else data
+    existing_ids = {c.get("id") for c in cases}
+    existing_questions = {c.get("question") for c in cases}
+    added = 0
+    for case in new_cases:
+        if case["id"] in existing_ids or case["question"] in existing_questions:
+            continue
+        cases.append(case)
+        existing_ids.add(case["id"])
+        existing_questions.add(case["question"])
+        added += 1
+    if added:
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+    return added
+
+
 def create_evolution_pr(
     run_dir: str,
     version: str = "v1",
@@ -1614,15 +1765,39 @@ def create_evolution_pr(
         with open(abs_skill_path, "w") as f:
             f.write(evolved_content)
 
+        # Regression cases extracted this run ride the same PR: copy the
+        # updated eval files so resolved failures become permanent gate
+        # cases the moment the skill merges.
+        regression_note = ""
+        add_paths = [repo_skill_path]
+        marker_path = os.path.join(run_dir, "regression_cases.json")
+        if os.path.isfile(marker_path):
+            with open(marker_path) as f:
+                marker = json.load(f)
+            if marker.get("added_eval_cases") or marker.get("added_golden"):
+                for rel in ("eval/data/eval_cases.json",
+                            "eval/data/golden_evals.json"):
+                    src = os.path.join(_repo_root, rel)
+                    dst = os.path.join(git_root, rel)
+                    if os.path.isfile(src):
+                        os.makedirs(os.path.dirname(dst), exist_ok=True)
+                        _safe_copy2(src, dst)
+                        add_paths.append(rel)
+                regression_note = (
+                    f"\nRegression gate: +{marker.get('added_eval_cases', 0)} "
+                    f"eval case(s) extracted from resolved failures"
+                )
+
         commit_msg = (
             f"Evolve {agent} skill to {version}\n\n"
             f"Meaningful rate: {metrics['baseline_meaningful']}% "
-            f"-> {metrics['evolved_meaningful']}%\n"
+            f"-> {metrics['evolved_meaningful']}%"
+            f"{regression_note}\n"
             f"Run: {os.path.basename(run_dir)}"
         )
 
         subprocess.run(
-            ["git", "add", repo_skill_path],
+            ["git", "add"] + add_paths,
             cwd=git_root, capture_output=True,
         )
         subprocess.run(
