@@ -74,155 +74,18 @@ documents — versioned, diffable, PR-reviewable — so "the agent
 learned something" is always a concrete artifact a human signed off
 on.
 
-## How Skills Evolve
+## Where to Start
 
-The system has one manual input: **Golden Q&A** -- curated
-question-answer pairs that define what correct behavior looks like.
-Everything else is automated.
+| You want to... | Go to | Time |
+|---|---|---|
+| Understand the system first | [Architecture](#architecture) | 10 min read |
+| See the evolution loop run on your machine (no deployment) | [Run the Demo Locally](#run-the-demo-locally) | ~15 min |
+| Stand up the full production loop on GCP from an empty project | [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md), then [Run the Production Loop Demo](#run-the-production-loop-demo) | ~90 min setup, then ~15 min per loop |
+| Point the loop at your own agent | [Plug In Your Own Agent](#plug-in-your-own-agent) | ~1 h |
 
-### The single input
-
-Golden Q&A (`eval/data/golden_evals.json`) is a list of curated
-entries: a question, its `expected_answer`, and optionally
-`expected_behavior: decline` for topics the agent must refuse.
-
-**How it is used — similarity matching, exactly:** when the judge
-scores a conversation, every session question and every golden
-question is embedded, and each session is matched to its
-nearest golden entry by cosine similarity (threshold 0.92 — high on
-purpose, so only true paraphrases match: "How many vacation days do I
-get?" matches the PTO entry; a novel question matches nothing). Three
-outcomes:
-
-1. **Matched, in scope** — the golden `expected_answer` is injected
-   into the judge's prompt, and the response is graded against that
-   ground truth. This is what makes correctness scores trustworthy:
-   the judge compares against the known-right answer instead of its
-   own opinion.
-2. **Matched, decline entry** — the judge is told a polite refusal is
-   the correct outcome, so out-of-scope questions score as `declined`
-   when handled right rather than being punished as unhelpful.
-3. **No match (the question is absent from the list)** — the judge
-   still scores the session, but as an ungrounded LLM estimate, and
-   the report says so explicitly ("LLM estimates WITHOUT ground
-   truth"). These sessions also feed the `new-topic` flow: the quality
-   agent surfaces questions with no golden coverage and no history as
-   issues for a human decision — add a golden entry (and the
-   capability) or mark the topic out-of-scope.
-
-The list grows two ways: humans curate entries, and each evolution
-cycle extracts resolved failures into new entries automatically — so
-coverage tracks what users actually ask.
-
-Golden Q&A feeds three consumers:
-- **The user simulator** mirrors these facts to adversarially
-  stress-test the agent (it knows the right answer, so it pushes back
-  on wrong ones)
-- **The LLM Judge** grades against matched entries as described above
-- **The evolution engine** works on the pass/fail labels the judge
-  produces
-
-### Bootstrap: V0 to production-ready
-
-The whole cycle in one command (local, ~15 min quick / ~1-2h full):
-
-```bash
-bash scripts/demo/skill_evolution/run_demo.sh --quick   # or --full
-```
-
-That script performs the six steps below; run them individually when
-you want to inspect each stage. Everything writes into one run folder:
-
-```bash
-source .env
-RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution" && mkdir -p "$RUN_DIR"
-```
-
-**1. Start from the V0 baseline skill** — the deliberately minimal
-skill is the permanent backup next to the live one:
-
-```bash
-cp agents/enterprise/policy_agent/skill/SKILL.v0.md \
-   agents/enterprise/policy_agent/skill/SKILL.md
-```
-
-**2. Generate adversarial traffic** — the simulated user asks the
-questions and, knowing the golden facts, pushes back on wrong answers
-(multi-turn):
-
-```bash
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
-    --from-file eval/data/questions/demo_quick.json \
-    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
-```
-
-**3. Judge every conversation** — golden-matched ground truth (see
-"The single input" above); output partitions sessions into successes
-and failures:
-
-```bash
-bash scripts/demo/skill_evolution/score.sh \
-    -i "$RUN_DIR/v0_traffic.json" \
-    -o "$RUN_DIR/v0_quality_report.json" --report
-# printed summary: meaningful_rate, unhelpful_rate, failure count
-```
-
-**4 + 5. Analysts, patches, consolidation, best-of-N** — one command
-runs the whole evolution stage: an analyst per failure (each
-investigates with tool access), patch scoring, consolidation into
-candidate `SKILL.md` documents, and empirical scoring that keeps the
-best candidate:
-
-```bash
-uv run python agents/workflow/skill_evolution_agent/main.py \
-    --report "$RUN_DIR/v0_quality_report.json"
-# artifacts: $RUN_DIR/*_candidates/, the winning skill deployed to
-# agents/enterprise/policy_agent/skill/SKILL.md
-```
-
-**6. Re-score and compare** — fresh traffic against the evolved
-skill, then the before/after table:
-
-```bash
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
-    --from-file eval/data/questions/demo_quick.json \
-    -o "$RUN_DIR/v1_traffic.json" --concurrency 10
-bash scripts/demo/skill_evolution/score.sh \
-    -i "$RUN_DIR/v1_traffic.json" \
-    -o "$RUN_DIR/v1_quality_report.json" --report
-uv run python eval/scoring/score_conversations.py --compare \
-    "$RUN_DIR/v0_quality_report.json:V0" \
-    "$RUN_DIR/v1_quality_report.json:V1"
-```
-
-Repeat 2-6 for a V2 round (the gate keeps V2 only when it beats V1).
-For the DEPLOYED version of this cycle — real BigQuery traces, the
-Skill Registry, auto-PR — follow
-[Run the Production Loop Demo](#run-the-production-loop-demo) below;
-for a from-empty-project setup, [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md).
-
-Results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
-conversations. Inspired by [Trace2Skill](https://arxiv.org/abs/2603.25158)
-and [AutoSkill](https://arxiv.org/abs/2603.01145) -- see
-[the paper analysis](docs/skill-evolution/RESEARCH.md).
-
-### Production: monitoring and healing
-
-Once deployed, two workflow agents maintain quality autonomously:
-- **Quality Agent** (daily sentinel) scores production sessions
-  against Golden Q&A, detects regressions via BigQuery history,
-  creates GitHub issues
-- **Skill Evolution Agent** (the healer) re-runs the evolution loop —
-  on demand, when enough quality issues accumulate, or on its
-  scheduled tick (weekly by default) — using real production traces
-
-New topics that Golden Q&A doesn't cover surface as `new-topic` issues
-for a human decision: add the capability or mark it out-of-scope.
-
-See [Skill Evolution docs](docs/skill-evolution/) for the full lifecycle
-narrative and algorithm details.
+Both demo paths run the same algorithm; the local path trades the
+deployed stack (Agent Engine, Skill Registry, BigQuery, auto-PR) for
+speed and zero setup.
 
 ## Architecture
 
@@ -471,13 +334,155 @@ the stack:
   error rate, latency budgets), both version-aware via
   `skill_is_baseline()`.
 
-## Bootstrap From Zero
+## How Skills Evolve
 
-Starting with an empty GCP project and an empty GitHub repo?
-**[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** is the complete tested path:
-the few manual prerequisites (project, billing, PAT, auth), then every
-remaining step scripted — GCP infrastructure, GitHub CI wiring, deploy,
-and the e2e evolution loop — with a verification after each step.
+The system has one manual input: **Golden Q&A** -- curated
+question-answer pairs that define what correct behavior looks like.
+Everything else is automated.
+
+### The single input
+
+Golden Q&A (`eval/data/golden_evals.json`) is a list of curated
+entries: a question, its `expected_answer`, and optionally
+`expected_behavior: decline` for topics the agent must refuse.
+
+**How it is used — similarity matching, exactly:** when the judge
+scores a conversation, every session question and every golden
+question is embedded, and each session is matched to its
+nearest golden entry by cosine similarity (threshold 0.92 — high on
+purpose, so only true paraphrases match: "How many vacation days do I
+get?" matches the PTO entry; a novel question matches nothing). Three
+outcomes:
+
+1. **Matched, in scope** — the golden `expected_answer` is injected
+   into the judge's prompt, and the response is graded against that
+   ground truth. This is what makes correctness scores trustworthy:
+   the judge compares against the known-right answer instead of its
+   own opinion.
+2. **Matched, decline entry** — the judge is told a polite refusal is
+   the correct outcome, so out-of-scope questions score as `declined`
+   when handled right rather than being punished as unhelpful.
+3. **No match (the question is absent from the list)** — the judge
+   still scores the session, but as an ungrounded LLM estimate, and
+   the report says so explicitly ("LLM estimates WITHOUT ground
+   truth"). These sessions also feed the `new-topic` flow: the quality
+   agent surfaces questions with no golden coverage and no history as
+   issues for a human decision — add a golden entry (and the
+   capability) or mark the topic out-of-scope.
+
+The list grows two ways: humans curate entries, and each evolution
+cycle extracts resolved failures into new entries automatically — so
+coverage tracks what users actually ask.
+
+Golden Q&A feeds three consumers:
+- **The user simulator** mirrors these facts to adversarially
+  stress-test the agent (it knows the right answer, so it pushes back
+  on wrong ones)
+- **The LLM Judge** grades against matched entries as described above
+- **The evolution engine** works on the pass/fail labels the judge
+  produces
+
+### Bootstrap: V0 to production-ready
+
+The whole cycle in one command (local, ~15 min quick / ~1-2h full):
+
+```bash
+bash scripts/demo/skill_evolution/run_demo.sh --quick   # or --full
+```
+
+That script performs the six steps below; run them individually when
+you want to inspect each stage. Everything writes into one run folder:
+
+```bash
+source .env
+RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution" && mkdir -p "$RUN_DIR"
+```
+
+**1. Start from the V0 baseline skill** — the deliberately minimal
+skill is the permanent backup next to the live one:
+
+```bash
+cp agents/enterprise/policy_agent/skill/SKILL.v0.md \
+   agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**2. Generate adversarial traffic** — the simulated user asks the
+questions and, knowing the golden facts, pushes back on wrong answers
+(multi-turn):
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+    --local --local-agents --multi-turn \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
+```
+
+**3. Judge every conversation** — golden-matched ground truth (see
+"The single input" above); output partitions sessions into successes
+and failures:
+
+```bash
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v0_traffic.json" \
+    -o "$RUN_DIR/v0_quality_report.json" --report
+# printed summary: meaningful_rate, unhelpful_rate, failure count
+```
+
+**4 + 5. Analysts, patches, consolidation, best-of-N** — one command
+runs the whole evolution stage: an analyst per failure (each
+investigates with tool access), patch scoring, consolidation into
+candidate `SKILL.md` documents, and empirical scoring that keeps the
+best candidate:
+
+```bash
+uv run python agents/workflow/skill_evolution_agent/main.py \
+    --report "$RUN_DIR/v0_quality_report.json"
+# artifacts: $RUN_DIR/*_candidates/, the winning skill deployed to
+# agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**6. Re-score and compare** — fresh traffic against the evolved
+skill, then the before/after table:
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+    --local --local-agents --multi-turn \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v1_traffic.json" --concurrency 10
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v1_traffic.json" \
+    -o "$RUN_DIR/v1_quality_report.json" --report
+uv run python eval/scoring/score_conversations.py --compare \
+    "$RUN_DIR/v0_quality_report.json:V0" \
+    "$RUN_DIR/v1_quality_report.json:V1"
+```
+
+Repeat 2-6 for a V2 round (the gate keeps V2 only when it beats V1).
+For the DEPLOYED version of this cycle — real BigQuery traces, the
+Skill Registry, auto-PR — follow
+[Run the Production Loop Demo](#run-the-production-loop-demo) below;
+for a from-empty-project setup, [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md).
+
+Results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
+conversations. Inspired by [Trace2Skill](https://arxiv.org/abs/2603.25158)
+and [AutoSkill](https://arxiv.org/abs/2603.01145) -- see
+[the paper analysis](docs/skill-evolution/RESEARCH.md).
+
+### Production: monitoring and healing
+
+Once deployed, two workflow agents maintain quality autonomously:
+- **Quality Agent** (daily sentinel) scores production sessions
+  against Golden Q&A, detects regressions via BigQuery history,
+  creates GitHub issues
+- **Skill Evolution Agent** (the healer) re-runs the evolution loop —
+  on demand, when enough quality issues accumulate, or on its
+  scheduled tick (weekly by default) — using real production traces
+
+New topics that Golden Q&A doesn't cover surface as `new-topic` issues
+for a human decision: add the capability or mark it out-of-scope.
+
+See [Skill Evolution docs](docs/skill-evolution/) for the full lifecycle
+narrative and algorithm details.
 
 ## Run the Demo Locally
 
@@ -568,18 +573,24 @@ Stop with `bash scripts/local/local_start.sh stop`.
 
 ### Manual step-by-step
 
-For an interactive walkthrough of each pipeline stage, see:
-- [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md) -- step-by-step
-  with `--step v0`, `--step v1`, `--step v2`
-- [Quick Evolution Runbook](docs/skill-evolution/QUICK_EVOLUTION_RUNBOOK.md)
-  -- manual commands for iteration and debugging
+Each of the six pipeline stages, with its command and artifacts:
+[Bootstrap: V0 to production-ready](#bootstrap-v0-to-production-ready).
+For a narrated walkthrough with pauses, see
+[Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
 
-## Deploy to GCP
+## Run on GCP — One-Time Setup
+
+The complete ordered path from an empty GCP project and empty repo
+is **[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** — tested end to end;
+follow it top to bottom. The subsections below are the reference
+details for its two big steps.
+
+### Deploy the stack
 
 Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
 first deploy, faster on subsequent runs.
 
-### Step 1: GCP infrastructure
+#### Step 1: GCP infrastructure
 
 ```bash
 source .env
@@ -591,7 +602,7 @@ Enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
 creates the BigQuery dataset for Agent Analytics, seeds the Skill
 Registry with the V0 skills, and grants IAM permissions.
 
-### Step 2: Deploy
+#### Step 2: Deploy
 
 ```bash
 bash scripts/deploy/deploy_gcp.sh
@@ -621,7 +632,7 @@ You can also deploy individually:
 > This is a known race condition -- re-run `deploy_gcp.sh` and it
 > will succeed.
 
-### Step 3: Smoke test
+#### Step 3: Smoke test
 
 ```bash
 bash scripts/test/smoke_test_deployed.sh
@@ -632,7 +643,7 @@ bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I ge
 bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
 ```
 
-### Step 4: Connect Gemini Enterprise (optional)
+#### Step 4: Connect Gemini Enterprise (optional)
 
 Gemini Enterprise provides a chat UI that connects directly to the
 deployed Agent Engine -- no custom frontend needed.
@@ -649,20 +660,20 @@ d. Paste the Agent Engine ID from the deploy output:
 e. Open the app's web URL and select **HR Policy Assistant** from
    the agent picker
 
-## Set Up the GitHub Repo
+### Set up the GitHub repo (CI + bot)
 
 The production loop treats GitHub as part of the runtime: CI gates
 every skill change, merges trigger deployment, and the evolution job
 opens PRs with a bot credential. One script plus two manual steps wire
 all of it.
 
-### Step 1: Repo and prerequisites
+#### Step 1: Repo and prerequisites
 
 - Fork or create the repo and clone it
 - `cp .env.example .env` and set `PROJECT_ID`
 - Authenticate the GitHub CLI: `gh auth login`
 
-### Step 2: Run the setup script
+#### Step 2: Run the setup script
 
 ```bash
 # GH_PAT: a classic PAT with `repo` scope (or fine-grained with
@@ -688,7 +699,7 @@ projects. For a bot identity on issues and PRs (actions attributed to
 an app instead of your user), additionally set up a GitHub App per
 [`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
 
-### Step 3: Verify
+#### Step 3: Verify
 
 ```bash
 gh variable list          # 8 variables, PROJECT_ID = your project
@@ -699,6 +710,51 @@ gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_chec
 Open any PR: the **Eval & Load Test Gate** should start automatically,
 and after `scripts/setup/setup_gcp.sh` + a deploy, merging to main
 triggers **Deploy to GCP**.
+
+## Demo Variants — What Runs, What Is Cut, and Why
+
+### The four ways to run it
+
+| Variant | Command | Time | Use when |
+|---|---|---|---|
+| Local quick | `bash scripts/demo/skill_evolution/run_demo.sh --quick` | ~15 min | First contact; no deployment |
+| Local full | `bash scripts/demo/skill_evolution/run_demo.sh --full` | ~1-2 h | Full local evaluation (205 questions, V0->V1->V2) |
+| GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"` | ~15 min | Live demo of the deployed loop, warm BigQuery window |
+| GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~1.5-3 h | Production cadence: agent-decided scope, full validation |
+
+### Every step of the GCP demo run
+
+Measured on project `skill-evolution-lab`; "full run" column shows the
+same step at production settings for contrast.
+
+| # | Step | What happens | Input | Output (artifact) | Demo time | Full time | Verify |
+|---|---|---|---|---|---|---|---|
+| 1 | Container start | Cloud Run provisions the job image | — | execution id | ~2 min | ~2 min | `gcloud run jobs executions list --job=skill-evolution-agent` |
+| 2 | BQ pre-flight | LLM-judges recent root-agent sessions from `agent_events` (app/version/label-filtered) | BigQuery window (`EVAL_TIME_PERIOD`, selector) | `v0_quality_report.json` + `trace_selector.json` in the run dir | ~2.5 min | ~3-15 min | job log line `Pre-flight quality report from BigQuery: N sessions` |
+| 3 | Evolution gate | Proceed only if failures >= threshold | the report | go / no-go log line | seconds | seconds | log: `should_evolve: True, failures: N` |
+| 4 | Bottleneck attribution | Classifies each failure to the responsible agent | failures | recommendation | **skipped** (target named on the CLI — classifying would re-derive the answer) | ~5 min | log: `Skipped classification: EVOLUTION_TARGET_AGENTS=...` |
+| 5 | Analyst fleet | One agent per failure investigates the trace (tool access) and proposes a patch | failure trajectories | patch list (`3*_...` artifacts) | ~1 min | ~6 min | log: `[k/N] [error] ... -> patch` |
+| 6 | Consolidation | Merges patches into N candidate `SKILL.md` docs (best-of-N) | patches | `*_candidates/candidate_*.md` | ~1 min | ~7 min | log: `Best-of-N complete` |
+| 7 | Candidate validation | Each candidate is deployed to a local supervisor and scored on replayed traffic | candidates + question set | `_score_candidate_*_report.json` per candidate | ~2 min x 3 | ~12 min x 5 | log: `Candidate k scored X% meaningful` |
+| 8 | Regression extraction | Failures the winner RESOLVED become new gate cases | baseline + winner reports | `regression_cases.json` + updated `eval/data/*.json` | seconds | seconds | log: `Extracted N regression case(s)` |
+| 9 | Registry publish | Winning skill becomes a new Skill Registry revision | winning `SKILL.md` | revision id | ~1 min | ~1 min | `registry_sync.py revisions --agent policy_agent` |
+| 10 | Pull request | Token-clone, branch, commit skill + eval files, `gh pr create` | run artifacts | the PR | ~2 min | ~2 min | `gh pr list` — title carries baseline% -> evolved% |
+
+### What `--quick` cuts — and what it never touches
+
+| Dial | Full | Quick | Why it is safe to cut | What it costs |
+|---|---|---|---|---|
+| Validation question set | 55 questions | 25 (2 per category, all 13 categories kept) | Coverage per category is preserved | Coarser scores: each question is worth 4pp, so two close candidates can swap ranks |
+| Turns per validation conversation | up to 4 (simulated user pushes back) | 1 | The deflection defect (the main one) shows in turn 1 | Parroting behavior is NOT measured during candidate RANKING (it needs a turn-2 pushback). Analysts still see every real parroting failure from BigQuery and still patch it |
+| Validation supervisor model | gemini-2.5-pro | gemini-2.5-flash | All candidates are scored under identical conditions, so the ranking stays fair | Absolute scores shift slightly vs pro |
+| Bottleneck classification | runs (~5 min) | skipped when `--mode` names the target | You already gave the answer on the command line | None for a scoped run; scheduled runs (no `--mode`) still classify |
+| Rounds / candidates | agent-decided (up to 5 x 5) | bound to your `--rounds`/`--candidates` | Demo needs a bounded runtime | Fewer shots at a better skill per run |
+
+**Never cut, in any variant:** the analyst fleet reads every real
+failure from BigQuery (nothing sampled); the judge's scoring
+dimensions and golden matching; the CI gate on the PR (full golden
+evals + load test); regression extraction; the registry+PR flow; and
+the scheduled production run, which uses full settings by default.
 
 ## Run the Production Loop Demo
 
@@ -892,6 +948,90 @@ they serve V0 immediately, and prints the verification. Flags:
 `--baseline stub|two-defect` (default `two-defect`) and
 `--skip-redeploy` (agents pick up V0 on their next restart instead).
 
+## Quality Monitoring & Automated Evolution
+
+After deployment, a closed-loop quality pipeline monitors agent
+performance and evolves skills automatically from production data.
+Two agents divide the work: a **daily sentinel** that monitors, and a
+**healer** that evolves — on demand, on an issue threshold, or on
+its scheduled tick.
+
+### Quality Agent -- Daily Sentinel
+
+Runs daily via Cloud Scheduler. Queries BigQuery for recent sessions
+(filtered by `agent_version` from SKILL.md frontmatter), scores each
+with an LLM judge against Golden Q&A ground truth, and creates GitHub
+issues for failures.
+
+```bash
+# Deploy
+bash agents/workflow/quality_agent/deploy.sh
+
+# Run manually
+gcloud run jobs execute quality-agent --project=$PROJECT_ID --region=$REGION
+
+# Test locally (dry-run writes issues as .md files, no GitHub)
+./agents/workflow/quality_agent/run_local.sh --dry-run --period 1d
+```
+
+The Quality Agent detects three types of production failures:
+
+| Type | How detected | Action |
+|------|-------------|--------|
+| **Regression** -- questions that used to work now fail | CA Data Agent finds similar past sessions that were meaningful | `[URGENT]` label for immediate attention |
+| **Persistent gap** -- known topics handled poorly | LLM Judge with Golden Q&A ground truth scores unhelpful/partial | Issues accumulate --> Skill Evolution Agent |
+| **New topic** -- users asking about unanticipated things | CA Data Agent finds no historical sessions + no Golden Q&A match | `new-topic` --> human decision |
+
+New-topic issues require a human decision: add the capability (create
+Golden Q&A entries, add tool/data support, re-run evolution) or mark
+out-of-scope (add to `agent_context.json` scope_decisions).
+
+### Skill Evolution Agent -- Weekly Healer
+
+Fires weekly from Cloud Scheduler, and each new quality issue also
+triggers a threshold check via
+`.github/workflows/skill_evolution_on_issue.yml`. When enough issues
+have accumulated (default: 10), it queries BigQuery directly for
+sessions tagged with the current `agent_version` -- always fresh data,
+no intermediate downloads.
+
+```bash
+# Deploy
+bash agents/workflow/skill_evolution_agent/deploy.sh
+
+# Run batch evolution manually
+gcloud run jobs execute skill-evolution-agent --project=$PROJECT_ID --region=$REGION
+
+# Run locally
+uv run python agents/workflow/skill_evolution_agent/main.py --batch
+```
+
+The pipeline: query BQ by version --> score with LLM judge -->
+parallel analyst fleet --> consolidate patches --> evolved SKILL.md -->
+registry revision + PR with before/after quality table.
+
+### Version-Aware Filtering
+
+Every BQ event carries the agent's skill version (read from SKILL.md
+frontmatter). The quality agent filters sessions by version so it only
+analyzes traffic from the currently deployed skill -- preventing
+cross-version data contamination after an evolution.
+
+### Why Separate Monitoring and Healing?
+
+| | Quality Agent (sentinel) | Skill Evolution Agent (healer) |
+|---|---|---|
+| **Frequency** | Daily | Weekly (or threshold-triggered) |
+| **Cost** | Low (LLM judge on ~50 sessions) | High (100 analysts + consolidation) |
+| **Output** | GitHub issues (observation) | GitHub PR (action) |
+| **Failure mode** | Missed problem (retry tomorrow) | Bad evolution (gate refuses, or revert PR) |
+
+Configuration in `eval/data/quality_config.json`:
+- `evolution.min_open_issues`: how many quality issues before batch
+  evolution triggers (default: 10)
+
+See [`docs/DESIGN.md`](docs/DESIGN.md) for the full architecture.
+
 ## Plug In Your Own Agent
 
 The skill evolution pipeline is agent-agnostic. To evolve skills for
@@ -997,120 +1137,14 @@ LLM judge. Re-run whenever your golden evals change.
 bash scripts/demo/skill_evolution/run_demo.sh --quick
 ```
 
-Or run each step manually:
-
-```bash
-RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution"
-mkdir -p "$RUN_DIR"
-
-# Generate traffic against your agent
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
-    --from-file eval/data/questions/demo_quick.json \
-    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
-
-# Score conversations
-bash scripts/demo/skill_evolution/score.sh \
-    -i "$RUN_DIR/v0_traffic.json" \
-    -o "$RUN_DIR/v0_quality_report.json" --report
-
-# Evolve via ADK agent (auto-selects candidates based on quality)
-uv run python agents/workflow/skill_evolution_agent/main.py \
-    --report "$RUN_DIR/v0_quality_report.json"
-
-# Compare
-python eval/scoring/score_conversations.py --compare \
-    "$RUN_DIR/v0_quality_report.json:V0" \
-    "$RUN_DIR/v1_quality_report.json:V1"
-```
+Or run the six bootstrap stages one at a time against your agent —
+the exact commands are in
+[Bootstrap: V0 to production-ready](#bootstrap-v0-to-production-ready);
+swap the questions file for yours.
 
 For full input schemas and pipeline details, see
 [Inputs, Setup, and Pipeline](docs/skill-evolution/ALGORITHM.md#inputs-setup-and-pipeline)
 in the algorithm reference.
-
-## Quality Monitoring & Automated Evolution
-
-After deployment, a closed-loop quality pipeline monitors agent
-performance and evolves skills automatically from production data.
-Two agents divide the work: a **daily sentinel** that monitors, and a
-**healer** that evolves — on demand, on an issue threshold, or on
-its scheduled tick.
-
-### Quality Agent -- Daily Sentinel
-
-Runs daily via Cloud Scheduler. Queries BigQuery for recent sessions
-(filtered by `agent_version` from SKILL.md frontmatter), scores each
-with an LLM judge against Golden Q&A ground truth, and creates GitHub
-issues for failures.
-
-```bash
-# Deploy
-bash agents/workflow/quality_agent/deploy.sh
-
-# Run manually
-gcloud run jobs execute quality-agent --project=$PROJECT_ID --region=$REGION
-
-# Test locally (dry-run writes issues as .md files, no GitHub)
-./agents/workflow/quality_agent/run_local.sh --dry-run --period 1d
-```
-
-The Quality Agent detects three types of production failures:
-
-| Type | How detected | Action |
-|------|-------------|--------|
-| **Regression** -- questions that used to work now fail | CA Data Agent finds similar past sessions that were meaningful | `[URGENT]` label for immediate attention |
-| **Persistent gap** -- known topics handled poorly | LLM Judge with Golden Q&A ground truth scores unhelpful/partial | Issues accumulate --> Skill Evolution Agent |
-| **New topic** -- users asking about unanticipated things | CA Data Agent finds no historical sessions + no Golden Q&A match | `new-topic` --> human decision |
-
-New-topic issues require a human decision: add the capability (create
-Golden Q&A entries, add tool/data support, re-run evolution) or mark
-out-of-scope (add to `agent_context.json` scope_decisions).
-
-### Skill Evolution Agent -- Weekly Healer
-
-Fires weekly from Cloud Scheduler, and each new quality issue also
-triggers a threshold check via
-`.github/workflows/skill_evolution_on_issue.yml`. When enough issues
-have accumulated (default: 10), it queries BigQuery directly for
-sessions tagged with the current `agent_version` -- always fresh data,
-no intermediate downloads.
-
-```bash
-# Deploy
-bash agents/workflow/skill_evolution_agent/deploy.sh
-
-# Run batch evolution manually
-gcloud run jobs execute skill-evolution-agent --project=$PROJECT_ID --region=$REGION
-
-# Run locally
-uv run python agents/workflow/skill_evolution_agent/main.py --batch
-```
-
-The pipeline: query BQ by version --> score with LLM judge -->
-parallel analyst fleet --> consolidate patches --> evolved SKILL.md -->
-registry revision + PR with before/after quality table.
-
-### Version-Aware Filtering
-
-Every BQ event carries the agent's skill version (read from SKILL.md
-frontmatter). The quality agent filters sessions by version so it only
-analyzes traffic from the currently deployed skill -- preventing
-cross-version data contamination after an evolution.
-
-### Why Separate Monitoring and Healing?
-
-| | Quality Agent (sentinel) | Skill Evolution Agent (healer) |
-|---|---|---|
-| **Frequency** | Daily | Weekly (or threshold-triggered) |
-| **Cost** | Low (LLM judge on ~50 sessions) | High (100 analysts + consolidation) |
-| **Output** | GitHub issues (observation) | GitHub PR (action) |
-| **Failure mode** | Missed problem (retry tomorrow) | Bad evolution (gate refuses, or revert PR) |
-
-Configuration in `eval/data/quality_config.json`:
-- `evolution.min_open_issues`: how many quality issues before batch
-  evolution triggers (default: 10)
-
-See [`docs/DESIGN.md`](docs/DESIGN.md) for the full architecture.
 
 ## CI/CD and GitHub Integration
 
