@@ -270,6 +270,7 @@ def run_quality_report(
     time_period: str = "6h",
     output_dir: str | None = None,
     agent_version: str | None = None,
+    app_name: str | None = None,
 ) -> dict:
     """Run a quality report on recent agent sessions from BigQuery.
 
@@ -286,6 +287,14 @@ def run_quality_report(
         output_dir: If set, save the quality report JSON to this directory.
         agent_version: If set, filter sessions to this agent version
             (matches custom_tags.agent_version in BigQuery).
+        app_name: Filter sessions to one agent app (BigQuery `agent`
+            column). Defaults to QUALITY_APP_NAME env or
+            'knowledge_supervisor' — the root agent's sessions are the
+            unit of judgment; A2A sub-agents log their own session rows
+            (in a live table they are ~40-45% of all sessions), and
+            judging those fragments out of conversational context both
+            inflates cost and pollutes the failure counts. Pass "" to
+            disable the filter.
 
     Returns:
         A dict with 'summary' (counts, rates, per_agent breakdown),
@@ -313,12 +322,17 @@ def run_quality_report(
         if agent_version:
             custom_labels = {"agent_version": agent_version}
 
+        if app_name is None:
+            app_name = os.getenv("QUALITY_APP_NAME", "knowledge_supervisor")
+        app_name = app_name or None  # "" disables the filter
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             result = pool.submit(
                 run_evaluation,
                 time_range=time_period,
                 limit=100,
                 custom_labels=custom_labels,
+                app_name=app_name,
             ).result()
         report = result["report"]
         resolved_map = result["resolved_map"]
