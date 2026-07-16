@@ -20,8 +20,8 @@ This repo is a complete, deployed demonstration of an agent system that
 improves itself from its own production traffic — with humans approving
 every change.
 
-**The product side** is an HR assistant built as a team of four named
-agents:
+**The product side — enterprise agents** (`agents/enterprise/`, they
+serve end users):
 
 - **`knowledge_supervisor`** — the root agent, deployed on **Vertex AI
   Agent Engine**. It owns the conversation: receives every employee
@@ -35,13 +35,30 @@ agents:
 - **`hr_calculator`** — the math specialist, also on **Cloud Run**
   behind A2A: PTO balances, working days between dates, disability
   pay. Deterministic tools, no skill to evolve.
-- **`benefits_agent`** — the benefits specialist, defined by its skill
-  document; runs in-process in the local topology and joins the
-  deployed one when its service exists.
+- **`benefits_agent`** — the benefits specialist. It exists as a skill
+  document (`agents/enterprise/benefits_agent/skill/`) with a Skill
+  Registry entry and it evolves like the others; it runs **in-process**
+  in the local topology, and the reference deployment has no Cloud Run
+  service for it yet (the supervisor wires it in automatically once one
+  is deployed — tracked in the backlog).
 
 Employees reach the supervisor through a Gemini Enterprise chat UI (or
 any API client); the specialists are implementation details they never
 see.
+
+**The operations side — workflow agents** (`agents/workflow/`, they
+test, monitor, and evolve the enterprise agents; users never talk to
+them):
+
+- **`traffic_generator`** — produces synthetic traffic: question sets,
+  scripted correction pushback, and a golden-aware adversarial user
+  simulator. Local CLI or Cloud Run Job.
+- **`quality_agent`** — the daily sentinel (Cloud Run Job, 08:00 UTC
+  scheduler): judges recent sessions from BigQuery and files labeled
+  GitHub issues for failures.
+- **`skill_evolution_agent`** — the healer (Cloud Run Job; on demand,
+  issue-threshold, or scheduled tick): runs the learn-propose pipeline
+  described below and opens the PR.
 
 **The learning side** is a closed loop around that assistant:
 
@@ -120,6 +137,13 @@ revision, and **GitHub** holds the review gate between the two.
             |  SKILL.md +    |  |  (deterministic  |
             |  lookup tools  |  |   date/PTO math) |
             +--------+-------+  +------------------+
+                     |
+            +--------+---------------+
+            |  Benefits Agent        |   skill-only today:
+            |  SKILL.md (in-process  |   in-process locally,
+            |  locally; Cloud Run    |   Cloud Run service
+            |  service = backlog)    |   pending
+            +--------+---------------+
                      |
                      v
         +---------------------------+
@@ -402,6 +426,17 @@ Golden Q&A feeds three consumers:
   produces
 
 ### Bootstrap: V0 to production-ready
+
+**Prerequisites — one-time setup, before any cycle.** The six steps
+below assume a working environment. Set it up once:
+
+| Path | One-time setup | Where |
+|---|---|---|
+| Local (this section) | GCP project with Vertex AI enabled, `gcloud auth login` + `gcloud auth application-default login`, `uv`, `cp .env.example .env` (set `PROJECT_ID`), then `bash scripts/local/local_setup.sh` | [Run the Demo Locally -> Prerequisites](#run-the-demo-locally) |
+| Deployed (GCP loop) | empty project + empty repo -> infra -> CI -> deploy | [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md), Parts A and B |
+
+Everything after this line is the **repeatable evolution cycle** — run
+it as many times as you like without touching setup again.
 
 The whole cycle in one command (local, ~15 min quick / ~1-2h full):
 
