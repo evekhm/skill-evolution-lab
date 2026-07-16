@@ -14,6 +14,47 @@ flowing through a pull request.
 > multi-agent stack, on a schedule, with CI gates and one-command
 > rollback.
 
+## What This System Does
+
+This repo is a complete, deployed demonstration of an agent system that
+improves itself from its own production traffic — with humans approving
+every change.
+
+**The product side** is an HR assistant: employees ask a supervisor
+agent about PTO, sick leave, expenses, benefits, or "how many working
+days until my leave starts", and the supervisor fans the question out
+to specialist agents and synthesizes one answer. It runs on Vertex AI
+Agent Engine and Cloud Run, with a chat UI available through Gemini
+Enterprise.
+
+**The learning side** is a closed loop around that assistant:
+
+1. **Observe** — every conversation turn is logged to BigQuery,
+   tagged with the skill version that produced it.
+2. **Detect** — a daily quality agent scores recent sessions against
+   curated Golden Q&A and files GitHub issues for failures.
+3. **Learn** — a weekly evolution job reads the failing traces,
+   dispatches a fleet of analyst agents to diagnose each failure,
+   consolidates their patches into candidate `SKILL.md` documents, and
+   keeps only the candidate that empirically scores best on replayed
+   traffic.
+4. **Propose** — the winning skills are published to the Skill
+   Registry as new revisions and arrive as a pull request. CI
+   hard-tests the evolved skill (routing, fan-out, quality budgets);
+   candidates that gamed their training score die here.
+5. **Activate** — a human merges the PR; the deploy workflow
+   reconciles git with the Skill Registry and redeploys, and the
+   agents fetch the new revision at startup. Rollback to the baseline
+   is one command.
+
+The demo ships with a deliberately flawed V0 skill (baked facts that
+block the agent's own lookup tool, plus "accept the user's figure"
+parroting on corrections) so you can watch the loop find and repair
+real, reproducible defects end to end. Behavior lives in `SKILL.md`
+documents — versioned, diffable, PR-reviewable — so "the agent
+learned something" is always a concrete artifact a human signed off
+on.
+
 ## What are Skills?
 
 A **skill** is a structured markdown document (`SKILL.md`) that encodes
