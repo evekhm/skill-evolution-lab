@@ -130,7 +130,7 @@ gcloud run jobs deploy "$JOB_NAME" \
   --image "$IMAGE_NAME" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
-  --task-timeout=10800s \
+  --task-timeout=14400s \
   --max-retries=0 \
   --memory=2Gi \
   --set-secrets="GH_TOKEN=github-pat:latest" \

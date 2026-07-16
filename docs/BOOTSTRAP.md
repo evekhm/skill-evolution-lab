@@ -245,3 +245,8 @@ hard assertions (the skill carries version >= 1); merging it triggers
 - **Evolution job can't open a PR** — the `github-pat` secret is
   missing/expired, or the token lacks `repo` scope on this repo. Redo
   A5 + B3 step 6.
+- **Evolution job killed at its task timeout** — a full co-evolution of
+  all three skills (best-of-5 each) runs close to 3 hours; `deploy.sh`
+  sets `--task-timeout=14400s` (4h) for headroom. If the bottleneck
+  stage targets every agent and you need faster runs, lower the
+  candidate count or seed a smaller traffic window.
