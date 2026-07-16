@@ -224,6 +224,68 @@ evolved revisions stay in the append-only history.
 | Eval & Load Test Gate (`eval.yml`) | GitHub Actions | every PR and push to main |
 | Deploy to GCP (`deploy.yml`) | GitHub Actions (WIF) | merge to main |
 
+### Components in detail
+
+**Enterprise agents** (`agents/enterprise/`) — serve end users:
+
+- **knowledge_supervisor** — the root agent on Vertex AI Agent Engine.
+  Receives every user question, fans out to specialists as `AgentTool`
+  calls, and synthesizes one answer. Its thin `SKILL.md` holds routing
+  conventions. The BigQuery Analytics plugin rides here, logging every
+  event. Key files: `app/agent.py`, `app/skill/SKILL.md`.
+- **policy_agent** — company-policy specialist on Cloud Run behind an
+  A2A endpoint. Answers PTO, sick leave, remote work, expenses, and
+  holiday questions with the `lookup_company_policy` tool over the
+  policy corpus. Its `SKILL.md` is the primary evolution target — the
+  V0 baseline deliberately blocks the tool (baked facts + defer-to-HR)
+  and parrots corrections. Key files: `agent.py`, `tools.py`,
+  `skill_loader.py`, `skill/SKILL.md`.
+- **hr_calculator** — deterministic math specialist on Cloud Run:
+  PTO balances, working days for date ranges, disability pay. Pure
+  tools, no skill to evolve. Key file: `agent.py`.
+- **benefits_agent** — benefits specialist defined by its skill
+  (`skill/SKILL.md`). Runs in-process in the local topology and is
+  seeded into the Skill Registry; joins the deployed topology when a
+  service for it exists.
+
+**Workflow agents** (`agents/workflow/`) — test, monitor, and evolve
+the stack:
+
+- **traffic_generator** — produces synthetic traffic: single-turn
+  question sets, scripted multi-turn corrections (the user pushes back
+  with a wrong figure), and a Golden-Q&A-aware adversarial user
+  simulator. Targets the local supervisor or the deployed Agent Engine.
+  Key files: `main.py`, `user_simulator.py`.
+- **quality_agent** — the daily sentinel (Cloud Run Job + Scheduler).
+  Pulls recent BigQuery sessions filtered by `agent_version`, scores
+  them with the LLM judge against Golden Q&A, and files GitHub issues
+  for failures. Key files: `main.py`, `tools.py`, `quality_report.py`.
+- **skill_evolution_agent** — the weekly healer (Cloud Run Job +
+  Scheduler). One run: quality report from BigQuery → failure-count
+  gate → bottleneck attribution (which agent caused each failure) →
+  agentic analysts investigate each failure with tool access → patch
+  scoring and consolidation → best-of-N candidate skills scored on the
+  evolve set → winners pushed to the Skill Registry → PR opened. Key
+  files: `evolve.py` (core pipeline), `coevolve.py` (multi-agent
+  orchestration), `bottleneck.py`, `agentic_analyst.py`,
+  `patch_scoring.py`, `tools.py` (registry push + PR), `main.py` (CLI).
+
+**Supporting pieces:**
+
+- **`skill_loader.py`** — loads `SKILL.md` from the Skill Registry
+  (newest revision) or the packaged file; exposes the frontmatter
+  version that tags BigQuery events and drives the version-aware gate.
+- **`eval/skill_evolution/registry_sync.py`** — Skill Registry CLI:
+  `seed` (idempotent V0 publish), `push`, `revisions`, `verify-read`.
+- **`eval/scoring/`** — `score_conversations.py` (SDK scorer: turn
+  tagging, golden matching, quality report), `llm_judge.py` (the gate
+  and load-test judge), `triage_report.py` (failure taxonomy + owner
+  routing), `extract_ground_truth.py`.
+- **`eval/tests/`** — the CI gate: `test_eval.py` (routing, compound
+  fan-out, out-of-scope) and `test_load.py` (fresh-traffic quality,
+  error rate, latency budgets), both version-aware via
+  `skill_is_baseline()`.
+
 ## Bootstrap From Zero
 
 Starting with an empty GCP project and an empty GitHub repo?
@@ -418,7 +480,10 @@ all of it.
 ### Step 2: Run the setup script
 
 ```bash
-bash scripts/setup/setup_github.sh
+# GH_PAT: a classic PAT with `repo` scope (or fine-grained with
+# contents + pull-requests read/write on this repo). Without it the
+# script falls back to your gh CLI token.
+GH_PAT=<your PAT> bash scripts/setup/setup_github.sh
 ```
 
 The script detects the repo from your git remote and configures, in
@@ -430,52 +495,20 @@ order:
 | Workload Identity Federation | Creates the `github-actions` pool and OIDC provider in your GCP project, scoped to your GitHub org/user, so Actions authenticate to GCP with zero stored keys |
 | CI service account | Creates `github-actions-fixer@<project>` with the roles the workflows need (Vertex AI, BigQuery, Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Scheduler, Logging), and binds it to this repo via WIF |
 | Repo variables | Sets the Actions variables the workflows read: `PROJECT_ID`, `REGION`, `DATASET_ID`, `TABLE_ID`, `DATASET_LOCATION`, `TEST_DATASET_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
+| Bot credential | Stores `GH_PAT` as the `github-pat` secret in Secret Manager -- the evolution job clones the repo and opens PRs with it (`deploy.sh` mounts it as `GH_TOKEN`) |
+| Branch protection | main requires the Golden Eval + Load Test checks before merge |
 
 The script is idempotent -- re-run it after changing `.env` or moving
-projects.
+projects. For a bot identity on issues and PRs (actions attributed to
+an app instead of your user), additionally set up a GitHub App per
+[`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
 
-### Step 3: Store the bot credential
-
-The evolution job runs in a container without your git identity. It
-clones the repo and opens PRs with a GitHub token read from Secret
-Manager as `GH_TOKEN`:
+### Step 3: Verify
 
 ```bash
-# A classic PAT with `repo` scope (or a fine-grained token with
-# contents + pull-requests read/write on this repo)
-gcloud services enable secretmanager.googleapis.com --project=$PROJECT_ID
-printf '%s' "<YOUR_PAT>" | gcloud secrets create github-pat \
-  --project=$PROJECT_ID --data-file=-
-```
-
-`skill_evolution_agent/deploy.sh` mounts it as
-`GH_TOKEN=github-pat:latest`. For a nicer bot identity on issues and
-PRs (actions attributed to an app instead of your user), set up a
-GitHub App per [`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
-
-### Step 4: Protect main
-
-Require the eval gate before merges:
-
-```bash
-gh api -X PUT "repos/{owner}/{repo}/branches/main/protection" --input - <<'EOF'
-{
-  "required_status_checks": {
-    "strict": false,
-    "contexts": ["Golden Eval", "Load Test"]
-  },
-  "enforce_admins": false,
-  "required_pull_request_reviews": null,
-  "restrictions": null
-}
-EOF
-```
-
-### Step 5: Verify
-
-```bash
-gh variable list          # the 8 variables from step 2
-gh secret list            # empty is fine -- CI uses WIF, the job uses Secret Manager
+gh variable list          # 8 variables, PROJECT_ID = your project
+gcloud secrets describe github-pat --project=$PROJECT_ID
+gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'
 ```
 
 Open any PR: the **Eval & Load Test Gate** should start automatically,

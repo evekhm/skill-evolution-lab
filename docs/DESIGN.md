@@ -1,5 +1,11 @@
 # Design: Agent Quality Lab
 
+> **Scope note:** This design doc covers the full quality-loop vision,
+> including the reactive/remediation loop. This repo ships the skill
+> evolution loop; the reactive loop lives in the original
+> agent-quality-lab project and is described here for design context.
+
+
 Single source of truth for architecture, agent design, quality pipeline,
 and implementation status.
 

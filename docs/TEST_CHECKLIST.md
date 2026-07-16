@@ -16,7 +16,6 @@ python3 -c "from agents.enterprise.knowledge_supervisor.app.agent import root_ag
 # Workflow agents
 python3 -c "from agents.workflow.quality_agent.agent import root_agent, app; print('quality_agent OK')"
 python3 -c "from agents.workflow.skill_evolution_agent.agent import root_agent, app; print('skill_evolution_agent OK')"
-python3 -c "from agents.workflow.remediation_agent.agent import app; print('remediation_agent OK')"
 ```
 
 - [ ] policy_agent imports
@@ -24,7 +23,6 @@ python3 -c "from agents.workflow.remediation_agent.agent import app; print('reme
 - [ ] knowledge_supervisor imports (includes RemoteA2aAgent -- needs a2a-sdk<1.0.0)
 - [ ] quality_agent imports
 - [ ] skill_evolution_agent imports
-- [ ] remediation_agent imports
 
 ## 2. Cross-Agent Imports
 
@@ -40,14 +38,11 @@ python3 -c "from agents.enterprise.policy_agent.agent import create_agent; from 
 # skill_evolution_agent uses agent_registry.json for agent discovery
 python3 -c "from agents.workflow.quality_agent.tools import _get_agent_files; print('quality_agent registry:', _get_agent_files('policy_agent'))"
 
-# remediation_agent imports
-python3 -c "from agents.workflow.remediation_agent.agent import app; print('remediation_agent imports OK')"
 ```
 
 - [ ] eval/tests/test_eval.py imports (policy_agent + hr_calculator)
 - [ ] traffic_generator local supervisor build
 - [ ] quality_agent agent_registry resolves agent file paths
-- [ ] remediation_agent imports
 
 ## 3. Relative Path Resolution
 

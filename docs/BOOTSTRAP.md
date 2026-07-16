@@ -175,12 +175,17 @@ minutes on first run.
 > with "failed to start and cannot serve traffic". Re-run
 > `deploy_gcp.sh` — the second pass succeeds.
 
-Verify — agents must prove they serve skills from the registry:
+Verify — agents must prove they serve skills from the registry. Run the
+smoke test FIRST: the registry log line is emitted when a container
+cold-starts on its first request, so it appears after traffic, and log
+ingestion can lag a minute or two.
 
 ```bash
+bash scripts/test/smoke_test_deployed.sh
 gcloud logging read 'textPayload:"Loaded skill from registry"' \
   --project=<YOUR_PROJECT_ID> --freshness=30m --limit=4
-bash scripts/test/smoke_test_deployed.sh
+# expect lines like:
+#   Loaded skill from registry ks-policy-agent (revision <id>)
 ```
 
 ### B6. Run the e2e evolution loop

@@ -462,7 +462,6 @@ deployed skill, preventing cross-version data contamination.
 
 - [DEMO_SCRIPT.md](DEMO_SCRIPT.md) -- Full demo design with step-by-step flow
 - [RESEARCH.md](RESEARCH.md) -- Trace2Skill + AutoSkill paper analysis
-- [PRODUCTION_LOOP_PLAN.md](PRODUCTION_LOOP_PLAN.md) -- Working plan + status
   for the deployed loop (Skill Registry source of truth, scheduled evolution
   job, automatic PRs)
 - [PRODUCTION_LOOP_BLOG.md](PRODUCTION_LOOP_BLOG.md) -- Blog draft for the
