@@ -251,24 +251,18 @@ You can also deploy individually:
 
 #### 0.B.3 — Smoke test
 
-**What this does:** exercises the full serving chain end to end. The
-script discovers the deployed supervisor by display name via the
-Vertex AI REST API, sends your question to its `:streamQuery`
-endpoint, and parses the streamed events into a readable trace —
-which agent handled it, which tools were called, token counts, the
-answer, latency. A clean run proves: Agent Engine is reachable, the
-supervisor boots (and loads its skill), and responses stream back.
+Exercises the full serving chain: discovers the deployed supervisor by
+display name via the Vertex AI REST API, sends the question to its
+`:streamQuery` endpoint, and renders the streamed events as a readable
+trace. A clean run proves Agent Engine is reachable, the supervisor
+boots and loads its skill, and responses stream back.
 
 ```bash
-bash scripts/test/smoke_test_deployed.sh
 bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
-
-# Per-agent tests (talk to the Cloud Run specialists directly, over A2A)
-bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
-bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
+# (without -q it runs a default question set)
 ```
 
-**Expected output:**
+Expected:
 
 ```text
 Discovering Reasoning Engine 'knowledge-supervisor' in <PROJECT_ID>/us-central1...
@@ -288,24 +282,23 @@ Q: How many PTO days do I have left?
   Latency: 20.2s
 ```
 
-**How to read it:**
+How to read it: the `Found:` line is the reasoning-engine path (you
+paste it in 0.B.4); `Routed to: direct` means the supervisor answered
+by itself (a routed question shows the specialist's name); 20-40s per
+question is normal for the multi-agent chain. And look closely at this
+V0 sample — `Tools: (none)` yet a confident "7.6 PTO days": the number
+is invented. The deliberate V0 defect on display; the smoke test
+proves the PIPES, answer QUALITY is what Steps 1-7 fix.
 
-- `Found: projects/...` — the reasoning-engine path; you will paste
-  this in 0.B.4 for the Gemini Enterprise UI.
-- `Routed to: direct` — the supervisor answered by itself;
-  a routed question shows the specialist's name instead.
-- Latency 20–40s per question is normal for the multi-agent chain.
-- **Look closely at this V0 sample:** `Tools: (none)` yet a confident
-  "7.6 PTO days" — the number is invented. A grounded answer would
-  show tool calls (or a routed specialist). This is the deliberate V0
-  defect on display, and precisely what the evolution loop exists to
-  fix. The smoke test passing means the PIPES work; answer QUALITY is
-  what Steps 1-7 are about.
+Talk to each Cloud Run specialist directly (bypasses the supervisor;
+first fetches the A2A agent card — the skills the agent advertises to
+callers):
 
-**Expected output of the per-agent tests** (these bypass the
-supervisor and talk to each Cloud Run specialist directly, first
-fetching its A2A agent card — the card lists the skills the agent
-advertises to callers):
+```bash
+bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
+```
+
+Expected:
 
 ```text
 Discovering policy-agent in <PROJECT_ID>/us-central1...
@@ -321,6 +314,12 @@ Q: How many sick days do I get?
 You get 10 sick days per year. They do not roll over.
 ```
 
+```bash
+bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
+```
+
+Expected:
+
 ```text
 Discovering hr-calculator in <PROJECT_ID>/us-central1...
 Service URL: https://hr-calculator-<HASH>-uc.a.run.app
@@ -335,12 +334,10 @@ Q: How many PTO days do I have left?
 You have 7.6 PTO days left.
 ```
 
-Note the contrast with the supervisor sample above: hr_calculator's
-"7.6" is computed by its `calculate_pto_details` tool (deterministic
-demo data) — the same number the V0 supervisor produced WITHOUT any
-tool. Direct specialist calls are grounded; the V0 supervisor's
-shortcut is the bug.
-
+Note the contrast: hr_calculator's "7.6" is computed by its
+`calculate_pto_details` tool (deterministic demo data) — the same
+number the V0 supervisor produced WITHOUT any tool. Direct specialist
+calls are grounded; the V0 supervisor's shortcut is the bug.
 
 #### 0.B.4 — Connect Gemini Enterprise (optional)
 
