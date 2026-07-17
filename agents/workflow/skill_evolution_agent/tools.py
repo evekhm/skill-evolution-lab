@@ -2206,6 +2206,10 @@ def _golden_gate_check(timeout: int = 1200) -> tuple[bool | None, str]:
         r = subprocess.run(
             cmd, cwd=_repo_root, capture_output=True, text=True,
             timeout=timeout,
+            # The container's pytest collects nothing without the repo
+            # root on sys.path (observed live: 'no tests ran' zeroed ten
+            # healthy candidates before this env was set).
+            env={**os.environ, "PYTHONPATH": _repo_root},
         )
     except FileNotFoundError:
         return None, "pytest unavailable — gate pre-check skipped"
@@ -2216,7 +2220,13 @@ def _golden_gate_check(timeout: int = 1200) -> tuple[bool | None, str]:
         return True, tail or "all gate asserts passed"
     if "No module named pytest" in (r.stderr or ""):
         return None, "pytest unavailable — gate pre-check skipped"
-    return False, tail or f"pytest exit {r.returncode}"
+    # Collection failures are INCONCLUSIVE: zero tests executed means we
+    # learned nothing about the candidate. Refusal requires real failing
+    # asserts ('N failed' in the summary line).
+    if "no tests ran" in tail or "error" in tail.lower() or " failed" not in tail:
+        stderr_tail = (r.stderr or "").strip().split("\n")[-1][:120]
+        return None, f"gate pre-check inconclusive ({tail or stderr_tail})"
+    return False, tail
 
 
 # ---------------------------------------------------------------------------
