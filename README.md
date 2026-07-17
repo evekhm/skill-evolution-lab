@@ -438,7 +438,7 @@ below assume a working environment. Set it up once:
 
 | Path | One-time setup | Where |
 |---|---|---|
-| Local (this section) | GCP project with Vertex AI enabled, `gcloud auth login` + `gcloud auth application-default login`, `uv`, `cp .env.example .env` (set `PROJECT_ID`), then `bash scripts/local/local_setup.sh` | [Run the Demo Locally -> Prerequisites](#run-the-demo-locally) |
+| Local (this section) | GCP project with Vertex AI enabled, `gcloud auth login` + `gcloud auth application-default login`, `uv`, `cp .env.example .env` (set `PROJECT_ID`), then `bash scripts/local/local_setup.sh` | [Setup & Prerequisites](#setup--prerequisites-do-this-first) |
 | Deployed (GCP loop) | empty project + empty repo -> infra -> CI -> deploy | [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md), Parts A and B |
 
 Everything after this line is the **repeatable evolution cycle** — run
@@ -544,12 +544,17 @@ for a human decision: add the capability or mark it out-of-scope.
 See [Skill Evolution docs](docs/skill-evolution/) for the full lifecycle
 narrative and algorithm details.
 
-## Run the Demo Locally
+## Setup & Prerequisites (do this first)
 
-Run the full skill evolution pipeline on your machine. No GCP
-deployment needed -- only Vertex AI API access for Gemini models.
+Everything one-time lives here; every run section after this
+assumes it. Two paths — local needs only the first subsection,
+the GCP loop needs all of it (or just follow
+[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) top to bottom, which covers
+the same ground in strict order).
 
-### Prerequisites
+### Local path — tools, auth, environment
+
+#### Tools and auth
 
 - A Google Cloud project with Vertex AI API enabled
 - `gcloud` CLI installed and authenticated:
@@ -559,7 +564,7 @@ deployment needed -- only Vertex AI API access for Gemini models.
   ```
 - `uv` installed ([Python package manager](https://docs.astral.sh/uv/))
 
-### Step 1: Configure
+#### Configure `.env`
 
 ```bash
 cp .env.example .env
@@ -568,7 +573,7 @@ cp .env.example .env
 Edit `.env` and set `PROJECT_ID` to your GCP project ID. The rest of
 the defaults work out of the box.
 
-### Step 2: Set up environment
+#### Python environment
 
 ```bash
 bash scripts/local/local_setup.sh
@@ -577,7 +582,170 @@ bash scripts/local/local_setup.sh
 Syncs Python dependencies with `uv`, verifies GCP auth, and tests
 that all agent modules import correctly.
 
-### Step 3: Run the demo
+
+### GCP path — deploy the stack
+
+The complete ordered path from an empty GCP project and empty repo
+is **[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** — tested end to end;
+follow it top to bottom. The subsections below are the reference
+details for its two big steps.
+
+#### Deploy the stack
+
+Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
+first deploy, faster on subsequent runs.
+
+##### Step 1: GCP infrastructure
+
+```bash
+source .env
+gcloud config set project $PROJECT_ID
+bash scripts/setup/setup_gcp.sh
+```
+
+Enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
+creates the BigQuery dataset for Agent Analytics, seeds the Skill
+Registry with the V0 skills, and grants IAM permissions.
+
+##### Step 2: Deploy
+
+```bash
+bash scripts/deploy/deploy_gcp.sh
+```
+
+Deploys all components in order:
+
+| Step | Component | Time |
+|------|-----------|------|
+| 1 | policy_agent (Cloud Run) | ~3.5 min |
+| 2 | hr_calculator (Cloud Run) | ~3 min |
+| 3 | knowledge_supervisor (Agent Engine) | ~15 min |
+| 4 | traffic_generator (Cloud Run Job) | ~2.5 min |
+| 5 | quality_agent (Cloud Run Job + Scheduler) | ~3 min |
+| 6 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
+| | **Total** | **~30 min** |
+
+You can also deploy individually:
+```bash
+(cd agents/enterprise/policy_agent && ./deploy.sh)
+(cd agents/enterprise/hr_calculator && ./deploy.sh)
+(cd agents/enterprise/knowledge_supervisor && ./deploy.sh)
+```
+
+> **First deploy note:** On a fresh project, the first Agent Engine
+> deploy may fail with "failed to start and cannot serve traffic."
+> This is a known race condition -- re-run `deploy_gcp.sh` and it
+> will succeed.
+
+##### Step 3: Smoke test
+
+```bash
+bash scripts/test/smoke_test_deployed.sh
+bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
+
+# Per-agent tests
+bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
+bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
+```
+
+##### Step 4: Connect Gemini Enterprise (optional)
+
+Gemini Enterprise provides a chat UI that connects directly to the
+deployed Agent Engine -- no custom frontend needed.
+
+a. Go to [Gemini Enterprise](https://console.cloud.google.com/gemini-enterprise)
+   in the GCP Console
+b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise
+   license -- a trial works)
+c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
+d. Paste the Agent Engine ID from the deploy output:
+   ```bash
+   bash scripts/test/smoke_test_deployed.sh -q "test"  # prints the reasoning engine path
+   ```
+e. Open the app's web URL and select **HR Policy Assistant** from
+   the agent picker
+
+#### Set up the GitHub repo (CI + bot)
+
+The production loop treats GitHub as part of the runtime: CI gates
+every skill change, merges trigger deployment, and the evolution job
+opens PRs with a bot credential. One script plus two manual steps wire
+all of it.
+
+##### Step 1: Repo and prerequisites
+
+- Fork or create the repo and clone it
+- `cp .env.example .env` and set `PROJECT_ID`
+- Authenticate the GitHub CLI: `gh auth login`
+
+##### Step 2: Run the setup script
+
+```bash
+# GH_PAT: a classic PAT with `repo` scope (or fine-grained with
+# contents + pull-requests read/write on this repo). Without it the
+# script falls back to your gh CLI token.
+GH_PAT=<your PAT> bash scripts/setup/setup_github.sh
+```
+
+The script detects the repo from your git remote and configures, in
+order:
+
+| Step | What it does |
+|------|--------------|
+| Labels | Issue labels the quality agent uses (`quality`, `routing`, `hallucination`, `prompt-gap`, `tool-error`) |
+| Workload Identity Federation | Creates the `github-actions` pool and OIDC provider in your GCP project, scoped to your GitHub org/user, so Actions authenticate to GCP with zero stored keys |
+| CI service account | Creates `github-actions-fixer@<project>` with the roles the workflows need (Vertex AI, BigQuery, Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Scheduler, Logging), and binds it to this repo via WIF |
+| Repo variables | Sets the Actions variables the workflows read: `PROJECT_ID`, `REGION`, `DATASET_ID`, `TABLE_ID`, `DATASET_LOCATION`, `TEST_DATASET_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
+| Bot credential | Stores `GH_PAT` as the `github-pat` secret in Secret Manager -- the evolution job clones the repo and opens PRs with it (`deploy.sh` mounts it as `GH_TOKEN`) |
+| Branch protection | main requires the Golden Eval + Load Test checks before merge |
+
+The script is idempotent -- re-run it after changing `.env` or moving
+projects. For a bot identity on issues and PRs (actions attributed to
+an app instead of your user), additionally set up a GitHub App per
+[`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
+
+##### Step 3: Verify
+
+```bash
+gh variable list          # 8 variables, PROJECT_ID = your project
+gcloud secrets describe github-pat --project=$PROJECT_ID
+gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'
+```
+
+Open any PR: the **Eval & Load Test Gate** should start automatically,
+and after `scripts/setup/setup_gcp.sh` + a deploy, merging to main
+triggers **Deploy to GCP**.
+
+### Verify everything — the 12 checks
+
+Run every verify; all must pass before you run anything.
+
+| # | Requirement | Verify with | Expect |
+|---|---|---|---|
+| 0.1 | Tools | `for t in gcloud gh uv bq jq; do command -v $t >/dev/null && echo "OK      $t" || echo "MISSING $t"; done` | five lines, all `OK` (bq ships inside the gcloud SDK) |
+| 0.2 | GCP auth + ADC | `gcloud auth list --filter=status:ACTIVE --format="value(account)"` and `gcloud auth application-default print-access-token >/dev/null && echo ADC-OK` | your account; `ADC-OK` |
+| 0.3 | GitHub auth | `gh auth status` | logged in, repo scope |
+| 0.4 | `.env` | `grep -E "^(PROJECT_ID|REGION|DATASET_ID|TABLE_ID)" .env` | your project; values match what you deployed with |
+| 0.5 | Local Python env | `bash scripts/local/local_setup.sh` | ends all-green (deps, auth, agent imports) |
+| 0.6 | Cloud Run services | `gcloud run services list --region=$REGION --format="table(metadata.name,status.conditions[0].status)"` | `policy-agent` and `hr-calculator` both `True` |
+| 0.7 | Agent Engine supervisor | `bash scripts/test/smoke_test_deployed.sh -q "How many sick days do I get?"` | a real answer; prints the reasoning-engine path |
+| 0.8 | Jobs + schedulers | `gcloud run jobs list --region=$REGION` and `gcloud scheduler jobs list --location=$REGION` | 3 jobs; `quality-agent-daily` + `skill-evolution-weekly` |
+| 0.9 | Skill Registry seeded | `source .env && uv run python eval/skill_evolution/registry_sync.py revisions --agent policy_agent` | at least 1 revision |
+| 0.10 | CI wiring | `gh variable list` and `gcloud secrets describe github-pat --project=$PROJECT_ID` | 8 vars incl. `WIF_PROVIDER`; secret exists |
+| 0.11 | Gate green on main | `gh run list --workflow "Eval & Load Test Gate" --limit 1` | latest main run `success` |
+| 0.12 | Branch protection | `gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'` | `["Golden Eval","Load Test"]` |
+
+Anything missing: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) is the
+ordered path that creates all of it.
+
+## Run the Demo Locally
+
+Run the full skill evolution pipeline on your machine. No GCP
+deployment needed -- only Vertex AI API access for Gemini models.
+
+One-time setup lives in [Setup & Prerequisites](#setup--prerequisites-do-this-first).
+
+### One command
 
 ```bash
 # Quick run: 22 questions, ~15 minutes
@@ -638,139 +806,6 @@ Each of the six pipeline stages, with its command and artifacts:
 For a narrated walkthrough with pauses, see
 [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
 
-## Run on GCP — One-Time Setup
-
-The complete ordered path from an empty GCP project and empty repo
-is **[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** — tested end to end;
-follow it top to bottom. The subsections below are the reference
-details for its two big steps.
-
-### Deploy the stack
-
-Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
-first deploy, faster on subsequent runs.
-
-#### Step 1: GCP infrastructure
-
-```bash
-source .env
-gcloud config set project $PROJECT_ID
-bash scripts/setup/setup_gcp.sh
-```
-
-Enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
-creates the BigQuery dataset for Agent Analytics, seeds the Skill
-Registry with the V0 skills, and grants IAM permissions.
-
-#### Step 2: Deploy
-
-```bash
-bash scripts/deploy/deploy_gcp.sh
-```
-
-Deploys all components in order:
-
-| Step | Component | Time |
-|------|-----------|------|
-| 1 | policy_agent (Cloud Run) | ~3.5 min |
-| 2 | hr_calculator (Cloud Run) | ~3 min |
-| 3 | knowledge_supervisor (Agent Engine) | ~15 min |
-| 4 | traffic_generator (Cloud Run Job) | ~2.5 min |
-| 5 | quality_agent (Cloud Run Job + Scheduler) | ~3 min |
-| 6 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
-| | **Total** | **~30 min** |
-
-You can also deploy individually:
-```bash
-(cd agents/enterprise/policy_agent && ./deploy.sh)
-(cd agents/enterprise/hr_calculator && ./deploy.sh)
-(cd agents/enterprise/knowledge_supervisor && ./deploy.sh)
-```
-
-> **First deploy note:** On a fresh project, the first Agent Engine
-> deploy may fail with "failed to start and cannot serve traffic."
-> This is a known race condition -- re-run `deploy_gcp.sh` and it
-> will succeed.
-
-#### Step 3: Smoke test
-
-```bash
-bash scripts/test/smoke_test_deployed.sh
-bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
-
-# Per-agent tests
-bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
-bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
-```
-
-#### Step 4: Connect Gemini Enterprise (optional)
-
-Gemini Enterprise provides a chat UI that connects directly to the
-deployed Agent Engine -- no custom frontend needed.
-
-a. Go to [Gemini Enterprise](https://console.cloud.google.com/gemini-enterprise)
-   in the GCP Console
-b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise
-   license -- a trial works)
-c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
-d. Paste the Agent Engine ID from the deploy output:
-   ```bash
-   bash scripts/test/smoke_test_deployed.sh -q "test"  # prints the reasoning engine path
-   ```
-e. Open the app's web URL and select **HR Policy Assistant** from
-   the agent picker
-
-### Set up the GitHub repo (CI + bot)
-
-The production loop treats GitHub as part of the runtime: CI gates
-every skill change, merges trigger deployment, and the evolution job
-opens PRs with a bot credential. One script plus two manual steps wire
-all of it.
-
-#### Step 1: Repo and prerequisites
-
-- Fork or create the repo and clone it
-- `cp .env.example .env` and set `PROJECT_ID`
-- Authenticate the GitHub CLI: `gh auth login`
-
-#### Step 2: Run the setup script
-
-```bash
-# GH_PAT: a classic PAT with `repo` scope (or fine-grained with
-# contents + pull-requests read/write on this repo). Without it the
-# script falls back to your gh CLI token.
-GH_PAT=<your PAT> bash scripts/setup/setup_github.sh
-```
-
-The script detects the repo from your git remote and configures, in
-order:
-
-| Step | What it does |
-|------|--------------|
-| Labels | Issue labels the quality agent uses (`quality`, `routing`, `hallucination`, `prompt-gap`, `tool-error`) |
-| Workload Identity Federation | Creates the `github-actions` pool and OIDC provider in your GCP project, scoped to your GitHub org/user, so Actions authenticate to GCP with zero stored keys |
-| CI service account | Creates `github-actions-fixer@<project>` with the roles the workflows need (Vertex AI, BigQuery, Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Scheduler, Logging), and binds it to this repo via WIF |
-| Repo variables | Sets the Actions variables the workflows read: `PROJECT_ID`, `REGION`, `DATASET_ID`, `TABLE_ID`, `DATASET_LOCATION`, `TEST_DATASET_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
-| Bot credential | Stores `GH_PAT` as the `github-pat` secret in Secret Manager -- the evolution job clones the repo and opens PRs with it (`deploy.sh` mounts it as `GH_TOKEN`) |
-| Branch protection | main requires the Golden Eval + Load Test checks before merge |
-
-The script is idempotent -- re-run it after changing `.env` or moving
-projects. For a bot identity on issues and PRs (actions attributed to
-an app instead of your user), additionally set up a GitHub App per
-[`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
-
-#### Step 3: Verify
-
-```bash
-gh variable list          # 8 variables, PROJECT_ID = your project
-gcloud secrets describe github-pat --project=$PROJECT_ID
-gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'
-```
-
-Open any PR: the **Eval & Load Test Gate** should start automatically,
-and after `scripts/setup/setup_gcp.sh` + a deploy, merging to main
-triggers **Deploy to GCP**.
-
 ## Demo Variants — What Runs, What Is Cut, and Why
 
 ### The four ways to run it
@@ -825,28 +860,10 @@ point. (Steps 2+ follow the loop and are being refined into this
 section — for now they continue in
 [Run the Production Loop Demo](#run-the-production-loop-demo).)
 
-### Step 0 — Prerequisites, each with its verification
+### Step 0 — Prerequisites
 
-Everything here is one-time. Run every verify; all must pass before
-Step 1.
-
-| # | Requirement | Verify with | Expect |
-|---|---|---|---|
-| 0.1 | Tools | `for t in gcloud gh uv bq jq; do command -v $t >/dev/null && echo "OK      $t" || echo "MISSING $t"; done` | five lines, all `OK` (bq ships inside the gcloud SDK) |
-| 0.2 | GCP auth + ADC | `gcloud auth list --filter=status:ACTIVE --format="value(account)"` and `gcloud auth application-default print-access-token >/dev/null && echo ADC-OK` | your account; `ADC-OK` |
-| 0.3 | GitHub auth | `gh auth status` | logged in, repo scope |
-| 0.4 | `.env` | `grep -E "^(PROJECT_ID|REGION|DATASET_ID|TABLE_ID)" .env` | your project; values match what you deployed with |
-| 0.5 | Local Python env | `bash scripts/local/local_setup.sh` | ends all-green (deps, auth, agent imports) |
-| 0.6 | Cloud Run services | `gcloud run services list --region=$REGION --format="table(metadata.name,status.conditions[0].status)"` | `policy-agent` and `hr-calculator` both `True` |
-| 0.7 | Agent Engine supervisor | `bash scripts/test/smoke_test_deployed.sh -q "How many sick days do I get?"` | a real answer; prints the reasoning-engine path |
-| 0.8 | Jobs + schedulers | `gcloud run jobs list --region=$REGION` and `gcloud scheduler jobs list --location=$REGION` | 3 jobs; `quality-agent-daily` + `skill-evolution-weekly` |
-| 0.9 | Skill Registry seeded | `source .env && uv run python eval/skill_evolution/registry_sync.py revisions --agent policy_agent` | at least 1 revision |
-| 0.10 | CI wiring | `gh variable list` and `gcloud secrets describe github-pat --project=$PROJECT_ID` | 8 vars incl. `WIF_PROVIDER`; secret exists |
-| 0.11 | Gate green on main | `gh run list --workflow "Eval & Load Test Gate" --limit 1` | latest main run `success` |
-| 0.12 | Branch protection | `gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'` | `["Golden Eval","Load Test"]` |
-
-Anything missing: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) is the
-ordered path that creates all of it.
+Step 0 IS the [Setup & Prerequisites](#setup--prerequisites-do-this-first)
+section — run its 12 verification checks; all green means Step 0 is done.
 
 ### Step 1 — The starting point (defined, verifiable)
 
