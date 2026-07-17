@@ -816,6 +816,81 @@ dimensions and golden matching; the CI gate on the PR (full golden
 evals + load test); regression extraction; the registry+PR flow; and
 the scheduled production run, which uses full settings by default.
 
+## Guided Walkthrough — Every Step by Hand
+
+The sections above explain the system; this one is the operator's
+track: run the entire loop manually, verifying state at every step.
+Step 0 is the prerequisites gate; Step 1 defines the exact starting
+point. (Steps 2+ follow the loop and are being refined into this
+section — for now they continue in
+[Run the Production Loop Demo](#run-the-production-loop-demo).)
+
+### Step 0 — Prerequisites, each with its verification
+
+Everything here is one-time. Run every verify; all must pass before
+Step 1.
+
+| # | Requirement | Verify with | Expect |
+|---|---|---|---|
+| 0.1 | Tools | `gcloud version && gh --version && uv --version && bq version && jq --version` | five version strings |
+| 0.2 | GCP auth + ADC | `gcloud auth list --filter=status:ACTIVE --format="value(account)"` and `gcloud auth application-default print-access-token >/dev/null && echo ADC-OK` | your account; `ADC-OK` |
+| 0.3 | GitHub auth | `gh auth status` | logged in, repo scope |
+| 0.4 | `.env` | `grep -E "^(PROJECT_ID|REGION|DATASET_ID|TABLE_ID)" .env` | your project; values match what you deployed with |
+| 0.5 | Local Python env | `bash scripts/local/local_setup.sh` | ends all-green (deps, auth, agent imports) |
+| 0.6 | Cloud Run services | `gcloud run services list --region=$REGION --format="table(metadata.name,status.conditions[0].status)"` | `policy-agent` and `hr-calculator` both `True` |
+| 0.7 | Agent Engine supervisor | `bash scripts/test/smoke_test_deployed.sh -q "How many sick days do I get?"` | a real answer; prints the reasoning-engine path |
+| 0.8 | Jobs + schedulers | `gcloud run jobs list --region=$REGION` and `gcloud scheduler jobs list --location=$REGION` | 3 jobs; `quality-agent-daily` + `skill-evolution-weekly` |
+| 0.9 | Skill Registry seeded | `source .env && uv run python eval/skill_evolution/registry_sync.py revisions --agent policy_agent` | at least 1 revision |
+| 0.10 | CI wiring | `gh variable list` and `gcloud secrets describe github-pat --project=$PROJECT_ID` | 8 vars incl. `WIF_PROVIDER`; secret exists |
+| 0.11 | Gate green on main | `gh run list --workflow "Eval & Load Test Gate" --limit 1` | latest main run `success` |
+| 0.12 | Branch protection | `gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'` | `["Golden Eval","Load Test"]` |
+
+Anything missing: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) is the
+ordered path that creates all of it.
+
+### Step 1 — The starting point (defined, verifiable)
+
+The walkthrough starts from this exact state — reset to it any time:
+
+1. **BigQuery empty** (or a fresh table):
+
+   ```bash
+   source .env
+   bq query --project_id=$PROJECT_ID --use_legacy_sql=false \
+     "TRUNCATE TABLE \`$PROJECT_ID.$DATASET_ID.$TABLE_ID\`"
+   ```
+
+2. **V0 skills everywhere** — files, registry latest revision, and the
+   live agents (this restarts policy + supervisor):
+
+   ```bash
+   bash scripts/demo/skill_evolution/rollback_demo.sh
+   ```
+
+3. **No leftover evolution artifacts** (optional, for a pristine demo):
+
+   ```bash
+   gh pr list    # close old skill-evolution/* PRs you are done with
+   gh issue list --label quality   # close or keep; >=10 open will trip the dispatcher
+   ```
+
+**Verify the starting point:**
+
+```bash
+bash scripts/test/show_traces.sh          # expect: zero rows
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+# expect V0 defect behavior: a deflection ("contact HR") — the flaw the
+# loop exists to fix. If you get a grounded $75/day answer, an evolved
+# revision is still live: re-run the rollback.
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+# expect: fresh registry-read lines from the restarted agents
+```
+
+State captured: empty traces, flawed V0 serving, registry history
+preserved (rollback republishes V0 as the NEWEST revision; evolved
+revisions stay behind it). You are at the top of the loop.
+
 ## Run the Production Loop Demo
 
 The production loop is the deployed version of skill evolution
