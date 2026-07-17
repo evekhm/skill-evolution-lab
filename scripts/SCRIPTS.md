@@ -91,6 +91,7 @@ bash scripts/demo/skill_evolution/score.sh -i eval/runs/.../traffic.json
 | `smoke_test_deployed.sh` | Smoke test deployed agents via REST API (discovers the Reasoning Engine, sends queries) |
 | `quality_report.sh` | Runs quality evaluation on recent agent sessions from BigQuery using the LLM judge |
 | `verify_questions.sh` | Shell wrapper for `eval/scoring/verify_questions.py` (parses issue markdown, runs queries, judges responses) |
+| `show_traces.sh` | Inspect BigQuery traces: label distribution, or `--selector` to preview exactly what the evolution pre-flight fetches with the current env selector |
 
 ```bash
 bash scripts/test/smoke_test_deployed.sh -q "How many PTO days left?"

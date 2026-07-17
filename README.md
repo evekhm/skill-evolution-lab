@@ -369,7 +369,7 @@ Every stage of the loop, who runs it, and how to watch it live:
 | Stage | Actor (code) | Trigger | Reads | Writes | Watch it |
 |---|---|---|---|---|---|
 | Serve | `knowledge_supervisor` (Agent Engine) + `policy_agent`/`hr_calculator` (Cloud Run, A2A) | user / API call | Skill Registry (SKILL.md at startup), tools | the answer | `bash scripts/test/smoke_test_deployed.sh` |
-| Observe | BigQuery Analytics plugins (in each agent) | every event | — | `agent_logs.agent_events`, tagged version + labels | `bq query` on `agent_events` grouped by `agent_version` |
+| Observe | BigQuery Analytics plugins (in each agent) | every event | — | `agent_logs.agent_events`, tagged version + labels | `bash scripts/test/show_traces.sh` (label distribution / selector preview) |
 | Detect | `quality_agent` (Cloud Run Job) | daily 08:00 UTC scheduler, or `gcloud run jobs execute quality-agent` | BQ window, golden eval spec | quality report (GCS) + labeled GitHub issues | `gh issue list`; job logs |
 | Learn | `skill_evolution_agent` (Cloud Run Job) | on demand / issue threshold / weekly tick | BQ traces (selector), golden spec | evolved SKILL.md candidates, scores, regression cases | the 10-step table in [Demo Variants](#demo-variants--what-runs-what-is-cut-and-why) |
 | Propose | same job, final stage | end of a successful run | run artifacts | Skill Registry revision + the PR (skill + eval cases + selector) | `gh pr list` |
@@ -790,7 +790,7 @@ same step at production settings for contrast.
 | # | Step | What happens | Input | Output (artifact) | Demo time | Full time | Verify |
 |---|---|---|---|---|---|---|---|
 | 1 | Container start | Cloud Run provisions the job image | — | execution id | ~2 min | ~2 min | `gcloud run jobs executions list --job=skill-evolution-agent` |
-| 2 | BQ pre-flight | LLM-judges recent root-agent sessions from `agent_events` (app/version/label-filtered) | BigQuery window (`EVAL_TIME_PERIOD`, selector) | `v0_quality_report.json` + `trace_selector.json` in the run dir | ~2.5 min | ~3-15 min | job log line `Pre-flight quality report from BigQuery: N sessions` |
+| 2 | BQ pre-flight | LLM-judges recent root-agent sessions from `agent_events` (app/version/label-filtered) | BigQuery window (`EVAL_TIME_PERIOD`, selector) | `v0_quality_report.json` + `trace_selector.json` in the run dir | ~2.5 min | ~3-15 min | BEFORE the run: `bash scripts/test/show_traces.sh --selector` previews the exact slice; during: job log `Pre-flight quality report from BigQuery: N sessions` |
 | 3 | Evolution gate | Proceed only if failures >= threshold | the report | go / no-go log line | seconds | seconds | log: `should_evolve: True, failures: N` |
 | 4 | Bottleneck attribution | Classifies each failure to the responsible agent | failures | recommendation | **skipped** (target named on the CLI — classifying would re-derive the answer) | ~5 min | log: `Skipped classification: EVOLUTION_TARGET_AGENTS=...` |
 | 5 | Analyst fleet | One agent per failure investigates the trace (tool access) and proposes a patch | failure trajectories | patch list (`3*_...` artifacts) | ~1 min | ~6 min | log: `[k/N] [error] ... -> patch` |
@@ -976,6 +976,16 @@ uv run python -m agents.workflow.traffic_generator.main \
 # (the run prints its run_id label)
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
   --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
+```
+
+**Verify before you evolve** — preview exactly what the pre-flight
+will fetch (same env vars the job reads), or see the label
+distribution of everything in the table:
+
+```bash
+bash scripts/test/show_traces.sh                # label distribution
+EVOLUTION_TRACE_LABELS=run_id=<id> EVAL_TIME_PERIOD=24h \
+  bash scripts/test/show_traces.sh --selector   # the exact slice, with sample sessions
 ```
 
 The selector (window, version, labels, app) is written to the run
@@ -1236,8 +1246,13 @@ deployed stack consistent:
   registry already carries that exact revision), then rebuilds and
   redeploys all components.
 - **Evolution on issue** (`.github/workflows/skill_evolution_on_issue.yml`)
-  -- each new quality issue triggers a threshold check that can start
-  a batch evolution run.
+  -- each new quality issue triggers a dispatcher: the runner counts
+  open `quality` issues against `EVOLUTION_MIN_OPEN_ISSUES` (repo var,
+  default 10) and at the threshold dispatches the skill-evolution-agent
+  Cloud Run job (async, via WIF), commenting the issue either way.
+  Proven live 2026-07-17: the daily quality agent filed issues at
+  08:00, the 10-issue threshold tripped, and the dispatcher started a
+  full evolution run with no human in the loop.
 
 Setup guides: [`docs/CI_CD_GITHUB.md`](docs/CI_CD_GITHUB.md) (Workload
 Identity Federation, repo variables, branch protection) and
