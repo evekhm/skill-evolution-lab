@@ -28,9 +28,10 @@ on:
   issues:
     types: [opened, labeled]
 
-# Only one evolution run per issue at a time
+# One dispatcher at a time, globally — a batch of freshly filed issues
+# queues here instead of racing N dispatchers side by side.
 concurrency:
-  group: evolution-issue-${{ github.event.issue.number }}
+  group: evolution-dispatch
   cancel-in-progress: false
 
 env:
@@ -73,6 +74,17 @@ jobs:
           echo "Open quality issues: ${OPEN} (threshold: ${MIN_OPEN_ISSUES})"
           if [ "${OPEN}" -lt "${MIN_OPEN_ISSUES}" ]; then
             echo "Below threshold — accumulating. No evolution run dispatched."
+            exit 0
+          fi
+          # In-flight guard: one evolution run at a time. Without this,
+          # every issue in a morning batch dispatches its own multi-hour
+          # execution (they'd all see the same >=threshold count).
+          RUNNING=$(gcloud run jobs executions list --job=skill-evolution-agent \
+            --project="${PROJECT_ID}" --region="${REGION}" --limit=10 \
+            --format="value(metadata.name,status.completionTime)" \
+            | awk -F'\t' '$2=="" {c++} END {print c+0}')
+          if [ "${RUNNING}" -gt 0 ]; then
+            echo "An evolution execution is already running (${RUNNING} in flight) — skipping dispatch."
             exit 0
           fi
           echo "Threshold met — dispatching skill-evolution-agent job (async)."
