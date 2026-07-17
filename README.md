@@ -101,7 +101,7 @@ on.
 |---|---|---|
 | Understand the system first | [Architecture](#architecture) | 10 min read |
 | See the evolution loop run on your machine (no deployment) | [Run the Demo Locally](#run-the-demo-locally) | ~15 min |
-| Stand up the full production loop on GCP from an empty project | [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md), then [Run the Production Loop Demo](#run-the-production-loop-demo) | ~90 min setup, then ~15 min per loop |
+| Stand up the full production loop on GCP from an empty project | [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md), then [Guided Walkthrough](#guided-walkthrough--every-step-by-hand) | ~90 min setup, then ~15 min per loop |
 | Point the loop at your own agent | [Plug In Your Own Agent](#plug-in-your-own-agent) | ~1 h |
 
 Both demo paths run the same algorithm; the local path trades the
@@ -438,7 +438,7 @@ below assume a working environment. Set it up once:
 
 | Path | One-time setup | Where |
 |---|---|---|
-| Local (this section) | GCP project with Vertex AI enabled, `gcloud auth login` + `gcloud auth application-default login`, `uv`, `cp .env.example .env` (set `PROJECT_ID`), then `bash scripts/local/local_setup.sh` | [Setup & Prerequisites](#setup--prerequisites-do-this-first) |
+| Local (this section) | GCP project with Vertex AI enabled, `gcloud auth login` + `gcloud auth application-default login`, `uv`, `cp .env.example .env` (set `PROJECT_ID`), then `bash scripts/local/local_setup.sh` | [Setup & Prerequisites](#step-0--setup--prerequisites) |
 | Deployed (GCP loop) | empty project + empty repo -> infra -> CI -> deploy | [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md), Parts A and B |
 
 Everything after this line is the **repeatable evolution cycle** — run
@@ -520,7 +520,7 @@ uv run python eval/scoring/score_conversations.py --compare \
 Repeat 2-6 for a V2 round (the gate keeps V2 only when it beats V1).
 For the DEPLOYED version of this cycle — real BigQuery traces, the
 Skill Registry, auto-PR — follow
-[Run the Production Loop Demo](#run-the-production-loop-demo) below;
+[Guided Walkthrough](#guided-walkthrough--every-step-by-hand) below;
 for a from-empty-project setup, [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md).
 
 Results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
@@ -544,7 +544,7 @@ for a human decision: add the capability or mark it out-of-scope.
 See [Skill Evolution docs](docs/skill-evolution/) for the full lifecycle
 narrative and algorithm details.
 
-## Setup & Prerequisites (do this first)
+## Step 0 — Setup & Prerequisites
 
 Everything one-time lives here; every run section after this
 assumes it. Two paths — local needs only the first subsection,
@@ -738,12 +738,254 @@ Run every verify; all must pass before you run anything.
 Anything missing: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) is the
 ordered path that creates all of it.
 
+## Guided Walkthrough — Every Step by Hand
+
+The sections above explain the system; this one is the operator's
+track: run the entire loop manually, verifying state at every step.
+Step 0 is the section above. From here every action is the next
+numbered step, through to rollback.
+
+### Step 1 — The starting point (defined, verifiable)
+
+The walkthrough starts from this exact state — reset to it any time:
+
+1. **BigQuery empty** (or a fresh table):
+
+   ```bash
+   source .env
+   bq query --project_id=$PROJECT_ID --use_legacy_sql=false \
+     "TRUNCATE TABLE \`$PROJECT_ID.$DATASET_ID.$TABLE_ID\`"
+   ```
+
+2. **V0 skills everywhere** — files, registry latest revision, and the
+   live agents (this restarts policy + supervisor):
+
+   ```bash
+   bash scripts/demo/skill_evolution/rollback_demo.sh
+   ```
+
+3. **No leftover evolution artifacts** (optional, for a pristine demo):
+
+   ```bash
+   gh pr list    # close old skill-evolution/* PRs you are done with
+   gh issue list --label quality   # close or keep; >=10 open will trip the dispatcher
+   ```
+
+**Verify the starting point:**
+
+```bash
+bash scripts/test/show_traces.sh          # expect: zero rows
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+# expect V0 defect behavior: a deflection ("contact HR") — the flaw the
+# loop exists to fix. If you get a grounded $75/day answer, an evolved
+# revision is still live: re-run the rollback.
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+# expect: fresh registry-read lines from the restarted agents
+```
+
+State captured: empty traces, flawed V0 serving, registry history
+preserved (rollback republishes V0 as the NEWEST revision; evolved
+revisions stay behind it). You are at the top of the loop.
+
+### Step 2 — Generate real traffic (the system observes failures)
+
+```bash
+# --concurrency 2 respects the default Agent Engine quota on fresh
+# projects (90 requests/min; the generator also backs off on quota errors)
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_corrections.json --multi-turn --concurrency 2
+```
+
+Drives questions through the deployed Agent Engine supervisor (omit
+`--local` for the deployed path). Every turn is logged to the BigQuery
+`agent_events` table by the Agent Analytics plugin, tagged with the
+skill version from the frontmatter (`custom_tags.agent_version`). The
+corrections file runs multi-turn: the user pushes back with a wrong
+figure, which is how parroting becomes observable in the traces.
+
+### Step 3 — Run the evolution job (learn + propose)
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait
+```
+
+The manual trigger above is the primary way to drive a demo. The same
+job also has a scheduled tick (default: Mondays 09:00 UTC; set any
+cadence at deploy time with `EVOLUTION_SCHEDULE="*/30 * * * *"`) and an
+issue-threshold trigger — cadence is deployment policy, never a
+property of the loop. A full agent-decided run
+(3 skills, best-of-5, 55-question validation per candidate) takes
+~3 hours; for a demo-speed run (~1h) scope it to one agent:
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
+```
+
+Inside one run:
+
+| Stage | What happens |
+|-------|--------------|
+| Pre-flight | Builds a quality report from real BigQuery traces (`QUALITY_SOURCE=bigquery`); falls back to generated traffic below `MIN_SESSIONS` |
+| Gate | Proceeds only when there are enough failures to learn from |
+| Bottleneck | Classifies each failure by source agent and picks which skill(s) to evolve |
+| Evolution | Error analysts study the failures, propose patches, and best-of-N candidate skills are scored on the evolve set |
+| Publish | The winning skills are pushed to the Skill Registry as new revisions |
+| Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge |
+| PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) |
+
+### Step 4 — Review the PR (learning as an artifact)
+
+The PR body carries the baseline quality numbers; the diff is the
+evolved skill plus any regression cases extracted from failures this
+skill resolved (they parametrize straight into the gate tests, so the
+PR's own CI run already exercises them). CI runs the Eval & Load Test Gate on it, and the
+gate is version-aware: skills at version 0 are held to baseline
+expectations, while an evolved skill (version >= 1) must pass the full
+routing, fan-out, and quality assertions.
+
+The gate has teeth. In live runs, evolved supervisor skills repeatedly
+scored 78-86% on the evolve set by copying observed facts into their
+own summary and answering directly -- which broke the routing contract,
+so the gate refused them. A refused candidate stays in the registry
+history and in the PR record; the next evolution round learns from a
+wider window.
+
+**What a refusal looks like on GitHub.** The Actions tab shows a red
+"Eval & Load Test Gate" run on the PR's `skill-evolution/*` branch, and
+branch protection blocks the merge. That red run is the point: it is
+the audit record of why a skill was denied deployment. Close the PR to
+retire it (the red run stays in history), or fix and push to the PR
+branch to re-adjudicate. Red on main, by contrast, is always a real
+problem -- with one caveat: the gate shares the project's model quota
+with deploys and evolution jobs, so a gate run that overlaps one can
+fail on RESOURCE_EXHAUSTED; re-run it once the project is quiet.
+
+**Two layers keep refused-class skills in check:**
+
+- **In-run pre-check** -- when the evolution job scores a supervisor
+  candidate, it runs the same routing/fan-out asserts the gate will run
+  on the PR (`score_candidate` -> `_golden_gate_check`). A candidate
+  that fails has its score zeroed, so best-of-N selection drops it
+  before a PR ever opens.
+- **CI gate on the PR** -- the independent adjudication, version-aware:
+  evolved skills (version >= 1) face the full hard assertions.
+
+**Scoping a run is binding.** `--mode <agent>`, `--rounds N`, and
+`--candidates N` are enforced at the tool layer (env vars
+`EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
+`EVOLUTION_CANDIDATES`), so the orchestrating agent can neither widen
+the target set, add rounds, nor grow the candidate pool beyond what
+you asked for.
+
+### Choosing which traces to evolve on (labels)
+
+Every BigQuery event carries `custom_tags` — but WHO stamps them
+depends on who logs the event, because plugin tags are fixed at agent
+startup:
+
+- **Deployed traffic** (through Agent Engine) is logged by the
+  *agents'* plugins: `agent_version` (skill frontmatter) +
+  `sw_version` (git sha) + whatever `TRACE_LABELS` the deploy set.
+  Per-run labels cannot be attached from the outside; slice deployed
+  traffic by version + time window (or redeploy with a label).
+- **Local-runner traffic** (`--local`, also used by candidate scoring)
+  is logged by the *generator's* plugin, which adds
+  `traffic_source=generator` and a per-invocation `run_id`
+  (verified live: seed -> `run_id` queryable in BigQuery ->
+  `--trace-labels run_id=...` selects exactly that slice). Add your
+  own with `TRACE_LABELS="k=v,k2=v2"`.
+
+The evolution job selects its input slice with the same vocabulary:
+
+```bash
+# Re-run the scheduled job on demand (default selector: current version)
+gcloud scheduler jobs run skill-evolution-weekly --location $REGION
+
+# Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
+# (the run prints its run_id label)
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
+```
+
+**Verify before you evolve** — preview exactly what the pre-flight
+will fetch (same env vars the job reads), or see the label
+distribution of everything in the table:
+
+```bash
+bash scripts/test/show_traces.sh                # label distribution
+EVOLUTION_TRACE_LABELS=run_id=<id> EVAL_TIME_PERIOD=24h \
+  bash scripts/test/show_traces.sh --selector   # the exact slice, with sample sessions
+```
+
+The selector (window, version, labels, app) is written to the run
+directory and printed in the PR body, so every evolved skill records
+exactly which traces taught it. This replaces per-round tables: one
+table, label-sliced, and longitudinal quality-by-version queries stay
+intact.
+
+### Step 5 — Merge to activate
+
+```bash
+gh pr merge <PR_NUMBER> --merge
+
+# 1. CI ran and is green
+gh run list --workflow "Deploy to GCP" --limit 1
+# 2. Registry sync reconciled the merged skill (SKIP = job already pushed it)
+gh run view <run-id> --log | grep -E "SKIP|UPDATE|CREATE"
+# 3. Agents serve the merged revision
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+# 4. A question V0 deflected now gets a grounded answer
+bash scripts/test/smoke_test_deployed.sh
+```
+
+Merging triggers `deploy.yml`: it re-seeds the registry from the merged
+`SKILL.md` (normally a SKIP, because the job already pushed that exact
+revision -- the SKIP is the git-registry reconciliation proof), then
+redeploys the agents, which fetch the merged revision at startup.
+
+### Step 6 — Verify the fix (the payoff)
+
+The question that deflected in Step 1 now gets the grounded answer:
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+# Step 1 (V0): "...please contact HR"
+# Now (v1):    "$75/day during business travel..."
+```
+
+Also confirm the agents fetched the merged revision:
+
+```bash
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+```
+
+### Step 7 — Roll back (back to the Step 1 state)
+
+```bash
+bash scripts/demo/skill_evolution/rollback_demo.sh
+```
+
+Resets the `SKILL.md` files to V0, republishes V0 to the Skill Registry
+as the newest revision (the registry is append-only, so the evolved
+revisions stay in history), restarts the policy agent and supervisor so
+they serve V0 immediately, and prints the verification. Flags:
+`--baseline stub|two-defect` (default `two-defect`) and
+`--skip-redeploy` (agents pick up V0 on their next restart instead).
+
 ## Run the Demo Locally
 
 Run the full skill evolution pipeline on your machine. No GCP
 deployment needed -- only Vertex AI API access for Gemini models.
 
-One-time setup lives in [Setup & Prerequisites](#setup--prerequisites-do-this-first).
+One-time setup lives in [Setup & Prerequisites](#step-0--setup--prerequisites).
 
 ### One command
 
@@ -850,275 +1092,6 @@ failure from BigQuery (nothing sampled); the judge's scoring
 dimensions and golden matching; the CI gate on the PR (full golden
 evals + load test); regression extraction; the registry+PR flow; and
 the scheduled production run, which uses full settings by default.
-
-## Guided Walkthrough — Every Step by Hand
-
-The sections above explain the system; this one is the operator's
-track: run the entire loop manually, verifying state at every step.
-Step 0 is the prerequisites gate; Step 1 defines the exact starting
-point. (Steps 2+ follow the loop and are being refined into this
-section — for now they continue in
-[Run the Production Loop Demo](#run-the-production-loop-demo).)
-
-### Step 0 — Prerequisites
-
-Step 0 IS the [Setup & Prerequisites](#setup--prerequisites-do-this-first)
-section — run its 12 verification checks; all green means Step 0 is done.
-
-### Step 1 — The starting point (defined, verifiable)
-
-The walkthrough starts from this exact state — reset to it any time:
-
-1. **BigQuery empty** (or a fresh table):
-
-   ```bash
-   source .env
-   bq query --project_id=$PROJECT_ID --use_legacy_sql=false \
-     "TRUNCATE TABLE \`$PROJECT_ID.$DATASET_ID.$TABLE_ID\`"
-   ```
-
-2. **V0 skills everywhere** — files, registry latest revision, and the
-   live agents (this restarts policy + supervisor):
-
-   ```bash
-   bash scripts/demo/skill_evolution/rollback_demo.sh
-   ```
-
-3. **No leftover evolution artifacts** (optional, for a pristine demo):
-
-   ```bash
-   gh pr list    # close old skill-evolution/* PRs you are done with
-   gh issue list --label quality   # close or keep; >=10 open will trip the dispatcher
-   ```
-
-**Verify the starting point:**
-
-```bash
-bash scripts/test/show_traces.sh          # expect: zero rows
-bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
-# expect V0 defect behavior: a deflection ("contact HR") — the flaw the
-# loop exists to fix. If you get a grounded $75/day answer, an evolved
-# revision is still live: re-run the rollback.
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=15m --limit=4
-# expect: fresh registry-read lines from the restarted agents
-```
-
-State captured: empty traces, flawed V0 serving, registry history
-preserved (rollback republishes V0 as the NEWEST revision; evolved
-revisions stay behind it). You are at the top of the loop.
-
-## Run the Production Loop Demo
-
-The production loop is the deployed version of skill evolution
-(see [the evolution loop](#the-evolution-loop-end-to-end) for the full
-flow): real traffic lands in BigQuery, a scheduled job evolves the
-skills, the result arrives as a pull request, and merging the PR
-activates the new skill on the live agents. The Skill Registry is the
-source of truth -- agents fetch the latest skill revision at startup,
-and every change flows through git review before it reaches them.
-
-Prerequisites: a deployed stack (previous section), `.env` sourced, and
-`gh` authenticated against your fork.
-
-### Step 1: Seed the V0 baseline
-
-```bash
-source .env
-python eval/skill_evolution/registry_sync.py seed
-python eval/skill_evolution/registry_sync.py revisions --agent policy_agent
-```
-
-Publishes each agent's `SKILL.md` to the Agent Platform Skill Registry
-(`setup_gcp.sh` also runs this). The seed is idempotent: an unchanged
-skill is skipped. The policy agent's V0 is deliberately flawed -- baked
-policy facts plus "defer to HR for anything else" block the lookup tool
-the agent already has, and "accept the user's figure" produces real
-parroting on corrections. Those defects are the raw material the loop
-will observe and repair.
-
-At startup each agent logs its skill source, which is the proof the
-registry is live:
-
-```bash
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=1h --limit=4
-```
-
-### Step 2: Generate real traffic
-
-```bash
-# --concurrency 2 respects the default Agent Engine quota on fresh
-# projects (90 requests/min; the generator also backs off on quota errors)
-uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
-uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_corrections.json --multi-turn --concurrency 2
-```
-
-Drives questions through the deployed Agent Engine supervisor (omit
-`--local` for the deployed path). Every turn is logged to the BigQuery
-`agent_events` table by the Agent Analytics plugin, tagged with the
-skill version from the frontmatter (`custom_tags.agent_version`). The
-corrections file runs multi-turn: the user pushes back with a wrong
-figure, which is how parroting becomes observable in the traces.
-
-### Step 3: Run the evolution job
-
-```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait
-```
-
-The manual trigger above is the primary way to drive a demo. The same
-job also has a scheduled tick (default: Mondays 09:00 UTC; set any
-cadence at deploy time with `EVOLUTION_SCHEDULE="*/30 * * * *"`) and an
-issue-threshold trigger — cadence is deployment policy, never a
-property of the loop. A full agent-decided run
-(3 skills, best-of-5, 55-question validation per candidate) takes
-~3 hours; for a demo-speed run (~1h) scope it to one agent:
-
-```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
-```
-
-Inside one run:
-
-| Stage | What happens |
-|-------|--------------|
-| Pre-flight | Builds a quality report from real BigQuery traces (`QUALITY_SOURCE=bigquery`); falls back to generated traffic below `MIN_SESSIONS` |
-| Gate | Proceeds only when there are enough failures to learn from |
-| Bottleneck | Classifies each failure by source agent and picks which skill(s) to evolve |
-| Evolution | Error analysts study the failures, propose patches, and best-of-N candidate skills are scored on the evolve set |
-| Publish | The winning skills are pushed to the Skill Registry as new revisions |
-| Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge |
-| PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) |
-
-### Step 4: Review the PR
-
-The PR body carries the baseline quality numbers; the diff is the
-evolved skill plus any regression cases extracted from failures this
-skill resolved (they parametrize straight into the gate tests, so the
-PR's own CI run already exercises them). CI runs the Eval & Load Test Gate on it, and the
-gate is version-aware: skills at version 0 are held to baseline
-expectations, while an evolved skill (version >= 1) must pass the full
-routing, fan-out, and quality assertions.
-
-The gate has teeth. In live runs, evolved supervisor skills repeatedly
-scored 78-86% on the evolve set by copying observed facts into their
-own summary and answering directly -- which broke the routing contract,
-so the gate refused them. A refused candidate stays in the registry
-history and in the PR record; the next evolution round learns from a
-wider window.
-
-**What a refusal looks like on GitHub.** The Actions tab shows a red
-"Eval & Load Test Gate" run on the PR's `skill-evolution/*` branch, and
-branch protection blocks the merge. That red run is the point: it is
-the audit record of why a skill was denied deployment. Close the PR to
-retire it (the red run stays in history), or fix and push to the PR
-branch to re-adjudicate. Red on main, by contrast, is always a real
-problem -- with one caveat: the gate shares the project's model quota
-with deploys and evolution jobs, so a gate run that overlaps one can
-fail on RESOURCE_EXHAUSTED; re-run it once the project is quiet.
-
-**Two layers keep refused-class skills in check:**
-
-- **In-run pre-check** -- when the evolution job scores a supervisor
-  candidate, it runs the same routing/fan-out asserts the gate will run
-  on the PR (`score_candidate` -> `_golden_gate_check`). A candidate
-  that fails has its score zeroed, so best-of-N selection drops it
-  before a PR ever opens.
-- **CI gate on the PR** -- the independent adjudication, version-aware:
-  evolved skills (version >= 1) face the full hard assertions.
-
-**Scoping a run is binding.** `--mode <agent>`, `--rounds N`, and
-`--candidates N` are enforced at the tool layer (env vars
-`EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
-`EVOLUTION_CANDIDATES`), so the orchestrating agent can neither widen
-the target set, add rounds, nor grow the candidate pool beyond what
-you asked for.
-
-### Choosing which traces to evolve on (labels)
-
-Every BigQuery event carries `custom_tags` — but WHO stamps them
-depends on who logs the event, because plugin tags are fixed at agent
-startup:
-
-- **Deployed traffic** (through Agent Engine) is logged by the
-  *agents'* plugins: `agent_version` (skill frontmatter) +
-  `sw_version` (git sha) + whatever `TRACE_LABELS` the deploy set.
-  Per-run labels cannot be attached from the outside; slice deployed
-  traffic by version + time window (or redeploy with a label).
-- **Local-runner traffic** (`--local`, also used by candidate scoring)
-  is logged by the *generator's* plugin, which adds
-  `traffic_source=generator` and a per-invocation `run_id`
-  (verified live: seed -> `run_id` queryable in BigQuery ->
-  `--trace-labels run_id=...` selects exactly that slice). Add your
-  own with `TRACE_LABELS="k=v,k2=v2"`.
-
-The evolution job selects its input slice with the same vocabulary:
-
-```bash
-# Re-run the scheduled job on demand (default selector: current version)
-gcloud scheduler jobs run skill-evolution-weekly --location $REGION
-
-# Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
-uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
-# (the run prints its run_id label)
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
-```
-
-**Verify before you evolve** — preview exactly what the pre-flight
-will fetch (same env vars the job reads), or see the label
-distribution of everything in the table:
-
-```bash
-bash scripts/test/show_traces.sh                # label distribution
-EVOLUTION_TRACE_LABELS=run_id=<id> EVAL_TIME_PERIOD=24h \
-  bash scripts/test/show_traces.sh --selector   # the exact slice, with sample sessions
-```
-
-The selector (window, version, labels, app) is written to the run
-directory and printed in the PR body, so every evolved skill records
-exactly which traces taught it. This replaces per-round tables: one
-table, label-sliced, and longitudinal quality-by-version queries stay
-intact.
-
-### Step 5: Merge to activate
-
-```bash
-gh pr merge <PR_NUMBER> --merge
-
-# 1. CI ran and is green
-gh run list --workflow "Deploy to GCP" --limit 1
-# 2. Registry sync reconciled the merged skill (SKIP = job already pushed it)
-gh run view <run-id> --log | grep -E "SKIP|UPDATE|CREATE"
-# 3. Agents serve the merged revision
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=15m --limit=4
-# 4. A question V0 deflected now gets a grounded answer
-bash scripts/test/smoke_test_deployed.sh
-```
-
-Merging triggers `deploy.yml`: it re-seeds the registry from the merged
-`SKILL.md` (normally a SKIP, because the job already pushed that exact
-revision -- the SKIP is the git-registry reconciliation proof), then
-redeploys the agents, which fetch the merged revision at startup.
-
-### Step 6: Roll back with one command
-
-```bash
-bash scripts/demo/skill_evolution/rollback_demo.sh
-```
-
-Resets the `SKILL.md` files to V0, republishes V0 to the Skill Registry
-as the newest revision (the registry is append-only, so the evolved
-revisions stay in history), restarts the policy agent and supervisor so
-they serve V0 immediately, and prints the verification. Flags:
-`--baseline stub|two-defect` (default `two-defect`) and
-`--skip-redeploy` (agents pick up V0 on their next restart instead).
 
 ## Quality Monitoring & Automated Evolution
 
