@@ -95,6 +95,606 @@ documents — versioned, diffable, PR-reviewable — so "the agent
 learned something" is always a concrete artifact a human signed off
 on.
 
+## Step 0 — Setup & Prerequisites
+
+Everything one-time lives here; every run section after this
+assumes it. Two paths — local needs only the first subsection,
+the GCP loop needs all of it (or just follow
+[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) top to bottom, which covers
+the same ground in strict order).
+
+### 0.A — Local machine: tools, auth, environment
+
+#### Tools and auth
+
+- A Google Cloud project with Vertex AI API enabled
+- `gcloud` CLI installed and authenticated:
+  ```bash
+  gcloud auth login
+  gcloud auth application-default login
+  ```
+- `uv` installed ([Python package manager](https://docs.astral.sh/uv/))
+
+#### Configure `.env`
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set `PROJECT_ID` to your GCP project ID. The rest of
+the defaults work out of the box.
+
+#### Python environment
+
+```bash
+bash scripts/local/local_setup.sh
+```
+
+Syncs Python dependencies with `uv`, verifies GCP auth, and tests
+that all agent modules import correctly.
+
+
+### 0.B — GCP: deploy the stack (skip if already deployed)
+
+The complete ordered path from an empty GCP project and empty repo
+is **[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** — tested end to end;
+follow it top to bottom. The subsections below are the reference
+details for its two big steps.
+
+
+
+Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
+first deploy, faster on subsequent runs.
+
+#### 0.B.1 — GCP infrastructure
+
+```bash
+source .env
+gcloud config set project $PROJECT_ID
+bash scripts/setup/setup_gcp.sh
+```
+
+Enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
+creates the BigQuery dataset for Agent Analytics, seeds the Skill
+Registry with the V0 skills, and grants IAM permissions.
+
+#### 0.B.2 — Deploy all six components
+
+```bash
+bash scripts/deploy/deploy_gcp.sh
+```
+
+Deploys all components in order:
+
+| Step | Component | Time |
+|------|-----------|------|
+| 1 | policy_agent (Cloud Run) | ~3.5 min |
+| 2 | hr_calculator (Cloud Run) | ~3 min |
+| 3 | knowledge_supervisor (Agent Engine) | ~15 min |
+| 4 | traffic_generator (Cloud Run Job) | ~2.5 min |
+| 5 | quality_agent (Cloud Run Job + Scheduler) | ~3 min |
+| 6 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
+| | **Total** | **~30 min** |
+
+You can also deploy individually:
+```bash
+(cd agents/enterprise/policy_agent && ./deploy.sh)
+(cd agents/enterprise/hr_calculator && ./deploy.sh)
+(cd agents/enterprise/knowledge_supervisor && ./deploy.sh)
+```
+
+> **First deploy note:** On a fresh project, the first Agent Engine
+> deploy may fail with "failed to start and cannot serve traffic."
+> This is a known race condition -- re-run `deploy_gcp.sh` and it
+> will succeed.
+
+#### 0.B.3 — Smoke test
+
+```bash
+bash scripts/test/smoke_test_deployed.sh
+bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
+
+# Per-agent tests
+bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
+bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
+```
+
+#### 0.B.4 — Connect Gemini Enterprise (optional)
+
+Gemini Enterprise provides a chat UI that connects directly to the
+deployed Agent Engine -- no custom frontend needed.
+
+a. Go to [Gemini Enterprise](https://console.cloud.google.com/gemini-enterprise)
+   in the GCP Console
+b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise
+   license -- a trial works)
+c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
+d. Paste the Agent Engine ID from the deploy output:
+   ```bash
+   bash scripts/test/smoke_test_deployed.sh -q "test"  # prints the reasoning engine path
+   ```
+e. Open the app's web URL and select **HR Policy Assistant** from
+   the agent picker
+
+### 0.C — GitHub: CI + bot wiring
+
+The production loop treats GitHub as part of the runtime: CI gates
+every skill change, merges trigger deployment, and the evolution job
+opens PRs with a bot credential. One script plus two manual steps wire
+all of it.
+
+#### 0.C.1 — Repo and prerequisites
+
+- Fork or create the repo and clone it
+- `cp .env.example .env` and set `PROJECT_ID`
+- Authenticate the GitHub CLI: `gh auth login`
+
+#### 0.C.2 — Run the setup script
+
+```bash
+# GH_PAT: a classic PAT with `repo` scope (or fine-grained with
+# contents + pull-requests read/write on this repo). Without it the
+# script falls back to your gh CLI token.
+GH_PAT=<your PAT> bash scripts/setup/setup_github.sh
+```
+
+The script detects the repo from your git remote and configures, in
+order:
+
+| Step | What it does |
+|------|--------------|
+| Labels | Issue labels the quality agent uses (`quality`, `routing`, `hallucination`, `prompt-gap`, `tool-error`) |
+| Workload Identity Federation | Creates the `github-actions` pool and OIDC provider in your GCP project, scoped to your GitHub org/user, so Actions authenticate to GCP with zero stored keys |
+| CI service account | Creates `github-actions-fixer@<project>` with the roles the workflows need (Vertex AI, BigQuery, Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Scheduler, Logging), and binds it to this repo via WIF |
+| Repo variables | Sets the Actions variables the workflows read: `PROJECT_ID`, `REGION`, `DATASET_ID`, `TABLE_ID`, `DATASET_LOCATION`, `TEST_DATASET_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
+| Bot credential | Stores `GH_PAT` as the `github-pat` secret in Secret Manager -- the evolution job clones the repo and opens PRs with it (`deploy.sh` mounts it as `GH_TOKEN`) |
+| Branch protection | main requires the Golden Eval + Load Test checks before merge |
+
+The script is idempotent -- re-run it after changing `.env` or moving
+projects. For a bot identity on issues and PRs (actions attributed to
+an app instead of your user), additionally set up a GitHub App per
+[`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
+
+#### 0.C.3 — Verify
+
+```bash
+gh variable list          # 8 variables, PROJECT_ID = your project
+gcloud secrets describe github-pat --project=$PROJECT_ID
+gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'
+```
+
+Open any PR: the **Eval & Load Test Gate** should start automatically,
+and after `scripts/setup/setup_gcp.sh` + a deploy, merging to main
+triggers **Deploy to GCP**.
+
+### 0.D — Verify everything: the 12 checks
+
+Run every verify; all must pass before you run anything.
+
+| # | Requirement | Verify with | Expect |
+|---|---|---|---|
+| 0.1 | Tools | `for t in gcloud gh uv bq jq; do command -v $t >/dev/null && echo "OK      $t" || echo "MISSING $t"; done` | five lines, all `OK` (bq ships inside the gcloud SDK) |
+| 0.2 | GCP auth + ADC | `gcloud auth list --filter=status:ACTIVE --format="value(account)"` and `gcloud auth application-default print-access-token >/dev/null && echo ADC-OK` | your account; `ADC-OK` |
+| 0.3 | GitHub auth | `gh auth status` | logged in, repo scope |
+| 0.4 | `.env` | `grep -E "^(PROJECT_ID|REGION|DATASET_ID|TABLE_ID)" .env` | your project; values match what you deployed with |
+| 0.5 | Local Python env | `bash scripts/local/local_setup.sh` | ends all-green (deps, auth, agent imports) |
+| 0.6 | Cloud Run services | `gcloud run services list --region=$REGION --format="table(metadata.name,status.conditions[0].status)"` | `policy-agent` and `hr-calculator` both `True` |
+| 0.7 | Agent Engine supervisor | `bash scripts/test/smoke_test_deployed.sh -q "How many sick days do I get?"` | a real answer; prints the reasoning-engine path |
+| 0.8 | Jobs + schedulers | `gcloud run jobs list --region=$REGION` and `gcloud scheduler jobs list --location=$REGION` | 3 jobs; `quality-agent-daily` + `skill-evolution-weekly` |
+| 0.9 | Skill Registry seeded | `source .env && uv run python eval/skill_evolution/registry_sync.py revisions --agent policy_agent` | at least 1 revision |
+| 0.10 | CI wiring | `gh variable list` and `gcloud secrets describe github-pat --project=$PROJECT_ID` | 8 vars incl. `WIF_PROVIDER`; secret exists |
+| 0.11 | Gate green on main | `gh run list --workflow "Eval & Load Test Gate" --limit 1` | latest main run `success` |
+| 0.12 | Branch protection | `gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'` | `["Golden Eval","Load Test"]` |
+
+Anything missing: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) is the
+ordered path that creates all of it.
+
+## Run the Demo — Steps 1 to 7
+
+Step 0 done? Then either fire the whole loop with one command —
+
+```bash
+# Local (no deployment, ~15 min):
+bash scripts/demo/skill_evolution/run_demo.sh --quick
+
+# Deployed (the production loop, ~15 min, warm BigQuery window):
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
+```
+
+**What either command does, in order:**
+
+1. Start from the deliberately weak V0 skill
+2. Generate adversarial traffic (the simulated user knows the golden
+   facts and pushes back on wrong answers)
+3. Judge every conversation against golden ground truth -> failures
+4. One analyst per failure investigates and proposes a patch;
+   consolidation produces N candidate skills
+5. Each candidate is validated on replayed traffic; the best one wins
+   (and, deployed: is pushed to the Skill Registry + opened as a PR
+   with extracted regression cases)
+6. Re-score, compare, repeat — the gate keeps a new version only when
+   it beats the old one
+
+— or, to see and verify every stage yourself, walk Steps 1-7
+below (same loop, one stage at a time).
+
+Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
+conversations locally; 20.0% -> 96.0% on the deployed loop's PR #4.
+Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
+[AutoSkill](https://arxiv.org/abs/2603.01145) —
+[paper analysis](docs/skill-evolution/RESEARCH.md).
+
+
+### Step 1 — The starting point (defined, verifiable)
+
+The walkthrough starts from this exact state — reset to it any time:
+
+1. **BigQuery empty** (or a fresh table):
+
+   ```bash
+   source .env
+   bq query --project_id=$PROJECT_ID --use_legacy_sql=false \
+     "TRUNCATE TABLE \`$PROJECT_ID.$DATASET_ID.$TABLE_ID\`"
+   ```
+
+2. **V0 skills everywhere** — files, registry latest revision, and the
+   live agents (this restarts policy + supervisor):
+
+   ```bash
+   bash scripts/demo/skill_evolution/rollback_demo.sh
+   ```
+
+3. **No leftover evolution artifacts** (optional, for a pristine demo):
+
+   ```bash
+   gh pr list    # close old skill-evolution/* PRs you are done with
+   gh issue list --label quality   # close or keep; >=10 open will trip the dispatcher
+   ```
+
+**Verify the starting point:**
+
+```bash
+bash scripts/test/show_traces.sh          # expect: zero rows
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+# expect V0 defect behavior: a deflection ("contact HR") — the flaw the
+# loop exists to fix. If you get a grounded $75/day answer, an evolved
+# revision is still live: re-run the rollback.
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+# expect: fresh registry-read lines from the restarted agents
+```
+
+State captured: empty traces, flawed V0 serving, registry history
+preserved (rollback republishes V0 as the NEWEST revision; evolved
+revisions stay behind it). You are at the top of the loop.
+
+### Step 2 — Generate real traffic (the system observes failures)
+
+```bash
+# --concurrency 2 respects the default Agent Engine quota on fresh
+# projects (90 requests/min; the generator also backs off on quota errors)
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_corrections.json --multi-turn --concurrency 2
+```
+
+Drives questions through the deployed Agent Engine supervisor (omit
+`--local` for the deployed path). Every turn is logged to the BigQuery
+`agent_events` table by the Agent Analytics plugin, tagged with the
+skill version from the frontmatter (`custom_tags.agent_version`). The
+corrections file runs multi-turn: the user pushes back with a wrong
+figure, which is how parroting becomes observable in the traces.
+
+### Step 3 — Run the evolution job (learn + propose)
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait
+```
+
+The manual trigger above is the primary way to drive a demo. The same
+job also has a scheduled tick (default: Mondays 09:00 UTC; set any
+cadence at deploy time with `EVOLUTION_SCHEDULE="*/30 * * * *"`) and an
+issue-threshold trigger — cadence is deployment policy, never a
+property of the loop. A full agent-decided run
+(3 skills, best-of-5, 55-question validation per candidate) takes
+~3 hours; for a demo-speed run (~1h) scope it to one agent:
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
+```
+
+Inside one run:
+
+| Stage | What happens |
+|-------|--------------|
+| Pre-flight | Builds a quality report from real BigQuery traces (`QUALITY_SOURCE=bigquery`); falls back to generated traffic below `MIN_SESSIONS` |
+| Gate | Proceeds only when there are enough failures to learn from |
+| Bottleneck | Classifies each failure by source agent and picks which skill(s) to evolve |
+| Evolution | Error analysts study the failures, propose patches, and best-of-N candidate skills are scored on the evolve set |
+| Publish | The winning skills are pushed to the Skill Registry as new revisions |
+| Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge |
+| PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) |
+
+### Step 4 — Review the PR (learning as an artifact)
+
+The PR body carries the baseline quality numbers; the diff is the
+evolved skill plus any regression cases extracted from failures this
+skill resolved (they parametrize straight into the gate tests, so the
+PR's own CI run already exercises them). CI runs the Eval & Load Test Gate on it, and the
+gate is version-aware: skills at version 0 are held to baseline
+expectations, while an evolved skill (version >= 1) must pass the full
+routing, fan-out, and quality assertions.
+
+The gate has teeth. In live runs, evolved supervisor skills repeatedly
+scored 78-86% on the evolve set by copying observed facts into their
+own summary and answering directly -- which broke the routing contract,
+so the gate refused them. A refused candidate stays in the registry
+history and in the PR record; the next evolution round learns from a
+wider window.
+
+**What a refusal looks like on GitHub.** The Actions tab shows a red
+"Eval & Load Test Gate" run on the PR's `skill-evolution/*` branch, and
+branch protection blocks the merge. That red run is the point: it is
+the audit record of why a skill was denied deployment. Close the PR to
+retire it (the red run stays in history), or fix and push to the PR
+branch to re-adjudicate. Red on main, by contrast, is always a real
+problem -- with one caveat: the gate shares the project's model quota
+with deploys and evolution jobs, so a gate run that overlaps one can
+fail on RESOURCE_EXHAUSTED; re-run it once the project is quiet.
+
+**Two layers keep refused-class skills in check:**
+
+- **In-run pre-check** -- when the evolution job scores a supervisor
+  candidate, it runs the same routing/fan-out asserts the gate will run
+  on the PR (`score_candidate` -> `_golden_gate_check`). A candidate
+  that fails has its score zeroed, so best-of-N selection drops it
+  before a PR ever opens.
+- **CI gate on the PR** -- the independent adjudication, version-aware:
+  evolved skills (version >= 1) face the full hard assertions.
+
+**Scoping a run is binding.** `--mode <agent>`, `--rounds N`, and
+`--candidates N` are enforced at the tool layer (env vars
+`EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
+`EVOLUTION_CANDIDATES`), so the orchestrating agent can neither widen
+the target set, add rounds, nor grow the candidate pool beyond what
+you asked for.
+
+### Choosing which traces to evolve on (labels)
+
+Every BigQuery event carries `custom_tags` — but WHO stamps them
+depends on who logs the event, because plugin tags are fixed at agent
+startup:
+
+- **Deployed traffic** (through Agent Engine) is logged by the
+  *agents'* plugins: `agent_version` (skill frontmatter) +
+  `sw_version` (git sha) + whatever `TRACE_LABELS` the deploy set.
+  Per-run labels cannot be attached from the outside; slice deployed
+  traffic by version + time window (or redeploy with a label).
+- **Local-runner traffic** (`--local`, also used by candidate scoring)
+  is logged by the *generator's* plugin, which adds
+  `traffic_source=generator` and a per-invocation `run_id`
+  (verified live: seed -> `run_id` queryable in BigQuery ->
+  `--trace-labels run_id=...` selects exactly that slice). Add your
+  own with `TRACE_LABELS="k=v,k2=v2"`.
+
+The evolution job selects its input slice with the same vocabulary:
+
+```bash
+# Re-run the scheduled job on demand (default selector: current version)
+gcloud scheduler jobs run skill-evolution-weekly --location $REGION
+
+# Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
+# (the run prints its run_id label)
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
+```
+
+**Verify before you evolve** — preview exactly what the pre-flight
+will fetch (same env vars the job reads), or see the label
+distribution of everything in the table:
+
+```bash
+bash scripts/test/show_traces.sh                # label distribution
+EVOLUTION_TRACE_LABELS=run_id=<id> EVAL_TIME_PERIOD=24h \
+  bash scripts/test/show_traces.sh --selector   # the exact slice, with sample sessions
+```
+
+The selector (window, version, labels, app) is written to the run
+directory and printed in the PR body, so every evolved skill records
+exactly which traces taught it. This replaces per-round tables: one
+table, label-sliced, and longitudinal quality-by-version queries stay
+intact.
+
+### Step 5 — Merge to activate
+
+```bash
+gh pr merge <PR_NUMBER> --merge
+
+# 1. CI ran and is green
+gh run list --workflow "Deploy to GCP" --limit 1
+# 2. Registry sync reconciled the merged skill (SKIP = job already pushed it)
+gh run view <run-id> --log | grep -E "SKIP|UPDATE|CREATE"
+# 3. Agents serve the merged revision
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+# 4. A question V0 deflected now gets a grounded answer
+bash scripts/test/smoke_test_deployed.sh
+```
+
+Merging triggers `deploy.yml`: it re-seeds the registry from the merged
+`SKILL.md` (normally a SKIP, because the job already pushed that exact
+revision -- the SKIP is the git-registry reconciliation proof), then
+redeploys the agents, which fetch the merged revision at startup.
+
+### Step 6 — Verify the fix (the payoff)
+
+The question that deflected in Step 1 now gets the grounded answer:
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+# Step 1 (V0): "...please contact HR"
+# Now (v1):    "$75/day during business travel..."
+```
+
+Also confirm the agents fetched the merged revision:
+
+```bash
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+```
+
+### Step 7 — Roll back (back to the Step 1 state)
+
+```bash
+bash scripts/demo/skill_evolution/rollback_demo.sh
+```
+
+Resets the `SKILL.md` files to V0, republishes V0 to the Skill Registry
+as the newest revision (the registry is append-only, so the evolved
+revisions stay in history), restarts the policy agent and supervisor so
+they serve V0 immediately, and prints the verification. Flags:
+`--baseline stub|two-defect` (default `two-defect`) and
+`--skip-redeploy` (agents pick up V0 on their next restart instead).
+
+## Alternative: Local-Only Demo (no deployment)
+
+Run the full skill evolution pipeline on your machine. No GCP
+deployment needed -- only Vertex AI API access for Gemini models.
+
+One-time setup lives in [Setup & Prerequisites](#step-0--setup--prerequisites).
+
+### One command
+
+```bash
+# Quick run: 22 questions, ~15 minutes
+bash scripts/demo/skill_evolution/run_demo.sh --quick
+
+# Full run: 205 questions, ~1 hour
+bash scripts/demo/skill_evolution/run_demo.sh --full
+```
+
+The demo script handles everything: restores the V0 baseline skill,
+generates traffic, scores conversations, evolves the skill (V0 -> V1
+-> V2), and produces a comparison report.
+
+All artifacts are saved to `eval/runs/{timestamp}_demo_{mode}/`.
+
+### What to expect
+
+| Version | Meaningful Rate | What happened |
+|---------|----------------|---------------|
+| V0      | ~54-60%        | Baseline: minimal skill, agent redirects to HR for most questions |
+| V1      | ~80-97%        | Evolution adds keyword mappings, anti-hallucination rules, scope boundaries |
+| V2      | ~95-98%        | Refinement: edge cases, format improvements |
+
+V0 -> V1 is the key jump. The evolved skill gains structured sections
+(Tool Usage, Anti-Patterns, Out-of-Scope, Keyword Mappings) that the
+V0 baseline lacks entirely.
+
+Use `--reuse-v0` to skip V0 traffic generation on subsequent runs
+(saves ~20 minutes on full runs):
+
+```bash
+bash scripts/demo/skill_evolution/run_demo.sh --full --reuse-v0
+```
+
+### Try it interactively
+
+Start the agents locally and chat with the supervisor through the
+ADK web UI:
+
+```bash
+bash scripts/local/local_start.sh
+```
+
+This launches:
+- **policy_agent** on `http://localhost:8080` (A2A server)
+- **hr_calculator** on `http://localhost:8081` (A2A server)
+- **knowledge_supervisor** on `http://localhost:8000` (ADK web UI)
+
+Open `http://localhost:8000` and ask questions like "What is our PTO
+policy?" or "How many sick days do I get per year?"
+
+Stop with `bash scripts/local/local_start.sh stop`.
+
+### Manual step-by-step
+
+Each stage of the local pipeline, run individually. Everything
+writes into one run folder:
+
+```bash
+source .env
+RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution" && mkdir -p "$RUN_DIR"
+```
+
+**1. Start from the V0 baseline skill** — the deliberately minimal
+skill is the permanent backup next to the live one:
+
+```bash
+cp agents/enterprise/policy_agent/skill/SKILL.v0.md \
+   agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**2. Generate adversarial traffic** — the simulated user asks the
+questions and, knowing the golden facts, pushes back on wrong answers
+(multi-turn):
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+    --local --local-agents --multi-turn \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
+```
+
+**3. Judge every conversation** — golden-matched ground truth (see
+"The single input" above); output partitions sessions into successes
+and failures:
+
+```bash
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v0_traffic.json" \
+    -o "$RUN_DIR/v0_quality_report.json" --report
+# printed summary: meaningful_rate, unhelpful_rate, failure count
+```
+
+**4 + 5. Analysts, patches, consolidation, best-of-N** — one command
+runs the whole evolution stage: an analyst per failure (each
+investigates with tool access), patch scoring, consolidation into
+candidate `SKILL.md` documents, and empirical scoring that keeps the
+best candidate:
+
+```bash
+uv run python agents/workflow/skill_evolution_agent/main.py \
+    --report "$RUN_DIR/v0_quality_report.json"
+# artifacts: $RUN_DIR/*_candidates/, the winning skill deployed to
+# agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**6. Re-score and compare** — fresh traffic against the evolved
+skill, then the before/after table:
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+    --local --local-agents --multi-turn \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v1_traffic.json" --concurrency 10
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v1_traffic.json" \
+    -o "$RUN_DIR/v1_quality_report.json" --report
+uv run python eval/scoring/score_conversations.py --compare \
+    "$RUN_DIR/v0_quality_report.json:V0" \
+    "$RUN_DIR/v1_quality_report.json:V1"
+```
+
+Repeat the traffic->score->evolve stages for a V2 round (the gate
+keeps V2 only when it beats V1). For a narrated walkthrough with
+pauses, see [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
+
 ## Architecture
 
 The system has two layers: **enterprise agents** that serve end users,
@@ -406,606 +1006,6 @@ Golden Q&A feeds three consumers:
 - **The evolution engine** works on the pass/fail labels the judge
   produces
 
-## Step 0 — Setup & Prerequisites
-
-Everything one-time lives here; every run section after this
-assumes it. Two paths — local needs only the first subsection,
-the GCP loop needs all of it (or just follow
-[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) top to bottom, which covers
-the same ground in strict order).
-
-### Local path — tools, auth, environment
-
-#### Tools and auth
-
-- A Google Cloud project with Vertex AI API enabled
-- `gcloud` CLI installed and authenticated:
-  ```bash
-  gcloud auth login
-  gcloud auth application-default login
-  ```
-- `uv` installed ([Python package manager](https://docs.astral.sh/uv/))
-
-#### Configure `.env`
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set `PROJECT_ID` to your GCP project ID. The rest of
-the defaults work out of the box.
-
-#### Python environment
-
-```bash
-bash scripts/local/local_setup.sh
-```
-
-Syncs Python dependencies with `uv`, verifies GCP auth, and tests
-that all agent modules import correctly.
-
-
-### GCP path — deploy the stack
-
-The complete ordered path from an empty GCP project and empty repo
-is **[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** — tested end to end;
-follow it top to bottom. The subsections below are the reference
-details for its two big steps.
-
-#### Deploy the stack
-
-Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
-first deploy, faster on subsequent runs.
-
-##### Step 1: GCP infrastructure
-
-```bash
-source .env
-gcloud config set project $PROJECT_ID
-bash scripts/setup/setup_gcp.sh
-```
-
-Enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
-creates the BigQuery dataset for Agent Analytics, seeds the Skill
-Registry with the V0 skills, and grants IAM permissions.
-
-##### Step 2: Deploy
-
-```bash
-bash scripts/deploy/deploy_gcp.sh
-```
-
-Deploys all components in order:
-
-| Step | Component | Time |
-|------|-----------|------|
-| 1 | policy_agent (Cloud Run) | ~3.5 min |
-| 2 | hr_calculator (Cloud Run) | ~3 min |
-| 3 | knowledge_supervisor (Agent Engine) | ~15 min |
-| 4 | traffic_generator (Cloud Run Job) | ~2.5 min |
-| 5 | quality_agent (Cloud Run Job + Scheduler) | ~3 min |
-| 6 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
-| | **Total** | **~30 min** |
-
-You can also deploy individually:
-```bash
-(cd agents/enterprise/policy_agent && ./deploy.sh)
-(cd agents/enterprise/hr_calculator && ./deploy.sh)
-(cd agents/enterprise/knowledge_supervisor && ./deploy.sh)
-```
-
-> **First deploy note:** On a fresh project, the first Agent Engine
-> deploy may fail with "failed to start and cannot serve traffic."
-> This is a known race condition -- re-run `deploy_gcp.sh` and it
-> will succeed.
-
-##### Step 3: Smoke test
-
-```bash
-bash scripts/test/smoke_test_deployed.sh
-bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
-
-# Per-agent tests
-bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
-bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
-```
-
-##### Step 4: Connect Gemini Enterprise (optional)
-
-Gemini Enterprise provides a chat UI that connects directly to the
-deployed Agent Engine -- no custom frontend needed.
-
-a. Go to [Gemini Enterprise](https://console.cloud.google.com/gemini-enterprise)
-   in the GCP Console
-b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise
-   license -- a trial works)
-c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
-d. Paste the Agent Engine ID from the deploy output:
-   ```bash
-   bash scripts/test/smoke_test_deployed.sh -q "test"  # prints the reasoning engine path
-   ```
-e. Open the app's web URL and select **HR Policy Assistant** from
-   the agent picker
-
-#### Set up the GitHub repo (CI + bot)
-
-The production loop treats GitHub as part of the runtime: CI gates
-every skill change, merges trigger deployment, and the evolution job
-opens PRs with a bot credential. One script plus two manual steps wire
-all of it.
-
-##### Step 1: Repo and prerequisites
-
-- Fork or create the repo and clone it
-- `cp .env.example .env` and set `PROJECT_ID`
-- Authenticate the GitHub CLI: `gh auth login`
-
-##### Step 2: Run the setup script
-
-```bash
-# GH_PAT: a classic PAT with `repo` scope (or fine-grained with
-# contents + pull-requests read/write on this repo). Without it the
-# script falls back to your gh CLI token.
-GH_PAT=<your PAT> bash scripts/setup/setup_github.sh
-```
-
-The script detects the repo from your git remote and configures, in
-order:
-
-| Step | What it does |
-|------|--------------|
-| Labels | Issue labels the quality agent uses (`quality`, `routing`, `hallucination`, `prompt-gap`, `tool-error`) |
-| Workload Identity Federation | Creates the `github-actions` pool and OIDC provider in your GCP project, scoped to your GitHub org/user, so Actions authenticate to GCP with zero stored keys |
-| CI service account | Creates `github-actions-fixer@<project>` with the roles the workflows need (Vertex AI, BigQuery, Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Scheduler, Logging), and binds it to this repo via WIF |
-| Repo variables | Sets the Actions variables the workflows read: `PROJECT_ID`, `REGION`, `DATASET_ID`, `TABLE_ID`, `DATASET_LOCATION`, `TEST_DATASET_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
-| Bot credential | Stores `GH_PAT` as the `github-pat` secret in Secret Manager -- the evolution job clones the repo and opens PRs with it (`deploy.sh` mounts it as `GH_TOKEN`) |
-| Branch protection | main requires the Golden Eval + Load Test checks before merge |
-
-The script is idempotent -- re-run it after changing `.env` or moving
-projects. For a bot identity on issues and PRs (actions attributed to
-an app instead of your user), additionally set up a GitHub App per
-[`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
-
-##### Step 3: Verify
-
-```bash
-gh variable list          # 8 variables, PROJECT_ID = your project
-gcloud secrets describe github-pat --project=$PROJECT_ID
-gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'
-```
-
-Open any PR: the **Eval & Load Test Gate** should start automatically,
-and after `scripts/setup/setup_gcp.sh` + a deploy, merging to main
-triggers **Deploy to GCP**.
-
-### Verify everything — the 12 checks
-
-Run every verify; all must pass before you run anything.
-
-| # | Requirement | Verify with | Expect |
-|---|---|---|---|
-| 0.1 | Tools | `for t in gcloud gh uv bq jq; do command -v $t >/dev/null && echo "OK      $t" || echo "MISSING $t"; done` | five lines, all `OK` (bq ships inside the gcloud SDK) |
-| 0.2 | GCP auth + ADC | `gcloud auth list --filter=status:ACTIVE --format="value(account)"` and `gcloud auth application-default print-access-token >/dev/null && echo ADC-OK` | your account; `ADC-OK` |
-| 0.3 | GitHub auth | `gh auth status` | logged in, repo scope |
-| 0.4 | `.env` | `grep -E "^(PROJECT_ID|REGION|DATASET_ID|TABLE_ID)" .env` | your project; values match what you deployed with |
-| 0.5 | Local Python env | `bash scripts/local/local_setup.sh` | ends all-green (deps, auth, agent imports) |
-| 0.6 | Cloud Run services | `gcloud run services list --region=$REGION --format="table(metadata.name,status.conditions[0].status)"` | `policy-agent` and `hr-calculator` both `True` |
-| 0.7 | Agent Engine supervisor | `bash scripts/test/smoke_test_deployed.sh -q "How many sick days do I get?"` | a real answer; prints the reasoning-engine path |
-| 0.8 | Jobs + schedulers | `gcloud run jobs list --region=$REGION` and `gcloud scheduler jobs list --location=$REGION` | 3 jobs; `quality-agent-daily` + `skill-evolution-weekly` |
-| 0.9 | Skill Registry seeded | `source .env && uv run python eval/skill_evolution/registry_sync.py revisions --agent policy_agent` | at least 1 revision |
-| 0.10 | CI wiring | `gh variable list` and `gcloud secrets describe github-pat --project=$PROJECT_ID` | 8 vars incl. `WIF_PROVIDER`; secret exists |
-| 0.11 | Gate green on main | `gh run list --workflow "Eval & Load Test Gate" --limit 1` | latest main run `success` |
-| 0.12 | Branch protection | `gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'` | `["Golden Eval","Load Test"]` |
-
-Anything missing: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) is the
-ordered path that creates all of it.
-
-## Run the Demo — Steps 1 to 7
-
-Step 0 done? Then either fire the whole loop with one command —
-
-```bash
-# Local (no deployment, ~15 min):
-bash scripts/demo/skill_evolution/run_demo.sh --quick
-
-# Deployed (the production loop, ~15 min, warm BigQuery window):
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
-```
-
-**What either command does, in order:**
-
-1. Start from the deliberately weak V0 skill
-2. Generate adversarial traffic (the simulated user knows the golden
-   facts and pushes back on wrong answers)
-3. Judge every conversation against golden ground truth -> failures
-4. One analyst per failure investigates and proposes a patch;
-   consolidation produces N candidate skills
-5. Each candidate is validated on replayed traffic; the best one wins
-   (and, deployed: is pushed to the Skill Registry + opened as a PR
-   with extracted regression cases)
-6. Re-score, compare, repeat — the gate keeps a new version only when
-   it beats the old one
-
-— or, to see and verify every stage yourself, walk Steps 1-7
-below (same loop, one stage at a time).
-
-Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
-conversations locally; 20.0% -> 96.0% on the deployed loop's PR #4.
-Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
-[AutoSkill](https://arxiv.org/abs/2603.01145) —
-[paper analysis](docs/skill-evolution/RESEARCH.md).
-
-
-### Step 1 — The starting point (defined, verifiable)
-
-The walkthrough starts from this exact state — reset to it any time:
-
-1. **BigQuery empty** (or a fresh table):
-
-   ```bash
-   source .env
-   bq query --project_id=$PROJECT_ID --use_legacy_sql=false \
-     "TRUNCATE TABLE \`$PROJECT_ID.$DATASET_ID.$TABLE_ID\`"
-   ```
-
-2. **V0 skills everywhere** — files, registry latest revision, and the
-   live agents (this restarts policy + supervisor):
-
-   ```bash
-   bash scripts/demo/skill_evolution/rollback_demo.sh
-   ```
-
-3. **No leftover evolution artifacts** (optional, for a pristine demo):
-
-   ```bash
-   gh pr list    # close old skill-evolution/* PRs you are done with
-   gh issue list --label quality   # close or keep; >=10 open will trip the dispatcher
-   ```
-
-**Verify the starting point:**
-
-```bash
-bash scripts/test/show_traces.sh          # expect: zero rows
-bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
-# expect V0 defect behavior: a deflection ("contact HR") — the flaw the
-# loop exists to fix. If you get a grounded $75/day answer, an evolved
-# revision is still live: re-run the rollback.
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=15m --limit=4
-# expect: fresh registry-read lines from the restarted agents
-```
-
-State captured: empty traces, flawed V0 serving, registry history
-preserved (rollback republishes V0 as the NEWEST revision; evolved
-revisions stay behind it). You are at the top of the loop.
-
-### Step 2 — Generate real traffic (the system observes failures)
-
-```bash
-# --concurrency 2 respects the default Agent Engine quota on fresh
-# projects (90 requests/min; the generator also backs off on quota errors)
-uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
-uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_corrections.json --multi-turn --concurrency 2
-```
-
-Drives questions through the deployed Agent Engine supervisor (omit
-`--local` for the deployed path). Every turn is logged to the BigQuery
-`agent_events` table by the Agent Analytics plugin, tagged with the
-skill version from the frontmatter (`custom_tags.agent_version`). The
-corrections file runs multi-turn: the user pushes back with a wrong
-figure, which is how parroting becomes observable in the traces.
-
-### Step 3 — Run the evolution job (learn + propose)
-
-```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait
-```
-
-The manual trigger above is the primary way to drive a demo. The same
-job also has a scheduled tick (default: Mondays 09:00 UTC; set any
-cadence at deploy time with `EVOLUTION_SCHEDULE="*/30 * * * *"`) and an
-issue-threshold trigger — cadence is deployment policy, never a
-property of the loop. A full agent-decided run
-(3 skills, best-of-5, 55-question validation per candidate) takes
-~3 hours; for a demo-speed run (~1h) scope it to one agent:
-
-```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
-```
-
-Inside one run:
-
-| Stage | What happens |
-|-------|--------------|
-| Pre-flight | Builds a quality report from real BigQuery traces (`QUALITY_SOURCE=bigquery`); falls back to generated traffic below `MIN_SESSIONS` |
-| Gate | Proceeds only when there are enough failures to learn from |
-| Bottleneck | Classifies each failure by source agent and picks which skill(s) to evolve |
-| Evolution | Error analysts study the failures, propose patches, and best-of-N candidate skills are scored on the evolve set |
-| Publish | The winning skills are pushed to the Skill Registry as new revisions |
-| Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge |
-| PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) |
-
-### Step 4 — Review the PR (learning as an artifact)
-
-The PR body carries the baseline quality numbers; the diff is the
-evolved skill plus any regression cases extracted from failures this
-skill resolved (they parametrize straight into the gate tests, so the
-PR's own CI run already exercises them). CI runs the Eval & Load Test Gate on it, and the
-gate is version-aware: skills at version 0 are held to baseline
-expectations, while an evolved skill (version >= 1) must pass the full
-routing, fan-out, and quality assertions.
-
-The gate has teeth. In live runs, evolved supervisor skills repeatedly
-scored 78-86% on the evolve set by copying observed facts into their
-own summary and answering directly -- which broke the routing contract,
-so the gate refused them. A refused candidate stays in the registry
-history and in the PR record; the next evolution round learns from a
-wider window.
-
-**What a refusal looks like on GitHub.** The Actions tab shows a red
-"Eval & Load Test Gate" run on the PR's `skill-evolution/*` branch, and
-branch protection blocks the merge. That red run is the point: it is
-the audit record of why a skill was denied deployment. Close the PR to
-retire it (the red run stays in history), or fix and push to the PR
-branch to re-adjudicate. Red on main, by contrast, is always a real
-problem -- with one caveat: the gate shares the project's model quota
-with deploys and evolution jobs, so a gate run that overlaps one can
-fail on RESOURCE_EXHAUSTED; re-run it once the project is quiet.
-
-**Two layers keep refused-class skills in check:**
-
-- **In-run pre-check** -- when the evolution job scores a supervisor
-  candidate, it runs the same routing/fan-out asserts the gate will run
-  on the PR (`score_candidate` -> `_golden_gate_check`). A candidate
-  that fails has its score zeroed, so best-of-N selection drops it
-  before a PR ever opens.
-- **CI gate on the PR** -- the independent adjudication, version-aware:
-  evolved skills (version >= 1) face the full hard assertions.
-
-**Scoping a run is binding.** `--mode <agent>`, `--rounds N`, and
-`--candidates N` are enforced at the tool layer (env vars
-`EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
-`EVOLUTION_CANDIDATES`), so the orchestrating agent can neither widen
-the target set, add rounds, nor grow the candidate pool beyond what
-you asked for.
-
-### Choosing which traces to evolve on (labels)
-
-Every BigQuery event carries `custom_tags` — but WHO stamps them
-depends on who logs the event, because plugin tags are fixed at agent
-startup:
-
-- **Deployed traffic** (through Agent Engine) is logged by the
-  *agents'* plugins: `agent_version` (skill frontmatter) +
-  `sw_version` (git sha) + whatever `TRACE_LABELS` the deploy set.
-  Per-run labels cannot be attached from the outside; slice deployed
-  traffic by version + time window (or redeploy with a label).
-- **Local-runner traffic** (`--local`, also used by candidate scoring)
-  is logged by the *generator's* plugin, which adds
-  `traffic_source=generator` and a per-invocation `run_id`
-  (verified live: seed -> `run_id` queryable in BigQuery ->
-  `--trace-labels run_id=...` selects exactly that slice). Add your
-  own with `TRACE_LABELS="k=v,k2=v2"`.
-
-The evolution job selects its input slice with the same vocabulary:
-
-```bash
-# Re-run the scheduled job on demand (default selector: current version)
-gcloud scheduler jobs run skill-evolution-weekly --location $REGION
-
-# Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
-uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
-# (the run prints its run_id label)
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
-```
-
-**Verify before you evolve** — preview exactly what the pre-flight
-will fetch (same env vars the job reads), or see the label
-distribution of everything in the table:
-
-```bash
-bash scripts/test/show_traces.sh                # label distribution
-EVOLUTION_TRACE_LABELS=run_id=<id> EVAL_TIME_PERIOD=24h \
-  bash scripts/test/show_traces.sh --selector   # the exact slice, with sample sessions
-```
-
-The selector (window, version, labels, app) is written to the run
-directory and printed in the PR body, so every evolved skill records
-exactly which traces taught it. This replaces per-round tables: one
-table, label-sliced, and longitudinal quality-by-version queries stay
-intact.
-
-### Step 5 — Merge to activate
-
-```bash
-gh pr merge <PR_NUMBER> --merge
-
-# 1. CI ran and is green
-gh run list --workflow "Deploy to GCP" --limit 1
-# 2. Registry sync reconciled the merged skill (SKIP = job already pushed it)
-gh run view <run-id> --log | grep -E "SKIP|UPDATE|CREATE"
-# 3. Agents serve the merged revision
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=15m --limit=4
-# 4. A question V0 deflected now gets a grounded answer
-bash scripts/test/smoke_test_deployed.sh
-```
-
-Merging triggers `deploy.yml`: it re-seeds the registry from the merged
-`SKILL.md` (normally a SKIP, because the job already pushed that exact
-revision -- the SKIP is the git-registry reconciliation proof), then
-redeploys the agents, which fetch the merged revision at startup.
-
-### Step 6 — Verify the fix (the payoff)
-
-The question that deflected in Step 1 now gets the grounded answer:
-
-```bash
-bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
-# Step 1 (V0): "...please contact HR"
-# Now (v1):    "$75/day during business travel..."
-```
-
-Also confirm the agents fetched the merged revision:
-
-```bash
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=15m --limit=4
-```
-
-### Step 7 — Roll back (back to the Step 1 state)
-
-```bash
-bash scripts/demo/skill_evolution/rollback_demo.sh
-```
-
-Resets the `SKILL.md` files to V0, republishes V0 to the Skill Registry
-as the newest revision (the registry is append-only, so the evolved
-revisions stay in history), restarts the policy agent and supervisor so
-they serve V0 immediately, and prints the verification. Flags:
-`--baseline stub|two-defect` (default `two-defect`) and
-`--skip-redeploy` (agents pick up V0 on their next restart instead).
-
-## Run the Demo Locally
-
-Run the full skill evolution pipeline on your machine. No GCP
-deployment needed -- only Vertex AI API access for Gemini models.
-
-One-time setup lives in [Setup & Prerequisites](#step-0--setup--prerequisites).
-
-### One command
-
-```bash
-# Quick run: 22 questions, ~15 minutes
-bash scripts/demo/skill_evolution/run_demo.sh --quick
-
-# Full run: 205 questions, ~1 hour
-bash scripts/demo/skill_evolution/run_demo.sh --full
-```
-
-The demo script handles everything: restores the V0 baseline skill,
-generates traffic, scores conversations, evolves the skill (V0 -> V1
--> V2), and produces a comparison report.
-
-All artifacts are saved to `eval/runs/{timestamp}_demo_{mode}/`.
-
-### What to expect
-
-| Version | Meaningful Rate | What happened |
-|---------|----------------|---------------|
-| V0      | ~54-60%        | Baseline: minimal skill, agent redirects to HR for most questions |
-| V1      | ~80-97%        | Evolution adds keyword mappings, anti-hallucination rules, scope boundaries |
-| V2      | ~95-98%        | Refinement: edge cases, format improvements |
-
-V0 -> V1 is the key jump. The evolved skill gains structured sections
-(Tool Usage, Anti-Patterns, Out-of-Scope, Keyword Mappings) that the
-V0 baseline lacks entirely.
-
-Use `--reuse-v0` to skip V0 traffic generation on subsequent runs
-(saves ~20 minutes on full runs):
-
-```bash
-bash scripts/demo/skill_evolution/run_demo.sh --full --reuse-v0
-```
-
-### Try it interactively
-
-Start the agents locally and chat with the supervisor through the
-ADK web UI:
-
-```bash
-bash scripts/local/local_start.sh
-```
-
-This launches:
-- **policy_agent** on `http://localhost:8080` (A2A server)
-- **hr_calculator** on `http://localhost:8081` (A2A server)
-- **knowledge_supervisor** on `http://localhost:8000` (ADK web UI)
-
-Open `http://localhost:8000` and ask questions like "What is our PTO
-policy?" or "How many sick days do I get per year?"
-
-Stop with `bash scripts/local/local_start.sh stop`.
-
-### Manual step-by-step
-
-Each stage of the local pipeline, run individually. Everything
-writes into one run folder:
-
-```bash
-source .env
-RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution" && mkdir -p "$RUN_DIR"
-```
-
-**1. Start from the V0 baseline skill** — the deliberately minimal
-skill is the permanent backup next to the live one:
-
-```bash
-cp agents/enterprise/policy_agent/skill/SKILL.v0.md \
-   agents/enterprise/policy_agent/skill/SKILL.md
-```
-
-**2. Generate adversarial traffic** — the simulated user asks the
-questions and, knowing the golden facts, pushes back on wrong answers
-(multi-turn):
-
-```bash
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
-    --from-file eval/data/questions/demo_quick.json \
-    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
-```
-
-**3. Judge every conversation** — golden-matched ground truth (see
-"The single input" above); output partitions sessions into successes
-and failures:
-
-```bash
-bash scripts/demo/skill_evolution/score.sh \
-    -i "$RUN_DIR/v0_traffic.json" \
-    -o "$RUN_DIR/v0_quality_report.json" --report
-# printed summary: meaningful_rate, unhelpful_rate, failure count
-```
-
-**4 + 5. Analysts, patches, consolidation, best-of-N** — one command
-runs the whole evolution stage: an analyst per failure (each
-investigates with tool access), patch scoring, consolidation into
-candidate `SKILL.md` documents, and empirical scoring that keeps the
-best candidate:
-
-```bash
-uv run python agents/workflow/skill_evolution_agent/main.py \
-    --report "$RUN_DIR/v0_quality_report.json"
-# artifacts: $RUN_DIR/*_candidates/, the winning skill deployed to
-# agents/enterprise/policy_agent/skill/SKILL.md
-```
-
-**6. Re-score and compare** — fresh traffic against the evolved
-skill, then the before/after table:
-
-```bash
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
-    --from-file eval/data/questions/demo_quick.json \
-    -o "$RUN_DIR/v1_traffic.json" --concurrency 10
-bash scripts/demo/skill_evolution/score.sh \
-    -i "$RUN_DIR/v1_traffic.json" \
-    -o "$RUN_DIR/v1_quality_report.json" --report
-uv run python eval/scoring/score_conversations.py --compare \
-    "$RUN_DIR/v0_quality_report.json:V0" \
-    "$RUN_DIR/v1_quality_report.json:V1"
-```
-
-Repeat the traffic->score->evolve stages for a V2 round (the gate
-keeps V2 only when it beats V1). For a narrated walkthrough with
-pauses, see [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
-
 ## Demo Variants — What Runs, What Is Cut, and Why
 
 ### The four ways to run it
@@ -1244,7 +1244,7 @@ bash scripts/demo/skill_evolution/run_demo.sh --quick
 
 Or run the six bootstrap stages one at a time against your agent —
 the exact commands are in
-[Run the Demo Locally -> Manual step-by-step](#run-the-demo-locally);
+[Alternative: Local-Only Demo -> Manual step-by-step](#alternative-local-only-demo-no-deployment);
 swap the questions file for yours.
 
 For full input schemas and pipeline details, see
