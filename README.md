@@ -428,100 +428,41 @@ Golden Q&A feeds three consumers:
 ### The evolution cycle: from V0 to production quality
 
 This is the SKILL's journey — how a deliberately weak V0 becomes a
-production-quality skill through repeated cycles. Setting up the
-environment (project, repo, deployment) is a separate, one-time thing:
-that lives in [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) and is only
-summarized in the prerequisites row below.
+production-quality skill through repeated cycles.
 
-**Prerequisites — one-time setup, before any cycle.** The six steps
-below assume a working environment. Set it up once:
+**Step 0 — prerequisites:** [Step 0 — Setup & Prerequisites](#step-0--setup--prerequisites).
+Run its 12 checks first; everything below assumes them.
 
-| Path | One-time setup | Where |
-|---|---|---|
-| Local (this section) | GCP project with Vertex AI enabled, `gcloud auth login` + `gcloud auth application-default login`, `uv`, `cp .env.example .env` (set `PROJECT_ID`), then `bash scripts/local/local_setup.sh` | [Setup & Prerequisites](#step-0--setup--prerequisites) |
-| Deployed (GCP loop) | empty project + empty repo -> infra -> CI -> deploy | [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md), Parts A and B |
-
-Everything after this line is the **repeatable evolution cycle** — run
-it as many times as you like without touching setup again.
-
-The whole cycle in one command (local, ~15 min quick / ~1-2h full):
+**Trigger the whole cycle end-to-end with one command:**
 
 ```bash
-bash scripts/demo/skill_evolution/run_demo.sh --quick   # or --full
+# Local (no deployment, ~15 min):
+bash scripts/demo/skill_evolution/run_demo.sh --quick
+
+# Deployed (the production loop, ~15 min, warm BigQuery window):
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
 ```
 
-That script performs the six steps below; run them individually when
-you want to inspect each stage. Everything writes into one run folder:
+**What either command does, in order:**
 
-```bash
-source .env
-RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution" && mkdir -p "$RUN_DIR"
-```
+1. Start from the deliberately weak V0 skill
+2. Generate adversarial traffic (the simulated user knows the golden
+   facts and pushes back on wrong answers)
+3. Judge every conversation against golden ground truth -> failures
+4. One analyst per failure investigates and proposes a patch;
+   consolidation produces N candidate skills
+5. Each candidate is validated on replayed traffic; the best one wins
+   (and, deployed: is pushed to the Skill Registry + opened as a PR
+   with extracted regression cases)
+6. Re-score, compare, repeat — the gate keeps a new version only when
+   it beats the old one
 
-**1. Start from the V0 baseline skill** — the deliberately minimal
-skill is the permanent backup next to the live one:
+**Run the steps manually, one at a time:**
 
-```bash
-cp agents/enterprise/policy_agent/skill/SKILL.v0.md \
-   agents/enterprise/policy_agent/skill/SKILL.md
-```
-
-**2. Generate adversarial traffic** — the simulated user asks the
-questions and, knowing the golden facts, pushes back on wrong answers
-(multi-turn):
-
-```bash
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
-    --from-file eval/data/questions/demo_quick.json \
-    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
-```
-
-**3. Judge every conversation** — golden-matched ground truth (see
-"The single input" above); output partitions sessions into successes
-and failures:
-
-```bash
-bash scripts/demo/skill_evolution/score.sh \
-    -i "$RUN_DIR/v0_traffic.json" \
-    -o "$RUN_DIR/v0_quality_report.json" --report
-# printed summary: meaningful_rate, unhelpful_rate, failure count
-```
-
-**4 + 5. Analysts, patches, consolidation, best-of-N** — one command
-runs the whole evolution stage: an analyst per failure (each
-investigates with tool access), patch scoring, consolidation into
-candidate `SKILL.md` documents, and empirical scoring that keeps the
-best candidate:
-
-```bash
-uv run python agents/workflow/skill_evolution_agent/main.py \
-    --report "$RUN_DIR/v0_quality_report.json"
-# artifacts: $RUN_DIR/*_candidates/, the winning skill deployed to
-# agents/enterprise/policy_agent/skill/SKILL.md
-```
-
-**6. Re-score and compare** — fresh traffic against the evolved
-skill, then the before/after table:
-
-```bash
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
-    --from-file eval/data/questions/demo_quick.json \
-    -o "$RUN_DIR/v1_traffic.json" --concurrency 10
-bash scripts/demo/skill_evolution/score.sh \
-    -i "$RUN_DIR/v1_traffic.json" \
-    -o "$RUN_DIR/v1_quality_report.json" --report
-uv run python eval/scoring/score_conversations.py --compare \
-    "$RUN_DIR/v0_quality_report.json:V0" \
-    "$RUN_DIR/v1_quality_report.json:V1"
-```
-
-Repeat 2-6 for a V2 round (the gate keeps V2 only when it beats V1).
-For the DEPLOYED version of this cycle — real BigQuery traces, the
-Skill Registry, auto-PR — follow
-[Guided Walkthrough](#guided-walkthrough--every-step-by-hand) below;
-for a from-empty-project setup, [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md).
+- Deployed path: [Guided Walkthrough, Steps 1-7](#guided-walkthrough--every-step-by-hand)
+  — the full loop with per-step verification (this is the demo track).
+- Local path: [Run the Demo Locally -> Manual step-by-step](#run-the-demo-locally).
 
 Results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
 conversations. Inspired by [Trace2Skill](https://arxiv.org/abs/2603.25158)
@@ -1043,10 +984,76 @@ Stop with `bash scripts/local/local_start.sh stop`.
 
 ### Manual step-by-step
 
-Each of the six pipeline stages, with its command and artifacts:
-[The evolution cycle: from V0 to production quality](#the-evolution-cycle-from-v0-to-production-quality).
-For a narrated walkthrough with pauses, see
-[Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
+Each stage of the local pipeline, run individually. Everything
+writes into one run folder:
+
+```bash
+source .env
+RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution" && mkdir -p "$RUN_DIR"
+```
+
+**1. Start from the V0 baseline skill** — the deliberately minimal
+skill is the permanent backup next to the live one:
+
+```bash
+cp agents/enterprise/policy_agent/skill/SKILL.v0.md \
+   agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**2. Generate adversarial traffic** — the simulated user asks the
+questions and, knowing the golden facts, pushes back on wrong answers
+(multi-turn):
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+    --local --local-agents --multi-turn \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
+```
+
+**3. Judge every conversation** — golden-matched ground truth (see
+"The single input" above); output partitions sessions into successes
+and failures:
+
+```bash
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v0_traffic.json" \
+    -o "$RUN_DIR/v0_quality_report.json" --report
+# printed summary: meaningful_rate, unhelpful_rate, failure count
+```
+
+**4 + 5. Analysts, patches, consolidation, best-of-N** — one command
+runs the whole evolution stage: an analyst per failure (each
+investigates with tool access), patch scoring, consolidation into
+candidate `SKILL.md` documents, and empirical scoring that keeps the
+best candidate:
+
+```bash
+uv run python agents/workflow/skill_evolution_agent/main.py \
+    --report "$RUN_DIR/v0_quality_report.json"
+# artifacts: $RUN_DIR/*_candidates/, the winning skill deployed to
+# agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**6. Re-score and compare** — fresh traffic against the evolved
+skill, then the before/after table:
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+    --local --local-agents --multi-turn \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v1_traffic.json" --concurrency 10
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v1_traffic.json" \
+    -o "$RUN_DIR/v1_quality_report.json" --report
+uv run python eval/scoring/score_conversations.py --compare \
+    "$RUN_DIR/v0_quality_report.json:V0" \
+    "$RUN_DIR/v1_quality_report.json:V1"
+```
+
+Repeat the traffic->score->evolve stages for a V2 round (the gate
+keeps V2 only when it beats V1). For a narrated walkthrough with
+pauses, see [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
 
 ## Demo Variants — What Runs, What Is Cut, and Why
 
@@ -1286,7 +1293,7 @@ bash scripts/demo/skill_evolution/run_demo.sh --quick
 
 Or run the six bootstrap stages one at a time against your agent —
 the exact commands are in
-[The evolution cycle: from V0 to production quality](#the-evolution-cycle-from-v0-to-production-quality);
+[Run the Demo Locally -> Manual step-by-step](#run-the-demo-locally);
 swap the questions file for yours.
 
 For full input schemas and pipeline details, see
