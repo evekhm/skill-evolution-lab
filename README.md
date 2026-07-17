@@ -302,6 +302,45 @@ Q: How many PTO days do I have left?
   fix. The smoke test passing means the PIPES work; answer QUALITY is
   what Steps 1-7 are about.
 
+**Expected output of the per-agent tests** (these bypass the
+supervisor and talk to each Cloud Run specialist directly, first
+fetching its A2A agent card — the card lists the skills the agent
+advertises to callers):
+
+```text
+Discovering policy-agent in <PROJECT_ID>/us-central1...
+Service URL: https://policy-agent-<HASH>-uc.a.run.app
+
+Checking A2A agent card...
+  Agent: policy_agent
+  Skills: model, lookup_company_policy, get_current_date
+
+─────────────────────────────────────────
+Q: How many sick days do I get?
+─────────────────────────────────────────
+You get 10 sick days per year. They do not roll over.
+```
+
+```text
+Discovering hr-calculator in <PROJECT_ID>/us-central1...
+Service URL: https://hr-calculator-<HASH>-uc.a.run.app
+
+Checking A2A agent card...
+  Agent: hr_calculator
+  Skills: model, calculate_pto_details
+
+─────────────────────────────────────────
+Q: How many PTO days do I have left?
+─────────────────────────────────────────
+You have 7.6 PTO days left.
+```
+
+Note the contrast with the supervisor sample above: hr_calculator's
+"7.6" is computed by its `calculate_pto_details` tool (deterministic
+demo data) — the same number the V0 supervisor produced WITHOUT any
+tool. Direct specialist calls are grounded; the V0 supervisor's
+shortcut is the bug.
+
 
 #### 0.B.4 — Connect Gemini Enterprise (optional)
 
