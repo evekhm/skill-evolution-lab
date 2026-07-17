@@ -95,19 +95,6 @@ documents — versioned, diffable, PR-reviewable — so "the agent
 learned something" is always a concrete artifact a human signed off
 on.
 
-## Where to Start
-
-| You want to... | Go to | Time |
-|---|---|---|
-| Understand the system first | [Architecture](#architecture) | 10 min read |
-| See the evolution loop run on your machine (no deployment) | [Run the Demo Locally](#run-the-demo-locally) | ~15 min |
-| Stand up the full production loop on GCP from an empty project | [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md), then [Guided Walkthrough](#guided-walkthrough--every-step-by-hand) | ~90 min setup, then ~15 min per loop |
-| Point the loop at your own agent | [Plug In Your Own Agent](#plug-in-your-own-agent) | ~1 h |
-
-Both demo paths run the same algorithm; the local path trades the
-deployed stack (Agent Engine, Skill Registry, BigQuery, auto-PR) for
-speed and zero setup.
-
 ## Architecture
 
 The system has two layers: **enterprise agents** that serve end users,
@@ -377,13 +364,7 @@ Every stage of the loop, who runs it, and how to watch it live:
 | Activate | Deploy to GCP workflow (GitHub Actions, WIF) | PR merge | merged repo | registry sync + redeploy; agents fetch the new revision | `gcloud logging read 'textPayload:"Loaded skill from registry"'` |
 | Roll back | `rollback_demo.sh` | you | SKILL.v0 files | V0 as newest registry revision; agents restarted | script prints verification |
 
-## How Skills Evolve
-
-The system has one manual input: **Golden Q&A** -- curated
-question-answer pairs that define what correct behavior looks like.
-Everything else is automated.
-
-### The single input
+### The one manual input: Golden Q&A
 
 Golden Q&A (`eval/data/golden_evals.json`) is a list of curated
 entries: a question, its `expected_answer`, and optionally
@@ -424,66 +405,6 @@ Golden Q&A feeds three consumers:
 - **The LLM Judge** grades against matched entries as described above
 - **The evolution engine** works on the pass/fail labels the judge
   produces
-
-### The evolution cycle: from V0 to production quality
-
-This is the SKILL's journey — how a deliberately weak V0 becomes a
-production-quality skill through repeated cycles.
-
-**Step 0 — prerequisites:** [Step 0 — Setup & Prerequisites](#step-0--setup--prerequisites).
-Run its 12 checks first; everything below assumes them.
-
-**Trigger the whole cycle end-to-end with one command:**
-
-```bash
-# Local (no deployment, ~15 min):
-bash scripts/demo/skill_evolution/run_demo.sh --quick
-
-# Deployed (the production loop, ~15 min, warm BigQuery window):
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
-```
-
-**What either command does, in order:**
-
-1. Start from the deliberately weak V0 skill
-2. Generate adversarial traffic (the simulated user knows the golden
-   facts and pushes back on wrong answers)
-3. Judge every conversation against golden ground truth -> failures
-4. One analyst per failure investigates and proposes a patch;
-   consolidation produces N candidate skills
-5. Each candidate is validated on replayed traffic; the best one wins
-   (and, deployed: is pushed to the Skill Registry + opened as a PR
-   with extracted regression cases)
-6. Re-score, compare, repeat — the gate keeps a new version only when
-   it beats the old one
-
-**Run the steps manually, one at a time:**
-
-- Deployed path: [Guided Walkthrough, Steps 1-7](#guided-walkthrough--every-step-by-hand)
-  — the full loop with per-step verification (this is the demo track).
-- Local path: [Run the Demo Locally -> Manual step-by-step](#run-the-demo-locally).
-
-Results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
-conversations. Inspired by [Trace2Skill](https://arxiv.org/abs/2603.25158)
-and [AutoSkill](https://arxiv.org/abs/2603.01145) -- see
-[the paper analysis](docs/skill-evolution/RESEARCH.md).
-
-### Production: monitoring and healing
-
-Once deployed, two workflow agents maintain quality autonomously:
-- **Quality Agent** (daily sentinel) scores production sessions
-  against Golden Q&A, detects regressions via BigQuery history,
-  creates GitHub issues
-- **Skill Evolution Agent** (the healer) re-runs the evolution loop —
-  on demand, when enough quality issues accumulate, or on its
-  scheduled tick (weekly by default) — using real production traces
-
-New topics that Golden Q&A doesn't cover surface as `new-topic` issues
-for a human decision: add the capability or mark it out-of-scope.
-
-See [Skill Evolution docs](docs/skill-evolution/) for the full lifecycle
-narrative and algorithm details.
 
 ## Step 0 — Setup & Prerequisites
 
@@ -679,12 +600,42 @@ Run every verify; all must pass before you run anything.
 Anything missing: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) is the
 ordered path that creates all of it.
 
-## Guided Walkthrough — Every Step by Hand
+## Run the Demo — Steps 1 to 7
 
-The sections above explain the system; this one is the operator's
-track: run the entire loop manually, verifying state at every step.
-Step 0 is the section above. From here every action is the next
-numbered step, through to rollback.
+Step 0 done? Then either fire the whole loop with one command —
+
+```bash
+# Local (no deployment, ~15 min):
+bash scripts/demo/skill_evolution/run_demo.sh --quick
+
+# Deployed (the production loop, ~15 min, warm BigQuery window):
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
+```
+
+**What either command does, in order:**
+
+1. Start from the deliberately weak V0 skill
+2. Generate adversarial traffic (the simulated user knows the golden
+   facts and pushes back on wrong answers)
+3. Judge every conversation against golden ground truth -> failures
+4. One analyst per failure investigates and proposes a patch;
+   consolidation produces N candidate skills
+5. Each candidate is validated on replayed traffic; the best one wins
+   (and, deployed: is pushed to the Skill Registry + opened as a PR
+   with extracted regression cases)
+6. Re-score, compare, repeat — the gate keeps a new version only when
+   it beats the old one
+
+— or, to see and verify every stage yourself, walk Steps 1-7
+below (same loop, one stage at a time).
+
+Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
+conversations locally; 20.0% -> 96.0% on the deployed loop's PR #4.
+Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
+[AutoSkill](https://arxiv.org/abs/2603.01145) —
+[paper analysis](docs/skill-evolution/RESEARCH.md).
+
 
 ### Step 1 — The starting point (defined, verifiable)
 
