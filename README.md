@@ -251,14 +251,57 @@ You can also deploy individually:
 
 #### 0.B.3 — Smoke test
 
+**What this does:** exercises the full serving chain end to end. The
+script discovers the deployed supervisor by display name via the
+Vertex AI REST API, sends your question to its `:streamQuery`
+endpoint, and parses the streamed events into a readable trace —
+which agent handled it, which tools were called, token counts, the
+answer, latency. A clean run proves: Agent Engine is reachable, the
+supervisor boots (and loads its skill), and responses stream back.
+
 ```bash
 bash scripts/test/smoke_test_deployed.sh
 bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
 
-# Per-agent tests
+# Per-agent tests (talk to the Cloud Run specialists directly, over A2A)
 bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
 bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
 ```
+
+**Expected output** (real run, ids redacted):
+
+```text
+Discovering Reasoning Engine 'knowledge-supervisor' in <PROJECT_ID>/us-central1...
+Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_ID>
+
+─────────────────────────────────────────
+Q: How many PTO days do I have left?
+─────────────────────────────────────────
+  Routed to:  direct
+  Model:      gemini-2.5-pro
+  Tools:      (none)
+  Tokens:     supervisor 276→13 (thinking: 370)
+              sub-agent  0→0 (thinking: 0)
+
+  A: You currently have 7.6 PTO days left and 4.7 sick leave days. ...
+
+  Latency: 20.2s
+```
+
+**How to read it:**
+
+- `Found: projects/...` — the reasoning-engine path; you will paste
+  this in 0.B.4 for the Gemini Enterprise UI.
+- `Routed to: direct` — the supervisor answered by itself;
+  a routed question shows the specialist's name instead.
+- Latency 20–40s per question is normal for the multi-agent chain.
+- **Look closely at this V0 sample:** `Tools: (none)` yet a confident
+  "7.6 PTO days" — the number is invented. A grounded answer would
+  show tool calls (or a routed specialist). This is the deliberate V0
+  defect on display, and precisely what the evolution loop exists to
+  fix. The smoke test passing means the PIPES work; answer QUALITY is
+  what Steps 1-7 are about.
+
 
 #### 0.B.4 — Connect Gemini Enterprise (optional)
 
