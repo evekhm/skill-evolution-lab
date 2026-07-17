@@ -832,7 +832,7 @@ Step 1.
 
 | # | Requirement | Verify with | Expect |
 |---|---|---|---|
-| 0.1 | Tools | `gcloud version && gh --version && uv --version && bq version && jq --version` | five version strings |
+| 0.1 | Tools | `for t in gcloud gh uv bq jq; do command -v $t >/dev/null && echo "OK      $t" || echo "MISSING $t"; done` | five lines, all `OK` (bq ships inside the gcloud SDK) |
 | 0.2 | GCP auth + ADC | `gcloud auth list --filter=status:ACTIVE --format="value(account)"` and `gcloud auth application-default print-access-token >/dev/null && echo ADC-OK` | your account; `ADC-OK` |
 | 0.3 | GitHub auth | `gh auth status` | logged in, repo scope |
 | 0.4 | `.env` | `grep -E "^(PROJECT_ID|REGION|DATASET_ID|TABLE_ID)" .env` | your project; values match what you deployed with |
