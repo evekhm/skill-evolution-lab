@@ -268,7 +268,7 @@ bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I ge
 bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
 ```
 
-**Expected output** (real run, ids redacted):
+**Expected output:**
 
 ```text
 Discovering Reasoning Engine 'knowledge-supervisor' in <PROJECT_ID>/us-central1...
