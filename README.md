@@ -529,11 +529,18 @@ The traffic comes from
 [`eval/data/questions/two_defect_evolve.json`](eval/data/questions/two_defect_evolve.json)
 — 55 HR questions across 13 categories (PTO, sick leave, benefits,
 expenses, ...), phrased so the flawed V0 skill defers to HR even
-though the policy lookup tool has every answer. `--limit 8` takes the
-first 8 in file order (4x PTO, 3x sick leave, 1x remote work): enough
-failures to evolve from, small enough to finish in minutes. The
-simulated user knows the golden facts and pushes back on wrong
-answers across up to 4 turns.
+though the policy lookup tool has every answer. Each question becomes
+one multi-turn conversation (one BQ session): the simulated user asks
+it, knows the golden facts, and pushes back on wrong answers across
+up to 4 turns.
+
+`--limit 8` is the session-count knob: run only the first 8 questions
+in file order (4x PTO, 3x sick leave, 1x remote work), so exactly 8
+labeled sessions land in BigQuery. Omit it and all 55 run — roughly
+7x the time and model quota for the same demo outcome, since the
+evolution job needs only a handful of failures to learn from. Any N
+works: `--limit 3` for a fast smoke, `--limit 55` (or no flag) for
+the full set.
 
 Every conversation carries `$DEMO_LABEL` plus an auto `run_id`.
 Traffic runs on the **local runner** because that is where per-run
