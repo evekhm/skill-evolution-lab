@@ -58,39 +58,15 @@ gcloud config set project <YOUR_PROJECT_ID>
 gh auth login
 ```
 
-### A5. Bot credential (PAT)
+### A5. PR credential (fine-grained PAT)
 
-A PAT (Personal Access Token) is a password-substitute string that lets
-a program act as your GitHub account with limited rights. The evolution
-job runs in a Cloud Run container with no GitHub login; to open the
-pull request with the evolved skill it needs a credential. The setup
-script (B3) stores your token in Secret Manager as `github-pat`, and
-the job's deploy mounts it as `GH_TOKEN` for `git clone` +
-`gh pr create`.
-
-Create one:
-
-1. GitHub > avatar > **Settings** > **Developer settings** >
-   **Personal access tokens** > **Tokens (classic)** >
-   **Generate new token (classic)**
-2. Name it (e.g. `skill-evolution-lab-bot`), pick an expiration
-3. Check the **`repo`** scope box — this grants repository rights
-   (code, pull requests) and nothing account-wide
-4. Generate and copy the `ghp_...` value immediately — GitHub shows it
-   only once
-
-Alternative: a **fine-grained** token restricted to this one repository
-with *Contents: read/write* + *Pull requests: read/write* — tighter
-blast radius, works the same here.
-
-Keep it in your shell for step B3 (`export GH_PAT=ghp_...`). If you
-skip this, the setup script falls back to your `gh` CLI token and says
-so — fine for a demo, but gh tokens rotate on re-login, so a dedicated
-PAT is the durable choice.
-
-Rotation (expired/revoked token): generate a new PAT, then
-`gcloud secrets delete github-pat --project=<YOUR_PROJECT_ID>` and
-re-run step B3 with the new `GH_PAT`.
+The evolution job opens PRs from its container using the `github-pat`
+secret. Create a **fine-grained PAT** for it — one repo, two
+permissions (Contents + Pull requests read/write), explicit expiry —
+per [docs/GITHUB_APP_SETUP.md](GITHUB_APP_SETUP.md) Step 1, and export
+it as `GH_PAT` before B3. (Skipping it falls back to your gh CLI
+token: fine for a first spin, breaks when that login rotates.) The
+same doc covers the optional GitHub App for bot-authored issues.
 
 ### A6. Configure `.env`
 
@@ -139,7 +115,8 @@ uv run python eval/skill_evolution/registry_sync.py revisions --agent policy_age
 ### B3. GitHub wiring (CI + bot)
 
 ```bash
-GH_PAT=<your PAT from A5> bash scripts/setup/setup_github.sh
+export GH_PAT=github_pat_...   # from A5
+bash scripts/setup/setup_github.sh
 ```
 
 What it does (idempotent, 7 steps): issue labels; **Workload Identity

@@ -23,6 +23,7 @@
 #   5. Sets GitHub repo variables (PROJECT_ID, WIF_PROVIDER, etc.)
 #   6. Stores the github-pat secret the evolution job uses to open PRs
 #   7. Protects main (requires the Golden Eval + Load Test checks)
+#   8. Optional: stores GitHub App secrets (bot identity, from GH_APP_* vars)
 #
 # Prerequisites:
 #   - .env configured with PROJECT_ID
@@ -82,7 +83,7 @@ echo "----------------------------------------------------------"
 # Step 1: Install Python dependencies
 # =========================================================================
 echo ""
-echo "[1/7] Installing Python dependencies..."
+echo "[1/8] Installing Python dependencies..."
 if command -v uv &>/dev/null; then
     uv pip install PyGithub PyJWT cryptography google-cloud-secret-manager --quiet
 else
@@ -94,7 +95,7 @@ echo "  Done."
 # Step 2: Create GitHub issue labels
 # =========================================================================
 echo ""
-echo "[2/7] Creating GitHub issue labels..."
+echo "[2/8] Creating GitHub issue labels..."
 
 create_label() {
     local name="$1" color="$2" description="$3"
@@ -120,7 +121,7 @@ fi
 # Step 3: Set up Workload Identity Federation for GitHub Actions
 # =========================================================================
 echo ""
-echo "[3/7] Setting up Workload Identity Federation..."
+echo "[3/8] Setting up Workload Identity Federation..."
 
 WIF_POOL="github-actions"
 WIF_PROVIDER="github-provider"
@@ -182,7 +183,7 @@ echo "  WIF Provider: $WIF_PROVIDER_FULL"
 # Step 4: Create & configure service account for GitHub Actions
 # =========================================================================
 echo ""
-echo "[4/7] Configuring service account for GitHub Actions..."
+echo "[4/8] Configuring service account for GitHub Actions..."
 
 GH_SA_NAME="github-actions-fixer"
 GH_SA_EMAIL="${GH_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -238,7 +239,7 @@ echo "  Done."
 # Step 5: Set GitHub repo variables
 # =========================================================================
 echo ""
-echo "[5/7] Setting GitHub repo variables..."
+echo "[5/8] Setting GitHub repo variables..."
 
 if command -v gh &>/dev/null; then
     gh variable set PROJECT_ID          --body "$PROJECT_ID"              --repo "$GITHUB_REPO" && echo "  PROJECT_ID=$PROJECT_ID"
@@ -270,7 +271,7 @@ fi
 # the repo and opens PRs with GH_TOKEN read from this secret
 # (skill_evolution_agent/deploy.sh mounts github-pat:latest).
 echo ""
-echo "[6/7] Storing github-pat secret in Secret Manager..."
+echo "[6/8] Storing github-pat secret in Secret Manager..."
 
 if gcloud secrets describe github-pat --project="$PROJECT_ID" >/dev/null 2>&1; then
     echo "  Secret 'github-pat' already exists (skipped)."
@@ -299,7 +300,7 @@ fi
 # Step 7: Protect main (require the eval gate checks)
 # =========================================================================
 echo ""
-echo "[7/7] Setting branch protection on main..."
+echo "[7/8] Setting branch protection on main..."
 
 if gh api -X PUT "repos/${GITHUB_REPO}/branches/main/protection" --input - >/dev/null <<'PROTECTION'
 {
@@ -323,6 +324,41 @@ fi
 # Done
 # =========================================================================
 echo ""
+# =========================================================================
+# Step 8: Bot identity (GitHub App) — optional
+# =========================================================================
+echo ""
+echo "[8/8] Bot identity (GitHub App secrets)..."
+if [ -n "${GH_APP_ID:-}" ] && [ -n "${GH_APP_INSTALLATION_ID:-}" ] && [ -n "${GH_APP_KEY_FILE:-}" ]; then
+    if gcloud secrets describe github-app-key --project="$PROJECT_ID" >/dev/null 2>&1; then
+        # Secret already stored — the local .pem may legitimately be
+        # deleted by now; never demand it again.
+        echo "  Secret 'github-app-key' already exists (skipped)."
+    elif [ ! -f "${GH_APP_KEY_FILE}" ]; then
+        echo "  ERROR: GH_APP_KEY_FILE not found: ${GH_APP_KEY_FILE}"
+        echo "  If you already deleted the .pem: app settings -> Private keys"
+        echo "  -> Generate a private key, then re-run with the new path."
+        exit 1
+    else
+        gcloud secrets create github-app-key --project="$PROJECT_ID" \
+            --data-file="${GH_APP_KEY_FILE}"
+        echo "  Created secret 'github-app-key'."
+    fi
+    if gcloud secrets describe github-app-config --project="$PROJECT_ID" >/dev/null 2>&1; then
+        echo "  Secret 'github-app-config' already exists (skipped)."
+    else
+        printf '{"app_id": %s, "installation_id": %s, "repo": "%s"}' \
+            "${GH_APP_ID}" "${GH_APP_INSTALLATION_ID}" "${GITHUB_REPO}" \
+            | gcloud secrets create github-app-config --project="$PROJECT_ID" --data-file=-
+        echo "  Created secret 'github-app-config' (repo: ${GITHUB_REPO})."
+    fi
+    echo "  Quality-agent issues will post as the app bot after its next deploy."
+else
+    echo "  GH_APP_ID / GH_APP_INSTALLATION_ID / GH_APP_KEY_FILE not set — skipped."
+    echo "  (Issues attribute to the PAT owner. See README 0.C.1 to create"
+    echo "   the GitHub App, then re-run this script with the three vars.)"
+fi
+
 echo "=========================================================="
 echo "GitHub Integration Setup Complete!"
 echo ""
@@ -336,10 +372,10 @@ echo "  [4] Service account: $GH_SA_EMAIL"
 echo "  [5] GitHub repo variables (PROJECT_ID, WIF_PROVIDER, ...)"
 echo "  [6] Secret Manager secret: github-pat (evolution job PR credential)"
 echo "  [7] Branch protection on main (Golden Eval + Load Test required)"
-echo ""
-echo "Auth flow:"
-echo "  GitHub Actions → WIF → GCP SA → Secret Manager → GitHub App token"
-echo ""
-echo "If you haven't set up the GitHub App yet, follow:"
-echo "  docs/GITHUB_APP_SETUP.md"
+if gcloud secrets describe github-app-config --project="$PROJECT_ID" >/dev/null 2>&1; then
+    echo "  [8] Bot identity: CONFIGURED — quality issues post as the app bot"
+else
+    echo "  [8] Bot identity: not configured — issues attribute to the PAT owner"
+    echo "      (optional; see docs/GITHUB_APP_SETUP.md Steps 2-4, then re-run)"
+fi
 echo "=========================================================="

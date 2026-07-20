@@ -159,6 +159,15 @@ def _gh_repo_args() -> list:
     return ["--repo", repo] if repo else []
 
 
+def _app_secrets_available() -> bool:
+    """True when the GitHub App secrets exist (bot-authored issues)."""
+    try:
+        _read_secret("github-app-config")
+        return True
+    except Exception:
+        return False
+
+
 def _gh_available() -> bool:
     """Check if gh CLI is available and authenticated."""
     try:
@@ -794,8 +803,17 @@ def create_github_issue(
     # Determine run directory for .md persistence
     run_dir = os.path.dirname(report_path) if report_path else None
 
-    # Try gh CLI first, fall back to PyGithub
-    if _gh_available():
+    # Prefer the GitHub App (bot authorship) when its secrets exist —
+    # matches the reference deployment where quality issues post as
+    # <app>[bot]. gh CLI (PAT-owner attribution) is the fallback.
+    if _app_secrets_available():
+        result = _create_issue_pygithub(
+            title, body, labels,
+            category=category, agent_name=agent_name, topic=topic,
+            agent_version=agent_version,
+            affected_sessions=affected_sessions, summary=summary,
+        )
+    elif _gh_available():
         result = _create_issue_gh(
             title, issue_body, labels,
             category=category, agent_name=agent_name, topic=topic,

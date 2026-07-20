@@ -1206,6 +1206,17 @@ def parse_args() -> argparse.Namespace:
     )
     # Execution
     parser.add_argument(
+        "--label",
+        action="append",
+        default=[],
+        metavar="K=V",
+        help="Custom label stamped into every BQ event of this run "
+        "(repeatable, e.g. --label experiment=round1). Labels reach "
+        "BigQuery on the --local path (deployed agents' plugins fix "
+        "their tags at startup); evolve on the slice with the job's "
+        "--trace-labels.",
+    )
+    parser.add_argument(
         "--local",
         action="store_true",
         help="Run through local ADK supervisor. Uses production A2A agents by default.",
@@ -1256,6 +1267,22 @@ def parse_args() -> argparse.Namespace:
 
 async def main():
     args = parse_args()
+
+    if getattr(args, "label", None):
+        extra = ",".join(args.label)
+        base = os.getenv("TRACE_LABELS", "")
+        os.environ["TRACE_LABELS"] = f"{base},{extra}" if base else extra
+        if not args.local:
+            logger.warning(
+                "--label only reaches BigQuery on the --local path: deployed "
+                "agents stamp their own tags, fixed at startup. This run's "
+                "labels (%s) will NOT be attached to deployed traffic.",
+                extra,
+            )
+        else:
+            logger.info(
+                "Custom labels for this run: %s (run_id=%s)", extra, _RUN_ID,
+            )
 
     # --- Step 1: Get questions ---
     if args.question:

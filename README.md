@@ -13,9 +13,9 @@
       * [0.B.4 — Connect Gemini Enterprise (optional)](#0b4--connect-gemini-enterprise-optional)
     * [0.C — GitHub: CI + bot wiring](#0c--github-ci--bot-wiring)
       * [0.C.1 — Repo and prerequisites](#0c1--repo-and-prerequisites)
-      * [0.C.2 — Run the setup script](#0c2--run-the-setup-script)
+      * [0.C.2 — What the setup script configured](#0c2--what-the-setup-script-configured)
       * [0.C.3 — Verify](#0c3--verify)
-    * [0.D — Verify everything: the 12 checks](#0d--verify-everything-the-12-checks)
+    * [0.D — Verify everything: one command](#0d--verify-everything-one-command)
   * [Run the Demo — Steps 1 to 7](#run-the-demo--steps-1-to-7)
     * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
     * [Step 2 — Generate real traffic (the system observes failures)](#step-2--generate-real-traffic-the-system-observes-failures)
@@ -237,12 +237,7 @@ Deploys all components in order:
 | 6 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
 | | **Total** | **~30 min** |
 
-You can also deploy individually:
-```bash
-(cd agents/enterprise/policy_agent && ./deploy.sh)
-(cd agents/enterprise/hr_calculator && ./deploy.sh)
-(cd agents/enterprise/knowledge_supervisor && ./deploy.sh)
-```
+
 
 > **First deploy note:** On a fresh project, the first Agent Engine
 > deploy may fail with "failed to start and cannot serve traffic."
@@ -251,11 +246,13 @@ You can also deploy individually:
 
 #### 0.B.3 — Smoke test
 
-Exercises the full serving chain: discovers the deployed supervisor by
-display name via the Vertex AI REST API, sends the question to its
-`:streamQuery` endpoint, and renders the streamed events as a readable
-trace. A clean run proves Agent Engine is reachable, the supervisor
-boots and loads its skill, and responses stream back.
+Three tests, one per deployed component. Together they verify the
+whole serving chain and each piece in isolation.
+
+##### 0.B.3.a — knowledge_supervisor (Agent Engine, end-to-end)
+
+Tests the full chain: Vertex REST discovery -> Agent Engine session ->
+supervisor (skill loaded) -> streamed response.
 
 ```bash
 bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
@@ -285,14 +282,15 @@ Q: How many PTO days do I have left?
 How to read it: the `Found:` line is the reasoning-engine path (you
 paste it in 0.B.4); `Routed to: direct` means the supervisor answered
 by itself (a routed question shows the specialist's name); 20-40s per
-question is normal for the multi-agent chain. And look closely at this
-V0 sample — `Tools: (none)` yet a confident "7.6 PTO days": the number
-is invented. The deliberate V0 defect on display; the smoke test
-proves the PIPES, answer QUALITY is what Steps 1-7 fix.
+question is normal for the multi-agent chain. Look closely at this V0
+sample — `Tools: (none)` yet a confident "7.6 PTO days": the number is
+invented. The deliberate V0 defect on display; the smoke test proves
+the PIPES, answer QUALITY is what Steps 1-7 fix.
 
-Talk to each Cloud Run specialist directly (bypasses the supervisor;
-first fetches the A2A agent card — the skills the agent advertises to
-callers):
+##### 0.B.3.b — policy_agent (Cloud Run, direct A2A)
+
+Bypasses the supervisor: fetches the specialist's A2A agent card (the
+skills it advertises to callers), then asks it directly.
 
 ```bash
 bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
@@ -314,6 +312,10 @@ Q: How many sick days do I get?
 You get 10 sick days per year. They do not roll over.
 ```
 
+##### 0.B.3.c — hr_calculator (Cloud Run, direct A2A)
+
+Same direct test for the math specialist.
+
 ```bash
 bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
 ```
@@ -334,26 +336,27 @@ Q: How many PTO days do I have left?
 You have 7.6 PTO days left.
 ```
 
-Note the contrast: hr_calculator's "7.6" is computed by its
-`calculate_pto_details` tool (deterministic demo data) — the same
-number the V0 supervisor produced WITHOUT any tool. Direct specialist
-calls are grounded; the V0 supervisor's shortcut is the bug.
+Note the contrast across the three: hr_calculator's "7.6" is computed
+by its `calculate_pto_details` tool (deterministic demo data) — the
+same number the V0 supervisor produced in 0.B.3.a WITHOUT any tool.
+Direct specialist calls are grounded; the V0 supervisor's shortcut is
+the bug.
 
 #### 0.B.4 — Connect Gemini Enterprise (optional)
 
 Gemini Enterprise provides a chat UI that connects directly to the
 deployed Agent Engine -- no custom frontend needed.
 
-a. Go to [Gemini Enterprise](https://console.cloud.google.com/gemini-enterprise)
-   in the GCP Console
-b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise
-   license -- a trial works)
-c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
-d. Paste the Agent Engine ID from the deploy output:
-   ```bash
-   bash scripts/test/smoke_test_deployed.sh -q "test"  # prints the reasoning engine path
-   ```
-e. Open the app's web URL and select **HR Policy Assistant** from
+* a. Go to [Gemini Enterprise](https://console.cloud.google.com/gemini-enterprise)in the GCP Console
+* b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise  license -- a trial works)
+* c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
+
+* d. Paste the reasoning-engine path (the `Found:` line from 0.B.3.a)
+   and give the agent a user-facing display name — e.g.
+   **HR Policy Assistant**. This registered agent IS the
+   `knowledge_supervisor` root agent; the display name is purely what
+   employees see in the picker (internal agent names stay hidden).
+* e. Open the app's web URL and select the display name you chose from
    the agent picker
 
 ### 0.C — GitHub: CI + bot wiring
@@ -368,38 +371,32 @@ all of it.
 - Fork or create the repo and clone it
 - `cp .env.example .env` and set `PROJECT_ID`
 - Authenticate the GitHub CLI: `gh auth login`
+- Complete **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)**
+  end to end — it walks you through the PR credential (fine-grained
+  PAT), the optional bot identity (GitHub App), and the setup-script
+  run that stores everything.
 
-#### 0.C.2 — Run the setup script
+#### 0.C.2 — What the setup script configured
 
-```bash
-# GH_PAT: a classic PAT with `repo` scope (or fine-grained with
-# contents + pull-requests read/write on this repo). Without it the
-# script falls back to your gh CLI token.
-GH_PAT=<your PAT> bash scripts/setup/setup_github.sh
-```
+You already ran `scripts/setup/setup_github.sh` as the final step of
+[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md) — nothing to run
+here. That one run configured: WIF (GitHub Actions -> GCP with zero
+stored keys), the CI service account, the 8 Actions repo variables,
+issue labels, branch protection on main, the `github-pat` PR
+credential, and — if you provided the `GH_APP_*` values — the bot
+identity secrets. The full step-by-step table is in the doc.
 
-The script detects the repo from your git remote and configures, in
-order:
-
-| Step | What it does |
-|------|--------------|
-| Labels | Issue labels the quality agent uses (`quality`, `routing`, `hallucination`, `prompt-gap`, `tool-error`) |
-| Workload Identity Federation | Creates the `github-actions` pool and OIDC provider in your GCP project, scoped to your GitHub org/user, so Actions authenticate to GCP with zero stored keys |
-| CI service account | Creates `github-actions-fixer@<project>` with the roles the workflows need (Vertex AI, BigQuery, Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Scheduler, Logging), and binds it to this repo via WIF |
-| Repo variables | Sets the Actions variables the workflows read: `PROJECT_ID`, `REGION`, `DATASET_ID`, `TABLE_ID`, `DATASET_LOCATION`, `TEST_DATASET_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
-| Bot credential | Stores `GH_PAT` as the `github-pat` secret in Secret Manager -- the evolution job clones the repo and opens PRs with it (`deploy.sh` mounts it as `GH_TOKEN`) |
-| Branch protection | main requires the Golden Eval + Load Test checks before merge |
-
-The script is idempotent -- re-run it after changing `.env` or moving
-projects. For a bot identity on issues and PRs (actions attributed to
-an app instead of your user), additionally set up a GitHub App per
-[`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
+Success signals in its output: every step prints `Created ...` or
+`already exists (skipped)`, and the closing summary shows
+`[8] Bot identity: CONFIGURED` (or the not-configured note if you
+skipped the App).
 
 #### 0.C.3 — Verify
 
 ```bash
 gh variable list          # 8 variables, PROJECT_ID = your project
 gcloud secrets describe github-pat --project=$PROJECT_ID
+gcloud secrets describe github-app-config --project=$PROJECT_ID   # bot identity (if configured)
 gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'
 ```
 
@@ -407,27 +404,31 @@ Open any PR: the **Eval & Load Test Gate** should start automatically,
 and after `scripts/setup/setup_gcp.sh` + a deploy, merging to main
 triggers **Deploy to GCP**.
 
-### 0.D — Verify everything: the 12 checks
+### 0.D — Verify everything: one command
 
-Run every verify; all must pass before you run anything.
+```bash
+bash scripts/setup/verify_setup.sh
+```
 
-| # | Requirement | Verify with | Expect |
-|---|---|---|---|
-| 0.1 | Tools | `for t in gcloud gh uv bq jq; do command -v $t >/dev/null && echo "OK      $t" || echo "MISSING $t"; done` | five lines, all `OK` (bq ships inside the gcloud SDK) |
-| 0.2 | GCP auth + ADC | `gcloud auth list --filter=status:ACTIVE --format="value(account)"` and `gcloud auth application-default print-access-token >/dev/null && echo ADC-OK` | your account; `ADC-OK` |
-| 0.3 | GitHub auth | `gh auth status` | logged in, repo scope |
-| 0.4 | `.env` | `grep -E "^(PROJECT_ID|REGION|DATASET_ID|TABLE_ID)" .env` | your project; values match what you deployed with |
-| 0.5 | Local Python env | `bash scripts/local/local_setup.sh` | ends all-green (deps, auth, agent imports) |
-| 0.6 | Cloud Run services | `gcloud run services list --region=$REGION --format="table(metadata.name,status.conditions[0].status)"` | `policy-agent` and `hr-calculator` both `True` |
-| 0.7 | Agent Engine supervisor | `bash scripts/test/smoke_test_deployed.sh -q "How many sick days do I get?"` | a real answer; prints the reasoning-engine path |
-| 0.8 | Jobs + schedulers | `gcloud run jobs list --region=$REGION` and `gcloud scheduler jobs list --location=$REGION` | 3 jobs; `quality-agent-daily` + `skill-evolution-weekly` |
-| 0.9 | Skill Registry seeded | `source .env && uv run python eval/skill_evolution/registry_sync.py revisions --agent policy_agent` | at least 1 revision |
-| 0.10 | CI wiring | `gh variable list` and `gcloud secrets describe github-pat --project=$PROJECT_ID` | 8 vars incl. `WIF_PROVIDER`; secret exists |
-| 0.11 | Gate green on main | `gh run list --workflow "Eval & Load Test Gate" --limit 1` | latest main run `success` |
-| 0.12 | Branch protection | `gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'` | `["Golden Eval","Load Test"]` |
+Runs every setup check (tools, auth, `.env`, both Cloud Run services,
+the Agent Engine supervisor, jobs + schedulers, Skill Registry, repo
+variables, PR credential, bot identity, gate status, branch
+protection) and prints one `[PASS]`/`[FAIL]` line per check with the
+fix command on failures. Expected:
 
-Anything missing: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) is the
-ordered path that creates all of it.
+```text
+[PASS] 0.1 tools: gcloud gh uv bq jq
+[PASS] 0.2 GCP auth + ADC (<you>)
+...
+[PASS] 0.12 branch protection (requires: Golden Eval,Load Test)
+
+==========================================
+RESULT: 17 passed, 0 failed
+==========================================
+```
+
+All green -> Step 0 is done. Anything `[FAIL]` prints its own fix;
+anything missing entirely: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md).
 
 ## Run the Demo — Steps 1 to 7
 
@@ -527,6 +528,34 @@ skill version from the frontmatter (`custom_tags.agent_version`). The
 corrections file runs multi-turn: the user pushes back with a wrong
 figure, which is how parroting becomes observable in the traces.
 
+**Optional: label this run and evolve on exactly this slice.** Give
+the traffic any labels you want with `--label` (repeatable); the
+generator also auto-stamps a unique `run_id`. Labels ride the
+`--local` path — deployed agents stamp their own fixed tags, so for a
+custom-labeled load use the local runner (it logs to the same
+BigQuery table):
+
+```bash
+uv run python agents/workflow/traffic_generator/main.py \
+  --local --local-agents --multi-turn \
+  --from-file eval/data/questions/two_defect_evolve.json \
+  --label experiment=round1 --concurrency 10
+# the log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
+```
+
+Verify the slice is in BigQuery — this previews EXACTLY what the
+evolution job will fetch:
+
+```bash
+EVOLUTION_TRACE_LABELS=experiment=round1 EVAL_TIME_PERIOD=6h \
+  bash scripts/test/show_traces.sh --selector
+# expect: your session count, earliest/latest timestamps, sample sessions
+```
+
+Then in Step 3, hand the same label to the job with
+`--trace-labels experiment=round1` — the selector is binding, lands in
+the run's `trace_selector.json`, and is printed in the PR body.
+
 ### Step 3 — Run the evolution job (learn + propose)
 
 ```bash
@@ -545,6 +574,13 @@ property of the loop. A full agent-decided run
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
   --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
 ```
+
+Evolving on a labeled slice from Step 2? Add the selector to the args:
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,experiment=round1,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
+
 
 Inside one run:
 
