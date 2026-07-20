@@ -483,6 +483,21 @@ label only.
    bash scripts/demo/skill_evolution/rollback_demo.sh
    ```
 
+   Fetch the skill the agents now serve straight from the Skill
+   Registry and display it:
+
+   ```bash
+   uv run python eval/skill_evolution/registry_sync.py verify-read --agent policy_agent
+   # expect the V0 head after the rollback:
+   #   OK: GetSkill(ks-policy-agent) revision=<id> SKILL.md=~800 chars
+   #   --- SKILL.md head ---
+   #   ...
+   #   metadata:
+   #     version: "0"
+   # (version "1" here means an evolved revision is still newest —
+   #  re-run the rollback)
+   ```
+
 3. **No leftover evolution artifacts** (optional, for a pristine demo):
 
    ```bash
