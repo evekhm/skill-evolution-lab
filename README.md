@@ -16,7 +16,7 @@
     * [0.D — Verify everything: one command](#0d--verify-everything-one-command)
   * [Run the Demo — Steps 1 to 7](#run-the-demo--steps-1-to-7)
     * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
-    * [Step 2 — Generate real traffic (the system observes failures)](#step-2--generate-real-traffic-the-system-observes-failures)
+    * [Step 2 — Generate labeled traffic (the system observes failures)](#step-2--generate-labeled-traffic-the-system-observes-failures)
     * [Step 3 — Run the evolution job (learn + propose)](#step-3--run-the-evolution-job-learn--propose)
     * [Step 4 — Review the PR (learning as an artifact)](#step-4--review-the-pr-learning-as-an-artifact)
     * [Choosing which traces to evolve on (labels)](#choosing-which-traces-to-evolve-on-labels)
