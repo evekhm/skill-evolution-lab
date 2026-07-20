@@ -1,28 +1,28 @@
 <!-- TOC -->
 * [Skill Evolution Lab](#skill-evolution-lab)
   * [What This System Does](#what-this-system-does)
-  * [Step 0 — Setup & Prerequisites](#step-0--setup--prerequisites)
-    * [0.0 — First time only: create the project and the repo](#00--first-time-only-create-the-project-and-the-repo)
-    * [0.A — Local machine: tools, auth, environment](#0a--local-machine-tools-auth-environment)
+  * [Step 1 — Setup & Prerequisites](#step-1--setup--prerequisites)
+    * [1.1 — First time only: create the project and the repo](#11--first-time-only-create-the-project-and-the-repo)
+    * [1.2 — Local machine: tools, auth, environment](#12--local-machine-tools-auth-environment)
       * [Tools and auth](#tools-and-auth)
       * [Configure `.env`](#configure-env)
       * [Python environment](#python-environment)
-    * [0.B — GCP: deploy the stack](#0b--gcp-deploy-the-stack)
-      * [0.B.1 — GCP infrastructure](#0b1--gcp-infrastructure)
-      * [0.B.2 — Deploy all six components](#0b2--deploy-all-six-components)
-      * [0.B.3 — Smoke test](#0b3--smoke-test)
-      * [0.B.4 — Connect Gemini Enterprise (optional)](#0b4--connect-gemini-enterprise-optional)
-    * [0.C — GitHub: CI + bot wiring](#0c--github-ci--bot-wiring)
-    * [0.D — Verify everything: one command](#0d--verify-everything-one-command)
-  * [Run the Demo — Steps 1 to 7](#run-the-demo--steps-1-to-7)
-    * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
-    * [Step 2 — Generate labeled traffic (the system observes failures)](#step-2--generate-labeled-traffic-the-system-observes-failures)
-    * [Step 3 — Run the evolution job (learn + propose)](#step-3--run-the-evolution-job-learn--propose)
-    * [Step 4 — Review the PR (learning as an artifact)](#step-4--review-the-pr-learning-as-an-artifact)
+    * [1.3 — GCP: deploy the stack](#13--gcp-deploy-the-stack)
+      * [1.3.1 — GCP infrastructure](#131--gcp-infrastructure)
+      * [1.3.2 — Deploy all six components](#132--deploy-all-six-components)
+      * [1.3.3 — Smoke test](#133--smoke-test)
+      * [1.3.4 — Connect Gemini Enterprise (optional)](#134--connect-gemini-enterprise-optional)
+    * [1.4 — GitHub: CI + bot wiring](#14--github-ci--bot-wiring)
+    * [1.5 — Verify everything: one command](#15--verify-everything-one-command)
+  * [Run the Demo — Steps 2 to 8](#run-the-demo--steps-2-to-8)
+    * [Step 2 — The starting point (defined, verifiable)](#step-2--the-starting-point-defined-verifiable)
+    * [Step 3 — Generate labeled traffic (the system observes failures)](#step-3--generate-labeled-traffic-the-system-observes-failures)
+    * [Step 4 — Run the evolution job (learn + propose)](#step-4--run-the-evolution-job-learn--propose)
+    * [Step 5 — Review the PR (learning as an artifact)](#step-5--review-the-pr-learning-as-an-artifact)
     * [Choosing which traces to evolve on (labels)](#choosing-which-traces-to-evolve-on-labels)
-    * [Step 5 — Merge to activate](#step-5--merge-to-activate)
-    * [Step 6 — Verify the fix (the payoff)](#step-6--verify-the-fix-the-payoff)
-    * [Step 7 — Roll back (back to the Step 1 state)](#step-7--roll-back-back-to-the-step-1-state)
+    * [Step 6 — Merge to activate](#step-6--merge-to-activate)
+    * [Step 7 — Verify the fix (the payoff)](#step-7--verify-the-fix-the-payoff)
+    * [Step 8 — Roll back (back to the Step 2 state)](#step-8--roll-back-back-to-the-step-2-state)
   * [Alternative: Local-Only Demo (no deployment)](#alternative-local-only-demo-no-deployment)
     * [One command](#one-command)
     * [What to expect](#what-to-expect)
@@ -154,13 +154,13 @@ documents — versioned, diffable, PR-reviewable — so "the agent
 learned something" is always a concrete artifact a human signed off
 on.
 
-## Step 0 — Setup & Prerequisites
+## Step 1 — Setup & Prerequisites
 
 Everything one-time lives here — from an empty GCP project and empty
 repo to a verified environment; every run section after this assumes
-it. Local-only usage needs 0.A; the GCP loop needs all of it.
+it. Local-only usage needs 1.2; the GCP loop needs all of it.
 
-### 0.0 — First time only: create the project and the repo
+### 1.1 — First time only: create the project and the repo
 
 Skip this whole part if the GCP project and the repo already exist.
 
@@ -175,12 +175,12 @@ gcloud billing projects describe <YOUR_PROJECT_ID> --format="value(billingEnable
 gh repo create <YOUR_GITHUB_USER>/<YOUR_REPO> --public --clone
 # copy this project's files in (or clone your fork), then:
 git add -A && git commit -m "Bootstrap: initial import" && git push origin main
-# the CI gate triggered by this push goes green only after 0.C — expected.
+# the CI gate triggered by this push goes green only after 1.4 — expected.
 ```
 
 Should print `True`.
 
-### 0.A — Local machine: tools, auth, environment
+### 1.2 — Local machine: tools, auth, environment
 
 #### Tools and auth
 
@@ -213,16 +213,16 @@ Syncs Python dependencies with `uv`, verifies GCP auth, and tests
 that all agent modules import correctly.
 
 
-### 0.B — GCP: deploy the stack
+### 1.3 — GCP: deploy the stack
 
-Skip this whole part if the stack is already deployed (0.D verifies).
+Skip this whole part if the stack is already deployed (1.5 verifies).
 
 
 
 Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
 first deploy, faster on subsequent runs.
 
-#### 0.B.1 — GCP infrastructure
+#### 1.3.1 — GCP infrastructure
 
 ```bash
 source .env
@@ -234,7 +234,7 @@ Enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
 creates the BigQuery dataset for Agent Analytics, seeds the Skill
 Registry with the V0 skills, and grants IAM permissions.
 
-#### 0.B.2 — Deploy all six components
+#### 1.3.2 — Deploy all six components
 
 ```bash
 bash scripts/deploy/deploy_gcp.sh
@@ -259,12 +259,12 @@ Deploys all components in order:
 > This is a known race condition -- re-run `deploy_gcp.sh` and it
 > will succeed.
 
-#### 0.B.3 — Smoke test
+#### 1.3.3 — Smoke test
 
 Three tests, one per deployed component. Together they verify the
 whole serving chain and each piece in isolation.
 
-##### 0.B.3.a — knowledge_supervisor (Agent Engine, end-to-end)
+##### 1.3.3.a — knowledge_supervisor (Agent Engine, end-to-end)
 
 Tests the full chain: Vertex REST discovery -> Agent Engine session ->
 supervisor (skill loaded) -> streamed response.
@@ -295,14 +295,14 @@ Q: How many PTO days do I have left?
 ```
 
 How to read it: the `Found:` line is the reasoning-engine path (you
-paste it in 0.B.4); `Routed to: direct` means the supervisor answered
+paste it in 1.3.4); `Routed to: direct` means the supervisor answered
 by itself (a routed question shows the specialist's name); 20-40s per
 question is normal for the multi-agent chain. Look closely at this V0
 sample — `Tools: (none)` yet a confident "7.6 PTO days": the number is
 invented. The deliberate V0 defect on display; the smoke test proves
-the PIPES, answer QUALITY is what Steps 1-7 fix.
+the PIPES, answer QUALITY is what Steps 2-8 fix.
 
-##### 0.B.3.b — policy_agent (Cloud Run, direct A2A)
+##### 1.3.3.b — policy_agent (Cloud Run, direct A2A)
 
 Bypasses the supervisor: fetches the specialist's A2A agent card (the
 skills it advertises to callers), then asks it directly.
@@ -327,7 +327,7 @@ Q: How many sick days do I get?
 You get 10 sick days per year. They do not roll over.
 ```
 
-##### 0.B.3.c — hr_calculator (Cloud Run, direct A2A)
+##### 1.3.3.c — hr_calculator (Cloud Run, direct A2A)
 
 Same direct test for the math specialist.
 
@@ -353,11 +353,11 @@ You have 7.6 PTO days left.
 
 Note the contrast across the three: hr_calculator's "7.6" is computed
 by its `calculate_pto_details` tool (deterministic demo data) — the
-same number the V0 supervisor produced in 0.B.3.a WITHOUT any tool.
+same number the V0 supervisor produced in 1.3.3.a WITHOUT any tool.
 Direct specialist calls are grounded; the V0 supervisor's shortcut is
 the bug.
 
-#### 0.B.4 — Connect Gemini Enterprise (optional)
+#### 1.3.4 — Connect Gemini Enterprise (optional)
 
 Gemini Enterprise provides a chat UI that connects directly to the
 deployed Agent Engine -- no custom frontend needed.
@@ -370,8 +370,6 @@ deployed Agent Engine -- no custom frontend needed.
 
    ```bash
    bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
-   # copy the "Found:" line: projects/<NUMBER>/locations/us-central1/reasoningEngines/<ID>
-   # (that line — NOT the https://...run.app URLs from the per-agent tests)
    ```
 
    Then
@@ -391,18 +389,18 @@ deployed Agent Engine -- no custom frontend needed.
 * e. Open the app's web URL and select the display name you chose from
    the agent picker
 
-### 0.C — GitHub: CI + bot wiring
+### 1.4 — GitHub: CI + bot wiring
 
 ```bash
 test -f .env && gh auth status >/dev/null 2>&1 && echo "OK — continue" \
-  || echo "MISSING — do 0.A first (.env + gh auth)"
+  || echo "MISSING — do 1.2 first (.env + gh auth)"
 ```
 
 Follow **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)** end to
 end (PR credential, optional bot identity, one setup-script run).
-0.D verifies the result.
+1.5 verifies the result.
 
-### 0.D — Verify everything: one command
+### 1.5 — Verify everything: one command
 
 ```bash
 bash scripts/setup/verify_setup.sh
@@ -425,12 +423,12 @@ RESULT: 17 passed, 0 failed
 ==========================================
 ```
 
-All green -> Step 0 is done. Anything `[FAIL]` prints its own fix;
-anything missing entirely: the 0.A-0.C subsections above create it.
+All green -> Step 1 is done. Anything `[FAIL]` prints its own fix;
+anything missing entirely: the 1.2-1.4 subsections above create it.
 
-## Run the Demo — Steps 1 to 7
+## Run the Demo — Steps 2 to 8
 
-Step 0 done? Then either fire the whole loop with one command —
+Step 1 done? Then either fire the whole loop with one command —
 
 ```bash
 # Local (no deployment, ~15 min):
@@ -455,17 +453,17 @@ gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
 6. Re-score, compare, repeat — the gate keeps a new version only when
    it beats the old one
 
-— or, to see and verify every stage yourself, walk Steps 1-7
+— or, to see and verify every stage yourself, walk Steps 2-8
 below (same loop, one stage at a time).
 
 Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
-conversations locally; 20.0% -> 96.0% on the deployed loop's PR #4.
+conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.
 Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
 [AutoSkill](https://arxiv.org/abs/2603.01145) —
 [paper analysis](docs/skill-evolution/RESEARCH.md).
 
 
-### Step 1 — The starting point (defined, verifiable)
+### Step 2 — The starting point (defined, verifiable)
 
 The demo runs on a LABELED slice of traces — the table never needs
 cleaning; old conversations coexist and every stage below targets your
@@ -549,11 +547,11 @@ side-table rows:
   (streaming buffer); the script detects this and tells you to wait
   or restart under a fresh label instead.
 
-### Step 2 — Generate labeled traffic (the system observes failures)
+### Step 3 — Generate labeled traffic (the system observes failures)
 
 Send 8 labeled conversations at the deployed V0 supervisor — the
 same endpoint real users hit. Their failures are the raw material
-the evolution job learns from in Step 3:
+the evolution job learns from in Step 4:
 
 ```bash
 bash scripts/demo/generate_traffic.sh --remote \
@@ -637,7 +635,7 @@ EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
 ```
 
 
-### Step 3 — Run the evolution job (learn + propose)
+### Step 4 — Run the evolution job (learn + propose)
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
@@ -664,7 +662,7 @@ Inside one run:
 | Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge |
 | PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) |
 
-### Step 4 — Review the PR (learning as an artifact)
+### Step 5 — Review the PR (learning as an artifact)
 
 The PR body carries the baseline quality numbers; the diff is the
 evolved skill plus any regression cases extracted from failures this
@@ -756,7 +754,7 @@ exactly which traces taught it. This replaces per-round tables: one
 table, label-sliced, and longitudinal quality-by-version queries stay
 intact.
 
-### Step 5 — Merge to activate
+### Step 6 — Merge to activate
 
 ```bash
 gh pr merge <PR_NUMBER> --merge
@@ -777,13 +775,13 @@ Merging triggers `deploy.yml`: it re-seeds the registry from the merged
 revision -- the SKIP is the git-registry reconciliation proof), then
 redeploys the agents, which fetch the merged revision at startup.
 
-### Step 6 — Verify the fix (the payoff)
+### Step 7 — Verify the fix (the payoff)
 
-The question that deflected in Step 1 now gets the grounded answer:
+The question that deflected in Step 2 now gets the grounded answer:
 
 ```bash
 bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
-# Step 1 (V0): "...please contact HR"
+# Step 2 (V0): "...please contact HR"
 # Now (v1):    "$75/day during business travel..."
 ```
 
@@ -794,7 +792,7 @@ gcloud logging read 'textPayload:"Loaded skill from registry"' \
   --project=$PROJECT_ID --freshness=15m --limit=4
 ```
 
-### Step 7 — Roll back (back to the Step 1 state)
+### Step 8 — Roll back (back to the Step 2 state)
 
 ```bash
 bash scripts/demo/skill_evolution/rollback_demo.sh
@@ -1539,7 +1537,7 @@ identity used for issues and PRs).
   `deploy_gcp.sh`.
 - **Registry seed fails with 403** — check ADC
   (`gcloud auth application-default login`) and that
-  `aiplatform.googleapis.com` is enabled (0.B.1 does this).
+  `aiplatform.googleapis.com` is enabled (1.3.1 does this).
 - **Gate red with RESOURCE_EXHAUSTED** — fresh-project Vertex quota;
   rerun, request a `gemini-2.5-flash` bump, and avoid pushing while a
   deploy/rollback/evolution run competes for the same quota.

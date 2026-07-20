@@ -24,7 +24,7 @@ scripts/
 | `setup_gcp.sh` | One-time GCP project setup: enables APIs, creates the BigQuery dataset, Artifact Registry repo, GCS bucket, IAM roles, and seeds the Skill Registry with V0 skills |
 | `setup_github.sh` | GitHub integration (7 steps): issue labels, Workload Identity Federation, CI service account, repo variables, the `github-pat` secret, branch protection |
 | `cleanup_github.sh` | Closes and deletes all PRs and issues in the repo (for resetting demo state) |
-| `verify_setup.sh` | Read-only: runs all Step 0 checks (tools, auth, deployments, registry, CI wiring), one PASS/FAIL line each; exit code = failure count |
+| `verify_setup.sh` | Read-only: runs all Step 1 checks (tools, auth, deployments, registry, CI wiring), one PASS/FAIL line each; exit code = failure count |
 
 ```bash
 bash scripts/setup/setup_gcp.sh

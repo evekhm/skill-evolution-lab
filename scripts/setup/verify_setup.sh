@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# verify_setup.sh — the 12 setup checks (README Step 0.D), scripted.
+# verify_setup.sh — the 12 setup checks (README Step 1.5), scripted.
 #
 # Read-only: verifies tools, auth, .env, deployments, registry, and CI
 # wiring. Prints PASS/FAIL per check; exit code = number of failures.
@@ -30,121 +30,121 @@ FAIL=0
 ok()   { echo "[PASS] $1"; PASS=$((PASS+1)); }
 bad()  { echo "[FAIL] $1"; [ -n "${2:-}" ] && echo "       -> $2"; FAIL=$((FAIL+1)); }
 
-# --- 0.1 tools ---
+# --- 1 tools ---
 missing=""
 for t in gcloud gh uv bq jq; do command -v "$t" >/dev/null || missing="$missing $t"; done
-if [ -z "$missing" ]; then ok "0.1 tools: gcloud gh uv bq jq"; else bad "0.1 tools" "missing:$missing"; fi
+if [ -z "$missing" ]; then ok "1 tools: gcloud gh uv bq jq"; else bad "1 tools" "missing:$missing"; fi
 
-# --- 0.2 GCP auth + ADC ---
+# --- 2 GCP auth + ADC ---
 acct=$(gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>/dev/null | head -1)
 if [ -n "$acct" ] && gcloud auth application-default print-access-token >/dev/null 2>&1; then
-    ok "0.2 GCP auth + ADC ($acct)"
+    ok "2 GCP auth + ADC ($acct)"
 else
-    bad "0.2 GCP auth + ADC" "run: gcloud auth login && gcloud auth application-default login"
+    bad "2 GCP auth + ADC" "run: gcloud auth login && gcloud auth application-default login"
 fi
 
-# --- 0.3 GitHub auth ---
-if gh auth status >/dev/null 2>&1; then ok "0.3 GitHub CLI auth"; else bad "0.3 GitHub CLI auth" "run: gh auth login"; fi
+# --- 3 GitHub auth ---
+if gh auth status >/dev/null 2>&1; then ok "3 GitHub CLI auth"; else bad "3 GitHub CLI auth" "run: gh auth login"; fi
 
-# --- 0.4 .env ---
+# --- 4 .env ---
 if [ -f .env ]; then
     set -a; source .env; set +a
     if [ -n "${PROJECT_ID:-}" ] && [ "${PROJECT_ID}" != "your-project-id" ] && [ "${PROJECT_ID}" != "<YOUR_PROJECT_ID>" ]; then
-        ok "0.4 .env (PROJECT_ID=${PROJECT_ID}, REGION=${REGION:-unset}, DATASET=${DATASET_ID:-unset}.${TABLE_ID:-unset})"
+        ok "4 .env (PROJECT_ID=${PROJECT_ID}, REGION=${REGION:-unset}, DATASET=${DATASET_ID:-unset}.${TABLE_ID:-unset})"
     else
-        bad "0.4 .env" "PROJECT_ID not set — edit .env"
+        bad "4 .env" "PROJECT_ID not set — edit .env"
     fi
 else
-    bad "0.4 .env" "missing — cp .env.example .env and set PROJECT_ID"
+    bad "4 .env" "missing — cp .env.example .env and set PROJECT_ID"
 fi
 REGION="${REGION:-us-central1}"
 
-# --- 0.5 local Python env ---
+# --- 5 local Python env ---
 if uv run python -c "import agents.workflow.traffic_generator.main" >/dev/null 2>&1; then
-    ok "0.5 local Python env (agent modules import)"
+    ok "5 local Python env (agent modules import)"
 else
-    bad "0.5 local Python env" "run: bash scripts/local/local_setup.sh"
+    bad "5 local Python env" "run: bash scripts/local/local_setup.sh"
 fi
 
-# --- 0.6 Cloud Run services ---
+# --- 6 Cloud Run services ---
 svcs=$(gcloud run services list --project="$PROJECT_ID" --region="$REGION" \
     --format="value(metadata.name,status.conditions[0].status)" 2>/dev/null)
 for s in policy-agent hr-calculator; do
     if echo "$svcs" | grep -q "^${s}[[:space:]]*True$"; then
-        ok "0.6 Cloud Run service: $s"
+        ok "6 Cloud Run service: $s"
     else
-        bad "0.6 Cloud Run service: $s" "deploy: bash scripts/deploy/deploy_gcp.sh"
+        bad "6 Cloud Run service: $s" "deploy: bash scripts/deploy/deploy_gcp.sh"
     fi
 done
 
-# --- 0.7 Agent Engine supervisor (discovery only, no query) ---
+# --- 7 Agent Engine supervisor (discovery only, no query) ---
 TOKEN=$(gcloud auth print-access-token 2>/dev/null)
 DISPLAY="${SUPERVISOR_DISPLAY_NAME:-knowledge-supervisor}"
 engines=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
     "https://${REGION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${REGION}/reasoningEngines" \
     | jq -r --arg d "$DISPLAY" '.reasoningEngines[]? | select(.displayName==$d) | .name' | head -1)
 if [ -n "$engines" ]; then
-    ok "0.7 Agent Engine supervisor (${engines##*/})"
+    ok "7 Agent Engine supervisor (${engines##*/})"
 else
-    bad "0.7 Agent Engine supervisor" "'${DISPLAY}' not found — deploy the supervisor"
+    bad "7 Agent Engine supervisor" "'${DISPLAY}' not found — deploy the supervisor"
 fi
 
-# --- 0.8 jobs + schedulers ---
+# --- 8 jobs + schedulers ---
 jobs=$(gcloud run jobs list --project="$PROJECT_ID" --region="$REGION" --format="value(metadata.name)" 2>/dev/null)
 for j in quality-agent skill-evolution-agent; do
-    if echo "$jobs" | grep -q "^${j}$"; then ok "0.8 Cloud Run job: $j"; else bad "0.8 Cloud Run job: $j"; fi
+    if echo "$jobs" | grep -q "^${j}$"; then ok "8 Cloud Run job: $j"; else bad "8 Cloud Run job: $j"; fi
 done
 scheds=$(gcloud scheduler jobs list --project="$PROJECT_ID" --location="$REGION" --format="value(name)" 2>/dev/null)
 if echo "$scheds" | grep -q "quality-agent-daily" && echo "$scheds" | grep -q "skill-evolution-weekly"; then
-    ok "0.8 schedulers: quality-agent-daily + skill-evolution-weekly"
+    ok "8 schedulers: quality-agent-daily + skill-evolution-weekly"
 else
-    bad "0.8 schedulers" "expected quality-agent-daily and skill-evolution-weekly"
+    bad "8 schedulers" "expected quality-agent-daily and skill-evolution-weekly"
 fi
 
-# --- 0.9 Skill Registry seeded ---
+# --- 9 Skill Registry seeded ---
 if uv run python eval/skill_evolution/registry_sync.py revisions --agent policy_agent 2>/dev/null | grep -q "revision"; then
-    ok "0.9 Skill Registry seeded (policy_agent has revisions)"
+    ok "9 Skill Registry seeded (policy_agent has revisions)"
 else
-    bad "0.9 Skill Registry" "seed: bash scripts/setup/setup_gcp.sh (or registry_sync.py seed)"
+    bad "9 Skill Registry" "seed: bash scripts/setup/setup_gcp.sh (or registry_sync.py seed)"
 fi
 
-# --- 0.10 CI wiring ---
+# --- 10 CI wiring ---
 nvars=$(gh variable list 2>/dev/null | wc -l)
-if [ "$nvars" -ge 8 ]; then ok "0.10 repo variables ($nvars)"; else bad "0.10 repo variables" "expected 8, found $nvars — run setup_github.sh"; fi
+if [ "$nvars" -ge 8 ]; then ok "10 repo variables ($nvars)"; else bad "10 repo variables" "expected 8, found $nvars — run setup_github.sh"; fi
 if gcloud secrets describe github-pat --project="$PROJECT_ID" >/dev/null 2>&1; then
     prefix=$(gcloud secrets versions access latest --secret=github-pat --project="$PROJECT_ID" 2>/dev/null | cut -c1-11)
     case "$prefix" in
-        github_pat_*) ok "0.10 PR credential (fine-grained PAT)";;
-        gho_*)        ok "0.10 PR credential (gh CLI token fallback — see docs/GITHUB_APP_SETUP.md Step 1 for the durable option)";;
-        *)            ok "0.10 PR credential (github-pat secret exists)";;
+        github_pat_*) ok "10 PR credential (fine-grained PAT)";;
+        gho_*)        ok "10 PR credential (gh CLI token fallback — see docs/GITHUB_APP_SETUP.md Step 1 for the durable option)";;
+        *)            ok "10 PR credential (github-pat secret exists)";;
     esac
 else
-    bad "0.10 PR credential" "github-pat secret missing — run setup_github.sh"
+    bad "10 PR credential" "github-pat secret missing — run setup_github.sh"
 fi
 if gcloud secrets describe github-app-config --project="$PROJECT_ID" >/dev/null 2>&1; then
-    ok "0.10 bot identity (GitHub App configured — issues post as the bot)"
+    ok "10 bot identity (GitHub App configured — issues post as the bot)"
 else
-    echo "[INFO] 0.10 bot identity not configured — issues attribute to the PAT owner (optional; docs/GITHUB_APP_SETUP.md)"
+    echo "[INFO] 10 bot identity not configured — issues attribute to the PAT owner (optional; docs/GITHUB_APP_SETUP.md)"
 fi
 
-# --- 0.11 gate green on main ---
+# --- 11 gate green on main ---
 # Judge the latest COMPLETED run — an in-progress run has no
 # conclusion yet and must not read as failure.
 gate=$(gh run list --workflow "Eval & Load Test Gate" --branch main --status completed --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null)
 running=$(gh run list --workflow "Eval & Load Test Gate" --branch main --status in_progress --limit 1 --json databaseId --jq 'length' 2>/dev/null)
 note=""; [ "${running:-0}" -ge 1 ] && note=" (a newer run is in progress)"
 if [ "$gate" = "success" ]; then
-    ok "0.11 Eval & Load Test Gate green on main${note}"
+    ok "11 Eval & Load Test Gate green on main${note}"
 else
-    bad "0.11 gate on main" "latest completed conclusion: ${gate:-none}${note}"
+    bad "11 gate on main" "latest completed conclusion: ${gate:-none}${note}"
 fi
 
-# --- 0.12 branch protection ---
+# --- 12 branch protection ---
 ctx=$(gh api "repos/{owner}/{repo}/branches/main/protection" --jq '.required_status_checks.contexts | join(",")' 2>/dev/null)
 if echo "$ctx" | grep -q "Golden Eval" && echo "$ctx" | grep -q "Load Test"; then
-    ok "0.12 branch protection (requires: $ctx)"
+    ok "12 branch protection (requires: $ctx)"
 else
-    bad "0.12 branch protection" "contexts: ${ctx:-none} — run setup_github.sh"
+    bad "12 branch protection" "contexts: ${ctx:-none} — run setup_github.sh"
 fi
 
 echo ""
