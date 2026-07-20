@@ -283,16 +283,14 @@ Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_
 Q: How many PTO days do I have left?
 ─────────────────────────────────────────
   Routed to:  direct
-  Model:      gemini-2.5-pro
+  Model:      gemini-3.1-flash-lite
   Tools:      (none)
-  Tokens:     supervisor 276→13 (thinking: 241)
+  Tokens:     supervisor 300→24 (thinking: 0)
               sub-agent  0→0 (thinking: 0)
 
-  A: You have 7.8 PTO days and 4.8 sick days left.
+  A: You currently have **7.8 days** of PTO left.
 
-
-  Latency: 8.9s
- 
+  Latency: 18.9s
 ```
 
 Output:
@@ -314,7 +312,7 @@ Bypasses the supervisor: fetches the specialist's A2A agent card (the
 skills it advertises to callers), then asks it directly.
 
 ```bash
-bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
+bash agents/enterprise/policy_agent/send_query.sh -q "How many PTO days do I have left?"
 ```
 
 Expected:
@@ -328,11 +326,12 @@ Checking A2A agent card...
   Skills: model, lookup_company_policy, get_current_date
 
 ─────────────────────────────────────────
-Q: How many sick days do I get?
+Q: How many PTO days do I have left?
 ─────────────────────────────────────────
-You get 10 sick days per year. They do not roll over.
+I don't have access to your individual PTO balance. Please contact HR
+to find out how many PTO days you have left.
 
-Latency: 1.6s
+Latency: 2.1s
 ```
 
 ##### 1.3.3.c — hr_calculator (Cloud Run, direct A2A)
@@ -356,16 +355,19 @@ Checking A2A agent card...
 ─────────────────────────────────────────
 Q: How many PTO days do I have left?
 ─────────────────────────────────────────
-You have 7.6 PTO days left.
+You currently have 7.8 PTO days left.
 
-Latency: 2.1s
+Latency: 2.3s
 ```
 
-Note the contrast across the three: hr_calculator's "7.6" is computed
-by its `calculate_pto_details` tool (deterministic demo data) — the
-same number the V0 supervisor produced in 1.3.3.a WITHOUT any tool.
-Direct specialist calls are grounded; the V0 supervisor's shortcut is
-the bug.
+One question, three answers — that is the point of the test:
+
+* hr_calculator computes the balance with `calculate_pto_details`
+  (accrual from demo dates, so the exact number changes day to day).
+* policy_agent correctly refuses: personal balances are outside its
+  policy documents.
+* The V0 supervisor (1.3.3.a) answered directly, no tool — its baked
+  summary shortcut is the defect the demo evolves away.
 
 #### 1.3.4 — Connect Gemini Enterprise (optional)
 
