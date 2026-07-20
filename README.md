@@ -158,11 +158,27 @@ on.
 
 ## Step 0 — Setup & Prerequisites
 
-Everything one-time lives here; every run section after this
-assumes it. Two paths — local needs only the first subsection,
-the GCP loop needs all of it (or just follow
-[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) top to bottom, which covers
-the same ground in strict order).
+Everything one-time lives here — from an empty GCP project and empty
+repo to a verified environment; every run section after this assumes
+it. Local-only usage needs 0.A; the GCP loop needs all of it.
+
+### 0.0 — First time only: create the project and the repo
+
+Skip this whole part if the GCP project and the repo already exist.
+
+```bash
+# GCP project + billing
+gcloud projects create <YOUR_PROJECT_ID>
+gcloud billing projects link <YOUR_PROJECT_ID> --billing-account=<BILLING_ACCOUNT_ID>
+# find the billing account id: gcloud billing accounts list
+gcloud billing projects describe <YOUR_PROJECT_ID> --format="value(billingEnabled)"   # expect: True
+
+# GitHub repo with this code
+gh repo create <YOUR_GITHUB_USER>/<YOUR_REPO> --public --clone
+# copy this project's files in (or clone your fork), then:
+git add -A && git commit -m "Bootstrap: initial import" && git push origin main
+# the CI gate triggered by this push goes green only after 0.C — expected.
+```
 
 ### 0.A — Local machine: tools, auth, environment
 
@@ -199,7 +215,6 @@ that all agent modules import correctly.
 ### 0.B — GCP: deploy the stack
 
 The complete ordered path from an empty GCP project and empty repo
-is **[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** — tested end to end;
 follow it top to bottom. The subsections below are the reference
 details for its two big steps.
 
@@ -445,7 +460,7 @@ RESULT: 17 passed, 0 failed
 ```
 
 All green -> Step 0 is done. Anything `[FAIL]` prints its own fix;
-anything missing entirely: [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md).
+anything missing entirely: the 0.A-0.C subsections above create it.
 
 ## Run the Demo — Steps 1 to 7
 
@@ -1474,6 +1489,32 @@ Setup guides: [`docs/CI_CD_GITHUB.md`](docs/CI_CD_GITHUB.md) (Workload
 Identity Federation, repo variables, branch protection) and
 [`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md) (the bot
 identity used for issues and PRs).
+
+## Troubleshooting
+
+- **WIF provider NOT_FOUND right after creation** — propagation race;
+  `setup_github.sh` retries automatically; re-run if it exhausts
+  retries (idempotent).
+- **First Agent Engine deploy fails ("failed to start and cannot
+  serve traffic")** — known race on fresh projects; re-run
+  `deploy_gcp.sh`.
+- **Registry seed fails with 403** — check ADC
+  (`gcloud auth application-default login`) and that
+  `aiplatform.googleapis.com` is enabled (0.B.1 does this).
+- **Gate red with RESOURCE_EXHAUSTED** — fresh-project Vertex quota;
+  rerun, request a `gemini-2.5-flash` bump, and avoid pushing while a
+  deploy/rollback/evolution run competes for the same quota.
+- **Traffic fails with "Quota exceeded ... Query Reasoning Engine
+  requests"** — fresh projects allow 90 Agent Engine requests/min
+  (sessions + streams share it). The generator backs off; keep
+  `--concurrency 2` for deployed seeding, or request an increase on
+  `QueryReasoningEngineRequestsPerMinutePerProjectPerRegion`.
+- **Evolution job killed at its task timeout** — a full 3-skill
+  best-of-5 run needs ~3h; the deploy sets 4h. Prefer the scoped demo
+  profile for anything interactive.
+- **Evolution job can't open a PR** — the `github-pat` secret is
+  missing or expired; see the rotation recipe in
+  [docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md).
 
 ## Project Structure
 

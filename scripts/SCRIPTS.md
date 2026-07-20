@@ -31,7 +31,7 @@ bash scripts/setup/setup_gcp.sh
 GH_PAT=<token> bash scripts/setup/setup_github.sh
 ```
 
-See [docs/BOOTSTRAP.md](../docs/BOOTSTRAP.md) for the full from-zero path.
+See the README's Step 0 for the full from-zero path.
 
 ## local/ -- Local Development
 
