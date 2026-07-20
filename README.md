@@ -544,6 +544,13 @@ $75/day answer means an evolved revision is live — re-run the
 rollback.
 
 
+**Reset the slice.** To delete everything recorded under the current
+label — its BigQuery events plus `run_labels` rows, nothing else:
+
+```bash
+bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_LABEL
+```
+
 ### Step 3 — Generate labeled traffic (the system observes failures)
 
 Send 8 labeled conversations at the deployed V0 supervisor — the
