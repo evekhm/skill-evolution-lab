@@ -1206,6 +1206,13 @@ def parse_args() -> argparse.Namespace:
     )
     # Execution
     parser.add_argument(
+        "--limit",
+        type=int,
+        metavar="N",
+        help="Run only the first N questions of --from-file (exact "
+        "session count for demos).",
+    )
+    parser.add_argument(
         "--label",
         action="append",
         default=[],
@@ -1289,6 +1296,12 @@ async def main():
         questions = [{"question": args.question, "topic": "manual"}]
     elif args.from_file:
         questions = load_questions(args.from_file)
+        if getattr(args, "limit", None):
+            questions = questions[: args.limit]
+            logger.info(
+                "Limited to first %d question(s) of %s",
+                len(questions), args.from_file,
+            )
     else:
         # Resolve topics config
         if args.count:

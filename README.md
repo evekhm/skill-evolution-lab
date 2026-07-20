@@ -467,7 +467,8 @@ Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
 
 The walkthrough starts from this exact state — reset to it any time:
 
-1. **BigQuery empty** (or a fresh table):
+1. **Empty the traces table** (skip if it is already empty; point
+   `TABLE_ID` in `.env` at a fresh table if you want to keep history):
 
    ```bash
    source .env
@@ -524,28 +525,33 @@ skill version from the frontmatter (`custom_tags.agent_version`). The
 corrections file runs multi-turn: the user pushes back with a wrong
 figure, which is how parroting becomes observable in the traces.
 
-**Optional: label this run and evolve on exactly this slice.** Give
-the traffic any labels you want with `--label` (repeatable); the
-generator also auto-stamps a unique `run_id`. Labels ride the
-`--local` path — deployed agents stamp their own fixed tags, so for a
-custom-labeled load use the local runner (it logs to the same
-BigQuery table):
+**Optional: labeled slices with exact session counts** — the
+"show mixed traffic, then retrieve only MY slice" story. Labels ride
+the `--local` path (deployed agents stamp their own fixed tags);
+`--limit N` gives you an exact conversation count; the generator
+auto-stamps a unique `run_id` on top:
 
 ```bash
+# a) Baseline: exactly 5 conversations, no custom label
+uv run python agents/workflow/traffic_generator/main.py \
+  --local --local-agents \
+  --from-file eval/data/questions/two_defect_evolve.json \
+  --limit 5 --concurrency 5
+
+# b) Show everything in the table (baseline is visible, unlabeled)
+bash scripts/test/show_traces.sh
+
+# c) Your labeled load: exactly 8 conversations tagged with YOUR label
 uv run python agents/workflow/traffic_generator/main.py \
   --local --local-agents --multi-turn \
   --from-file eval/data/questions/two_defect_evolve.json \
-  --label experiment=round1 --concurrency 10
-# the log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
-```
+  --limit 8 --label experiment=round1 --concurrency 5
+# log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
 
-Verify the slice is in BigQuery — this previews EXACTLY what the
-evolution job will fetch:
-
-```bash
+# d) Retrieve EXACTLY your slice — this is what the evolution job would fetch
 EVOLUTION_TRACE_LABELS=experiment=round1 EVAL_TIME_PERIOD=6h \
   bash scripts/test/show_traces.sh --selector
-# expect: your session count, earliest/latest timestamps, sample sessions
+# expect: 8 root sessions, your label's run window, sample session ids
 ```
 
 Then in Step 3, hand the same label to the job with
