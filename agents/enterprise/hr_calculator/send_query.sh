@@ -48,6 +48,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Discover Cloud Run URL
+echo "=========================================="
+echo "  TARGET PROJECT: ${PROJECT_ID}"
+echo "=========================================="
 echo "Discovering ${SERVICE_NAME} in ${PROJECT}/${REGION}..."
 SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \
     --project="$PROJECT" --region="$REGION" \

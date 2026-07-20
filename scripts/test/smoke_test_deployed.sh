@@ -32,6 +32,9 @@ fi
 PROJECT="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
 LOCATION="${SUPERVISOR_REGION:-us-central1}"
 DISPLAY_NAME="knowledge-supervisor"
+echo "=========================================="
+echo "  TARGET PROJECT: ${PROJECT}"
+echo "=========================================="
 
 # Parse arguments
 QUERY=""
