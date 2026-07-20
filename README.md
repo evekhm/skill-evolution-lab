@@ -525,7 +525,8 @@ preserved. You are at the top of the loop.
 
 ### Step 2 — Generate labeled traffic (the system observes failures)
 
-One command, command first, flags explained below:
+Send 8 labeled conversations at the V0 agents. Their failures are
+the raw material the evolution job learns from in Step 3:
 
 ```bash
 bash scripts/demo/generate_traffic.sh \
