@@ -930,7 +930,15 @@ async def run_deployed_multiturn(
                 )
                 await asyncio.sleep(delay)
             try:
-                return await asyncio.to_thread(fn)
+                # Deadline per attempt: a hung engine call otherwise blocks
+                # the conversation for ~10 min before surfacing a 503.
+                return await asyncio.wait_for(
+                    asyncio.to_thread(fn),
+                    timeout=float(os.getenv("ENGINE_CALL_TIMEOUT", "120")),
+                )
+            except asyncio.TimeoutError:
+                if attempt == len(delays):
+                    raise
             except Exception as e:
                 msg = str(e)
                 retryable = (

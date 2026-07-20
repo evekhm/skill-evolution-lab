@@ -26,6 +26,9 @@ unset SUPERVISOR_VERTEX_PROMPT_ID
 REMOTE=false
 BATCH=false
 SINGLE_Q=""
+FROM_FILE=""
+LIMIT=""
+LABELS=""
 PASSTHROUGH=()
 
 i=1
@@ -34,7 +37,15 @@ while [[ $# -gt 0 ]]; do
         --remote)
             REMOTE=true; shift ;;
         --from-file|--questions)
-            BATCH=true; PASSTHROUGH+=("$1" "$2"); shift 2 ;;
+            BATCH=true; FROM_FILE="$2"; PASSTHROUGH+=("$1" "$2"); shift 2 ;;
+        --concurrency)
+            CONCURRENCY="$2"; shift 2 ;;
+        --limit)
+            LIMIT="$2"; PASSTHROUGH+=("$1" "$2"); shift 2 ;;
+        --label)
+            LABELS="${LABELS:+$LABELS,}$2"; PASSTHROUGH+=("$1" "$2"); shift 2 ;;
+        --output|-o)
+            OUTPUT="$2"; PASSTHROUGH+=("$1" "$2"); shift 2 ;;
         -q|--question)
             SINGLE_Q="$2"; shift 2 ;;
         *)
@@ -71,12 +82,8 @@ CONCURRENCY="${CONCURRENCY:-10}"
 MAX_TURNS="${MAX_TURNS:-4}"
 
 # Inject --output default if not provided
-HAS_OUTPUT=false
-for arg in "${PASSTHROUGH[@]}"; do
-    case "$arg" in --output|-o) HAS_OUTPUT=true ;; esac
-done
-OUTPUT="${OUTPUT:-eval/runs/$(date +%Y-%m-%d_%H%M%S)/traffic.json}"
-if ! $HAS_OUTPUT; then
+if [ -z "${OUTPUT:-}" ]; then
+    OUTPUT="eval/runs/$(date +%Y-%m-%d_%H%M%S)/traffic.json"
     PASSTHROUGH+=(--output "$OUTPUT")
     mkdir -p "$(dirname "$OUTPUT")"
 fi
@@ -85,8 +92,11 @@ MODE_LABEL="local"
 $REMOTE && MODE_LABEL="remote (deployed)"
 
 echo "=== Batch Traffic ($MODE_LABEL) ==="
+echo "  Questions:   ${FROM_FILE}${LIMIT:+ (limit: $LIMIT)}"
 echo "  Concurrency: $CONCURRENCY"
 echo "  Max turns:   $MAX_TURNS"
+[ -n "$LABELS" ] && echo "  Labels:      $LABELS"
+echo "  Output:      $OUTPUT"
 echo ""
 
 uv run python3 agents/workflow/traffic_generator/main.py \

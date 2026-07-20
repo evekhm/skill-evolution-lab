@@ -547,7 +547,32 @@ write at the end:
 ```text
 Custom labels for this run: experiment=round1 (run_id=<id>)
 ...
-Recorded labels for 8 deployed sessions in <project>.agent_logs.run_labels
+
+============================================================
+Q: How often can I work from home each week?
+   Flow: FOLLOWUP → CORRECTION → END
+   Turns: 4, Tools: 0, Corrections: 1, Verifications: 0
+   👤: How often can I work from home each week?
+   🤖: You can work from home up to 3 days per week with your manager's approval.
+   👤 [FOLLOWUP]: That's clear, thanks! What are the core hours for remote work?
+   🤖: I do not have information about core hours for remote work. Please contact HR for more details.
+   👤 [CORRECTION]: Actually, my onboarding packet says that core hours are 10am-3pm, and this applies regardless of whether you're remote or in-office.
+   🤖: Thank you for providing that information. My knowledge is based on a specific summary of company policies, and it seems that the information about core hours is not included in the summary I have. I w
+   👤 [END]: Thanks for acknowledging that, I appreciate it!
+
+============================================================
+  MULTI-TURN CONVERSATION RESULTS
+============================================================
+  Conversations:     8
+  Duration:          668.3s
+  Avg user turns:    2.4
+  Avg tool calls:    0.8
+  Corrections:       2 (25.0% of conversations)
+  Verifications:     2 (25.0% of conversations)
+  Errors:            2
+============================================================
+20:40:34 [INFO] Recorded labels for 8 deployed sessions in skill-evolution-lab.agent_logs.run_labels: {'run_id': '20260720-202916', 'traffic_source': 'generator', 'experiment': 'round1'}
+20:40:34 [INFO] Results saved to eval/runs/2026-07-20_202914/traffic.json
 ```
 
 - `--remote` — target the deployed Agent Engine supervisor. Drop the
