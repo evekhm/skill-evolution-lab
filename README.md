@@ -488,6 +488,7 @@ label only.
 
    ```bash
    uv run python eval/skill_evolution/registry_sync.py verify-read --agent policy_agent
+   
    # expect the V0 head after the rollback:
    #   OK: GetSkill(ks-policy-agent) revision=<id> SKILL.md=~800 chars
    #   --- SKILL.md head ---
@@ -505,29 +506,48 @@ label only.
    gh issue list --label quality   # close or keep; >=10 open will trip the dispatcher
    ```
 
-**Verify the starting point:**
+4. **Verify the starting point:**
 
-```bash
-bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
-# expect V0 defect behavior: a deflection ("contact HR"). A grounded
-# $75/day answer means an evolved revision is live: re-run the rollback.
-EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh --selector
-# expect: 0 sessions — your label does not exist yet; whatever else the
-# table holds is irrelevant to this demo
-```
+    ```bash
+    bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+    # expect V0 defect behavior: a deflection ("contact HR"). A grounded
+    # $75/day answer means an evolved revision is live: re-run the rollback.
+    ```
+
+    ```bash
+    EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh --selector
+    # expect: 0 sessions — your label does not exist yet; whatever else the
+    # table holds is irrelevant to this demo
+    ```
 
 State captured: flawed V0 serving, your label empty, registry history
 preserved. You are at the top of the loop.
 
 ### Step 2 — Generate labeled traffic (the system observes failures)
 
-Everything this step produces carries `$DEMO_LABEL` plus an auto
-`run_id`. Labels ride the `--local` runner (deployed agents stamp
-their own fixed tags); `--limit N` gives exact conversation counts:
+The traffic comes from
+[`eval/data/questions/two_defect_evolve.json`](eval/data/questions/two_defect_evolve.json)
+— 55 HR questions across 13 categories (PTO, sick leave, benefits,
+expenses, ...), phrased so the flawed V0 skill defers to HR even
+though the policy lookup tool has every answer. `--limit 8` takes the
+first 8 in file order (4x PTO, 3x sick leave, 1x remote work): enough
+failures to evolve from, small enough to finish in minutes. The
+simulated user knows the golden facts and pushes back on wrong
+answers across up to 4 turns.
+
+Every conversation carries `$DEMO_LABEL` plus an auto `run_id`.
+Traffic runs on the **local runner** because that is where per-run
+labels are possible: the generator owns the BigQuery plugin process,
+so `--label` lands in every trace's `custom_tags`. A deployed agent
+stamps its tags once at startup, beyond the reach of any generator
+flag (per-run deployed labels: backlog #13). The local runner reads
+the same Skill Registry revision the deployed agents serve and logs
+to the same BigQuery table, so the evolution job sees identical data.
+For deployed-endpoint traffic, see Demo Variants — isolation there is
+by time window (`EVAL_TIME_PERIOD`) instead of label.
 
 ```bash
-uv run python agents/workflow/traffic_generator/main.py \
-  --local --local-agents --multi-turn \
+bash scripts/demo/generate_traffic.sh \
   --from-file eval/data/questions/two_defect_evolve.json \
   --limit 8 --label $DEMO_LABEL --concurrency 5
 # log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
@@ -798,8 +818,7 @@ questions and, knowing the golden facts, pushes back on wrong answers
 (multi-turn):
 
 ```bash
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
+bash scripts/demo/generate_traffic.sh \
     --from-file eval/data/questions/demo_quick.json \
     -o "$RUN_DIR/v0_traffic.json" --concurrency 10
 ```
@@ -832,8 +851,7 @@ uv run python agents/workflow/skill_evolution_agent/main.py \
 skill, then the before/after table:
 
 ```bash
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
+bash scripts/demo/generate_traffic.sh \
     --from-file eval/data/questions/demo_quick.json \
     -o "$RUN_DIR/v1_traffic.json" --concurrency 10
 bash scripts/demo/skill_evolution/score.sh \
