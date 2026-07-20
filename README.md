@@ -13,7 +13,7 @@
       * [0.B.3 — Smoke test](#0b3--smoke-test)
       * [0.B.4 — Connect Gemini Enterprise (optional)](#0b4--connect-gemini-enterprise-optional)
     * [0.C — GitHub: CI + bot wiring](#0c--github-ci--bot-wiring)
-      * [0.C.1 — Repo and prerequisites](#0c1--repo-and-prerequisites)
+      * [0.C.1 — Prerequisite check, then the GitHub doc](#0c1--prerequisite-check-then-the-github-doc)
       * [0.C.2 — What the setup script configured](#0c2--what-the-setup-script-configured)
       * [0.C.3 — Verify](#0c3--verify)
     * [0.D — Verify everything: one command](#0d--verify-everything-one-command)
@@ -190,6 +190,7 @@ git add -A && git commit -m "Bootstrap: initial import" && git push origin main
   ```bash
   gcloud auth login
   gcloud auth application-default login
+  gh auth login
   ```
 - `uv` installed ([Python package manager](https://docs.astral.sh/uv/))
 
@@ -398,17 +399,20 @@ every skill change, merges trigger deployment, and the evolution job
 opens PRs with a bot credential. One script plus two manual steps wire
 all of it.
 
-#### 0.C.1 — Repo and prerequisites
+#### 0.C.1 — Prerequisite check, then the GitHub doc
 
-- Fork or create the repo and clone it
-- Generate `.env` (already done in 0.A; from a fresh clone:
-  `export PROJECT_ID="<id>"` then
-  `sed -e "s/<YOUR_PROJECT_ID>/$PROJECT_ID/g" .env.example > .env`)
-- Authenticate the GitHub CLI: `gh auth login`
-- Complete **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)**
-  end to end — it walks you through the PR credential (fine-grained
-  PAT), the optional bot identity (GitHub App), and the setup-script
-  run that stores everything.
+Everything needed here was created in 0.0/0.A — verify instead of
+redoing:
+
+```bash
+test -f .env && gh auth status >/dev/null 2>&1 && echo "OK — continue" \
+  || echo "MISSING — do 0.A first (.env + gh auth)"
+```
+
+Then complete **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)**
+end to end — the PR credential (fine-grained PAT), the optional bot
+identity (GitHub App), and the setup-script run that stores
+everything.
 
 #### 0.C.2 — What the setup script configured
 
