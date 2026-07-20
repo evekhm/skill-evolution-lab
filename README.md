@@ -525,23 +525,29 @@ preserved. You are at the top of the loop.
 
 ### Step 2 — Generate labeled traffic (the system observes failures)
 
-Send 8 labeled conversations at the V0 agents. Their failures are
-the raw material the evolution job learns from in Step 3:
+Send 8 labeled conversations at the deployed V0 supervisor — the
+same endpoint real users hit. Their failures are the raw material
+the evolution job learns from in Step 3:
 
 ```bash
-bash scripts/demo/generate_traffic.sh \
+bash scripts/demo/generate_traffic.sh --remote \
   --from-file eval/data/questions/two_defect_evolve.json \
   --limit 8 --label $DEMO_LABEL --concurrency 5
 # log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
+# on completion: Recorded labels for 8 deployed sessions in
+#   <project>.agent_logs.run_labels
 ```
 
+- `--remote` — target the deployed Agent Engine supervisor. Drop the
+  flag to run the identical demo on the local runner.
 - `--from-file` — the set of
   [`55 questions`](eval/data/questions/two_defect_evolve.json) to read from.
 - `--limit 8` — run only the first 8 questions. One question = one
   conversation = one BigQuery session. Omitted, all 55 run.
-- `--label $DEMO_LABEL` — stamps every trace to create a labeled
-  slice. Works on local and deployed runs alike (deployed labels
-  land in the `run_labels` side table; selectors match both).
+- `--label $DEMO_LABEL` — stamps every conversation to create a
+  labeled slice: deployed runs record it in the `run_labels` side
+  table, local runs carry it inside each trace's `custom_tags`;
+  every selector matches both.
 
 
 ```bash
