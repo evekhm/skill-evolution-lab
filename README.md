@@ -215,9 +215,6 @@ that all agent modules import correctly.
 
 ### 1.3 — GCP: deploy the stack
 
-Skip this whole part if the stack is already deployed (1.5 verifies).
-
-
 
 Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
 first deploy, faster on subsequent runs.
@@ -230,7 +227,7 @@ gcloud config set project $PROJECT_ID
 bash scripts/setup/setup_gcp.sh
 ```
 
-Enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
+This enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
 creates the BigQuery dataset for Agent Analytics, seeds the Skill
 Registry with the V0 skills, and grants IAM permissions.
 
@@ -261,8 +258,9 @@ Deploys all components in order:
 
 #### 1.3.3 — Smoke test
 
-Three tests, one per deployed component. Together they verify the
-whole serving chain and each piece in isolation.
+One test per component: the supervisor test exercises the full
+chain (routing, A2A, specialist answer); the two specialist tests
+call each Cloud Run service directly.
 
 ##### 1.3.3.a — knowledge_supervisor (Agent Engine, end-to-end)
 
