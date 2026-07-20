@@ -50,10 +50,7 @@ BENEFITS_AGENT_URL = os.getenv('BENEFITS_AGENT_URL')
 BENEFITS_AGENT_SERVICE_NAME = os.getenv('BENEFITS_AGENT_SERVICE_NAME', "benefits-agent")
 
 os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
-# Model calls may need a different endpoint than the stack region:
-# gemini-3.x models are served from the global endpoint only.
-MODEL_LOCATION = os.getenv('MODEL_LOCATION', REGION)
-os.environ["GOOGLE_CLOUD_LOCATION"] = MODEL_LOCATION
+os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 # Big Query (for BQ Analytics Plugin logging)

@@ -269,8 +269,9 @@ supervisor (skill loaded) -> streamed response.
 
 ```bash
 bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
-# (without -q it runs a default question set)
 ```
+
+> without -q it runs a default question set
 
 Expected:
 
@@ -282,7 +283,7 @@ Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_
 Q: How many PTO days do I have left?
 ─────────────────────────────────────────
   Routed to:  direct
-  Model:      gemini-2.5-pro
+  Model:      gemini-3.1-flash-lite
   Tools:      (none)
   Tokens:     supervisor 276→13 (thinking: 370)
               sub-agent  0→0 (thinking: 0)
@@ -290,15 +291,21 @@ Q: How many PTO days do I have left?
   A: You currently have 7.6 PTO days left and 4.7 sick leave days. ...
 
   Latency: 20.2s
+ 
 ```
 
-How to read it: the `Found:` line is the reasoning-engine path (you
-paste it in 1.3.4); `Routed to: direct` means the supervisor answered
-by itself (a routed question shows the specialist's name); 20-40s per
-question is normal for the multi-agent chain. Look closely at this V0
-sample — `Tools: (none)` yet a confident "7.6 PTO days": the number is
-invented. The deliberate V0 defect on display; the smoke test proves
-the PIPES, answer QUALITY is what Steps 2-8 fix.
+Output:
+* `Found` — the deployed supervisor (reasoning engine) the script discovered
+* `Routed to` — the specialist the supervisor picked; `direct` means it
+  answered itself, no A2A hop
+* `Model` — the model the supervisor ran this turn on
+* `Tools` — tool calls made during the turn; `(none)` on a policy
+  question is the V0 defect showing
+* `Tokens` — prompt→answer token counts for supervisor and sub-agent;
+  thinking tokens listed separately
+* `A` — the final answer returned to the user
+* `Latency` — end-to-end time for the turn
+
 
 ##### 1.3.3.b — policy_agent (Cloud Run, direct A2A)
 
@@ -1276,7 +1283,7 @@ same step at production settings for contrast.
 |---|---|---|---|---|
 | Validation question set | 55 questions | 25 (2 per category, all 13 categories kept) | Coverage per category is preserved | Coarser scores: each question is worth 4pp, so two close candidates can swap ranks |
 | Turns per validation conversation | up to 4 (simulated user pushes back) | 1 | The deflection defect (the main one) shows in turn 1 | Parroting behavior is NOT measured during candidate RANKING (it needs a turn-2 pushback). Analysts still see every real parroting failure from BigQuery and still patch it |
-| Validation supervisor model | gemini-2.5-pro | gemini-2.5-flash | All candidates are scored under identical conditions, so the ranking stays fair | Absolute scores shift slightly vs pro |
+| Validation supervisor model | the serving model (`SUPERVISOR_MODEL_ID`, default gemini-3.1-flash-lite) | gemini-2.5-flash | All candidates are scored under identical conditions, so the ranking stays fair | Absolute scores can shift slightly vs the serving model |
 | Bottleneck classification | runs (~5 min) | skipped when `--mode` names the target | You already gave the answer on the command line | None for a scoped run; scheduled runs (no `--mode`) still classify |
 | Rounds / candidates | agent-decided (up to 5 x 5) | bound to your `--rounds`/`--candidates` | Demo needs a bounded runtime | Fewer shots at a better skill per run |
 

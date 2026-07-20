@@ -420,7 +420,7 @@ Sessions are trimmed before sending to the LLM (395K→26K chars, ~93% reduction
 
 ### Model & performance
 
-Uses `gemini-2.5-flash` for speed while maintaining quality (previously `gemini-2.5-pro`).
+Uses `gemini-2.5-flash` for speed while maintaining quality.
 
 ### How scoring connects to Golden Q&A
 
