@@ -179,11 +179,12 @@ the same ground in strict order).
 #### Configure `.env`
 
 ```bash
-cp .env.example .env
+export PROJECT_ID=<your-project-id>
+grep -v '^PROJECT_ID=' .env.example > .env && echo "PROJECT_ID=${PROJECT_ID}" >> .env
 ```
 
-Edit `.env` and set `PROJECT_ID` to your GCP project ID. The rest of
-the defaults work out of the box.
+Generates `.env` from the template with your project id substituted —
+no manual editing. The rest of the defaults work out of the box.
 
 #### Python environment
 
@@ -369,7 +370,9 @@ all of it.
 #### 0.C.1 — Repo and prerequisites
 
 - Fork or create the repo and clone it
-- `cp .env.example .env` and set `PROJECT_ID`
+- Generate `.env` (already done in 0.A; from a fresh clone:
+  `export PROJECT_ID=<id>` then
+  `grep -v '^PROJECT_ID=' .env.example > .env && echo "PROJECT_ID=${PROJECT_ID}" >> .env`)
 - Authenticate the GitHub CLI: `gh auth login`
 - Complete **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)**
   end to end — it walks you through the PR credential (fine-grained
