@@ -636,8 +636,6 @@ EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
   bash scripts/test/show_traces.sh         
 ```
 
-The selector preview is EXACTLY what the evolution job fetches in
-Step 3.
 
 ### Step 3 — Run the evolution job (learn + propose)
 
