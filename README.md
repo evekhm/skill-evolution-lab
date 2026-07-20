@@ -465,9 +465,14 @@ Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
 
 ### Step 2 — The starting point (defined, verifiable)
 
-The demo runs on a LABELED slice of traces — the table never needs
-cleaning; old conversations coexist and every stage below targets your
-label only.
+The BigQuery table holds every conversation from every source — old
+demo runs, scheduled traffic, other experiments — and is never
+cleaned. Isolation comes from labels instead: Step 3 stamps
+`$DEMO_LABEL` on every conversation it generates, and each later
+stage selects sessions by that label, so the rest of the table is
+invisible to your run. Local runs carry the label inside each
+trace's `custom_tags`; deployed runs record it in the `run_labels`
+side table; every selector matches both.
 
 1. **Pick the demo label** (one choice, threads the whole demo):
 
@@ -503,19 +508,15 @@ label only.
    re-run the rollback.
 
 
-4. **Verify the starting point:**
+3.  **Verify the starting point:**
 
-    ```bash
-    bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
-    ```
+Check what is in BigQuery for the provided label. The label is new,
+so its slice must be empty — 0 sessions is the clean starting point,
+no matter what else the table holds:
 
-    Expect V0 defect behavior: a deflection ("contact HR"). A grounded
-    $75/day answer means an evolved revision is live — re-run the
-    rollback.
-
-    ```bash
-    EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh
-    ```
+```bash
+EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh
+```
 
 Expected output:
 ```text
@@ -526,26 +527,17 @@ Expected output:
 +----------+--------+----------+--------+
 ```
 
+Ping the H&R Agent directly via the HTTP end point:
 
-**Restarting the experiment.** To delete a finished slice:
 
 ```bash
-bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_LABEL
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
 ```
 
-`--yes` skips the confirmation. The script shows the slice
-(sessions + events),
-asks, then deletes only the sessions matching that label — resolved
-like every selector (trace tags plus `run_labels`) — and the slice's
-side-table rows:
+Expect V0 defect behavior: a deflection ("contact HR"). A grounded
+$75/day answer means an evolved revision is live — re-run the
+rollback.
 
-- Label-scoped by construction: no code path touches rows outside
-  the slice, and there is no truncate anywhere.
-- Refuses broad system tags (`traffic_source`, `agent_version`,
-  `sw_version`) — those match months of traffic, not one experiment.
-- BigQuery cannot DELETE rows written in the last ~30 minutes
-  (streaming buffer); the script detects this and tells you to wait
-  or restart under a fresh label instead.
 
 ### Step 3 — Generate labeled traffic (the system observes failures)
 
