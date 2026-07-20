@@ -516,7 +516,7 @@ label only.
     rollback.
 
     ```bash
-    EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh --selector
+    EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh
     ```
 
 Expected output:
@@ -560,41 +560,6 @@ bash scripts/demo/generate_traffic.sh --remote \
   --from-file eval/data/questions/two_defect_evolve.json \
   --limit 8 --label $DEMO_LABEL --concurrency 5
 ```
-
-Expected in the log — the label confirmed at start, the side-table
-write at the end:
-
-```text
-Custom labels for this run: experiment=round1 (run_id=<id>)
-...
-
-============================================================
-Q: How often can I work from home each week?
-   Flow: FOLLOWUP → CORRECTION → END
-   Turns: 4, Tools: 0, Corrections: 1, Verifications: 0
-   👤: How often can I work from home each week?
-   🤖: You can work from home up to 3 days per week with your manager's approval.
-   👤 [FOLLOWUP]: That's clear, thanks! What are the core hours for remote work?
-   🤖: I do not have information about core hours for remote work. Please contact HR for more details.
-   👤 [CORRECTION]: Actually, my onboarding packet says that core hours are 10am-3pm, and this applies regardless of whether you're remote or in-office.
-   🤖: Thank you for providing that information. My knowledge is based on a specific summary of company policies, and it seems that the information about core hours is not included in the summary I have. I w
-   👤 [END]: Thanks for acknowledging that, I appreciate it!
-
-============================================================
-  MULTI-TURN CONVERSATION RESULTS
-============================================================
-  Conversations:     8
-  Duration:          668.3s
-  Avg user turns:    2.4
-  Avg tool calls:    0.8
-  Corrections:       2 (25.0% of conversations)
-  Verifications:     2 (25.0% of conversations)
-  Errors:            2
-============================================================
-20:40:34 [INFO] Recorded labels for 8 deployed sessions in skill-evolution-lab.agent_logs.run_labels: {'run_id': '20260720-202916', 'traffic_source': 'generator', 'experiment': 'round1'}
-20:40:34 [INFO] Results saved to eval/runs/2026-07-20_202914/traffic.json
-```
-
 - `--remote` — target the deployed Agent Engine supervisor. Drop the
   flag to run the identical demo on the local runner.
 - `--from-file` — the set of
@@ -625,11 +590,50 @@ onboarding packet says...`:
   tagging; when comparing the two on one dashboard, tag both with
   the report path so the bias is uniform.
 
+Expected in the log — the label confirmed at start, the side-table
+write at the end:
 
+```text
+=== Batch Traffic (remote (deployed)) ===
+  Questions:   eval/data/questions/two_defect_evolve.json (limit: 8)
+  Concurrency: 5
+  Max turns:   4
+  Labels:      experiment=round1
+  Output:      eval/runs/2026-07-20_205629/traffic.json
+...
+
+============================================================
+Q: How often can I work from home each week?
+   Flow: FOLLOWUP → CORRECTION → END
+   Turns: 4, Tools: 1, Corrections: 1, Verifications: 0
+   👤: How often can I work from home each week?
+   🤖: You can work remotely up to 3 days per week with manager approval.
+   👤 [FOLLOWUP]: That's clear, thank you! What are the core hours I need to be available when working remotely?
+   🤖: I do not have information about core hours. Please contact HR for details on this.
+   👤 [CORRECTION]: I know that core hours are 10am-3pm. Can you confirm this information?
+   🤖: I cannot confirm this information. As I mentioned, I do not have information about core hours. Please contact HR for details on this.
+   👤 [END]: Thanks, that helps!
+
+============================================================
+  MULTI-TURN CONVERSATION RESULTS
+============================================================
+  Conversations:     8
+  Duration:          107.6s
+  Avg user turns:    2.8
+  Avg tool calls:    0.5
+  Corrections:       2 (25.0% of conversations)
+  Verifications:     2 (25.0% of conversations)
+  Errors:            0
+============================================================
+20:58:28 [INFO] Recorded labels for 8 deployed sessions in skill-evolution-lab.agent_logs.run_labels: {'run_id': '20260720-205631', 'traffic_source': 'generator', 'experiment': 'round1'}
+20:58:28 [INFO] Results saved to eval/runs/2026-07-20_205629/traffic.json
+```
+
+To retrieve the new traces:
 ```bash
-bash scripts/test/show_traces.sh                       # all traffic, mixed
+bash scripts/test/show_traces.sh                      
 EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
-  bash scripts/test/show_traces.sh --selector          # your 8, precisely
+  bash scripts/test/show_traces.sh         
 ```
 
 The selector preview is EXACTLY what the evolution job fetches in
@@ -745,7 +749,7 @@ distribution of everything in the table:
 ```bash
 bash scripts/test/show_traces.sh                # label distribution
 EVOLUTION_TRACE_LABELS=run_id=<id> EVAL_TIME_PERIOD=24h \
-  bash scripts/test/show_traces.sh --selector   # the exact slice, with sample sessions
+  bash scripts/test/show_traces.sh   # the exact slice, with sample sessions
 ```
 
 The selector (window, version, labels, app) is written to the run
@@ -1270,7 +1274,7 @@ same step at production settings for contrast.
 | # | Step | What happens | Input | Output (artifact) | Demo time | Full time | Verify |
 |---|---|---|---|---|---|---|---|
 | 1 | Container start | Cloud Run provisions the job image | — | execution id | ~2 min | ~2 min | `gcloud run jobs executions list --job=skill-evolution-agent` |
-| 2 | BQ pre-flight | LLM-judges recent root-agent sessions from `agent_events` (app/version/label-filtered) | BigQuery window (`EVAL_TIME_PERIOD`, selector) | `v0_quality_report.json` + `trace_selector.json` in the run dir | ~2.5 min | ~3-15 min | BEFORE the run: `bash scripts/test/show_traces.sh --selector` previews the exact slice; during: job log `Pre-flight quality report from BigQuery: N sessions` |
+| 2 | BQ pre-flight | LLM-judges recent root-agent sessions from `agent_events` (app/version/label-filtered) | BigQuery window (`EVAL_TIME_PERIOD`, selector) | `v0_quality_report.json` + `trace_selector.json` in the run dir | ~2.5 min | ~3-15 min | BEFORE the run: `bash scripts/test/show_traces.sh` previews the exact slice; during: job log `Pre-flight quality report from BigQuery: N sessions` |
 | 3 | Evolution gate | Proceed only if failures >= threshold | the report | go / no-go log line | seconds | seconds | log: `should_evolve: True, failures: N` |
 | 4 | Bottleneck attribution | Classifies each failure to the responsible agent | failures | recommendation | **skipped** (target named on the CLI — classifying would re-derive the answer) | ~5 min | log: `Skipped classification: EVOLUTION_TARGET_AGENTS=...` |
 | 5 | Analyst fleet | One agent per failure investigates the trace (tool access) and proposes a patch | failure trajectories | patch list (`3*_...` artifacts) | ~1 min | ~6 min | log: `[k/N] [error] ... -> patch` |

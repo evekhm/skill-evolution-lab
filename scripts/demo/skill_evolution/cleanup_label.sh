@@ -85,4 +85,4 @@ fi
 
 echo ""
 echo "Slice '${LABEL}' deleted. Verify:"
-echo "  EVOLUTION_TRACE_LABELS=${LABEL} bash scripts/test/show_traces.sh --selector"
+echo "  EVOLUTION_TRACE_LABELS=${LABEL} bash scripts/test/show_traces.sh"

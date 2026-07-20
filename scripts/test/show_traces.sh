@@ -15,21 +15,19 @@
 
 # show_traces.sh — inspect the BigQuery traces the evolution loop sees.
 #
-# Modes:
-#   bash scripts/test/show_traces.sh              # label distribution (all traffic)
-#   bash scripts/test/show_traces.sh --selector   # preview EXACTLY what the
-#                                                 # evolution pre-flight would fetch
-#                                                 # with the current env selector
+# No filters set -> label distribution of ALL traffic.
+# Any filter set -> preview EXACTLY what the evolution pre-flight would
+# fetch with that selector (same variables the evolution job reads):
 #
-# Selector env (same variables the evolution job reads):
 #   EVAL_TIME_PERIOD          window, e.g. 6h / 24h / 7d   (default 6h)
 #   AGENT_VERSION             skill version filter          (default: any)
 #   QUALITY_APP_NAME          root agent app                (default knowledge_supervisor)
-#   EVOLUTION_TRACE_LABELS    k=v,k2=v2 custom_tags filter  (default: none)
+#   EVOLUTION_TRACE_LABELS    k=v,k2=v2 label filter        (default: none)
 #
 # Examples:
-#   EVOLUTION_TRACE_LABELS=run_id=20260716-233051 bash scripts/test/show_traces.sh --selector
-#   EVAL_TIME_PERIOD=24h AGENT_VERSION=0 bash scripts/test/show_traces.sh --selector
+#   bash scripts/test/show_traces.sh                    # everything, grouped
+#   EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh
+#   EVAL_TIME_PERIOD=24h AGENT_VERSION=0 bash scripts/test/show_traces.sh
 
 set -euo pipefail
 
@@ -43,7 +41,10 @@ set +a
 TABLE="\`${PROJECT_ID}.${DATASET_ID}.${TABLE_ID}\`"
 MODE="${1:-summary}"
 
-if [ "${MODE}" = "--selector" ]; then
+# A filter in the environment means the caller wants the selector
+# preview; the --selector flag is kept for backward compatibility.
+if [ "${MODE}" = "--selector" ] || [ -n "${EVOLUTION_TRACE_LABELS:-}" ] \
+    || [ -n "${AGENT_VERSION:-}" ] || [ -n "${EVAL_TIME_PERIOD:-}" ]; then
     PERIOD="${EVAL_TIME_PERIOD:-6h}"
     APP="${QUALITY_APP_NAME:-knowledge_supervisor}"
     VERSION="${AGENT_VERSION:-}"
