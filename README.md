@@ -179,8 +179,8 @@ the same ground in strict order).
 #### Configure `.env`
 
 ```bash
-export PROJECT_ID=<your-project-id>
-grep -v '^PROJECT_ID=' .env.example > .env && echo "PROJECT_ID=${PROJECT_ID}" >> .env
+export PROJECT_ID="<your-actual-project-id>"
+sed -e "s/<YOUR_PROJECT_ID>/$PROJECT_ID/g" .env.example > .env
 ```
 
 Generates `.env` from the template with your project id substituted —
@@ -196,7 +196,7 @@ Syncs Python dependencies with `uv`, verifies GCP auth, and tests
 that all agent modules import correctly.
 
 
-### 0.B — GCP: deploy the stack (skip if already deployed)
+### 0.B — GCP: deploy the stack
 
 The complete ordered path from an empty GCP project and empty repo
 is **[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** — tested end to end;
@@ -371,8 +371,8 @@ all of it.
 
 - Fork or create the repo and clone it
 - Generate `.env` (already done in 0.A; from a fresh clone:
-  `export PROJECT_ID=<id>` then
-  `grep -v '^PROJECT_ID=' .env.example > .env && echo "PROJECT_ID=${PROJECT_ID}" >> .env`)
+  `export PROJECT_ID="<id>"` then
+  `sed -e "s/<YOUR_PROJECT_ID>/$PROJECT_ID/g" .env.example > .env`)
 - Authenticate the GitHub CLI: `gh auth login`
 - Complete **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)**
   end to end — it walks you through the PR credential (fine-grained

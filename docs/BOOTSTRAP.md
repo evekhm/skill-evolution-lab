@@ -72,8 +72,8 @@ same doc covers the optional GitHub App for bot-authored issues.
 
 ```bash
 cd <YOUR_REPO>
-export PROJECT_ID=<YOUR_PROJECT_ID>
-grep -v '^PROJECT_ID=' .env.example > .env && echo "PROJECT_ID=${PROJECT_ID}" >> .env
+export PROJECT_ID="<your-actual-project-id>"
+sed -e "s/<YOUR_PROJECT_ID>/$PROJECT_ID/g" .env.example > .env
 # generates .env with your project id substituted; the other defaults work.
 ```
 

@@ -49,7 +49,7 @@ if gh auth status >/dev/null 2>&1; then ok "0.3 GitHub CLI auth"; else bad "0.3 
 # --- 0.4 .env ---
 if [ -f .env ]; then
     set -a; source .env; set +a
-    if [ -n "${PROJECT_ID:-}" ] && [ "${PROJECT_ID}" != "your-project-id" ]; then
+    if [ -n "${PROJECT_ID:-}" ] && [ "${PROJECT_ID}" != "your-project-id" ] && [ "${PROJECT_ID}" != "<YOUR_PROJECT_ID>" ]; then
         ok "0.4 .env (PROJECT_ID=${PROJECT_ID}, REGION=${REGION:-unset}, DATASET=${DATASET_ID:-unset}.${TABLE_ID:-unset})"
     else
         bad "0.4 .env" "PROJECT_ID not set — edit .env"

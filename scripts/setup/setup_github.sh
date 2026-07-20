@@ -58,7 +58,7 @@ else
     exit 1
 fi
 
-if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "your-project-id" ]; then
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "your-project-id" ] || [ "$PROJECT_ID" = "<YOUR_PROJECT_ID>" ]; then
     echo "ERROR: PROJECT_ID not set. Please edit .env."
     exit 1
 fi
