@@ -377,14 +377,15 @@ You currently have 7.8 PTO days left.
 Latency: 2.3s
 ```
 
-One question, three answers — that is the point of the test:
-
-* hr_calculator computes the balance with `calculate_pto_details`
-  (accrual from demo dates, so the exact number changes day to day).
-* policy_agent correctly refuses: personal balances are outside its
-  policy documents.
-* The V0 supervisor (1.3.3.a) answered directly, no tool — its baked
-  summary shortcut is the defect the demo evolves away.
+The supervisor and the calculator returned the SAME number — that is
+what makes the V0 defect dangerous. The calculator computed 7.8 with
+`calculate_pto_details`; the supervisor produced the identical answer
+from its baked summary with no tool call, and nothing in the answer
+text reveals the difference — only `Tools: (none)` does. The policy
+agent is the scope check: it refuses what its documents cannot
+answer. Baked facts look right today; when reality moves (the traffic
+in Step 3 exposes this), the supervisor keeps answering confidently —
+and wrongly.
 
 #### 1.3.4 — Connect Gemini Enterprise (optional)
 
