@@ -532,11 +532,11 @@ Expected output:
 **Restarting the experiment.** To delete a finished slice:
 
 ```bash
-bash scripts/demo/skill_evolution/cleanup_label.sh experiment=round1
+bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_LABEL
 ```
 
-With `$DEMO_LABEL` exported the argument is optional; `--yes` skips
-the confirmation. The script shows the slice (sessions + events),
+`--yes` skips the confirmation. The script shows the slice
+(sessions + events),
 asks, then deletes only the sessions matching that label — resolved
 like every selector (trace tags plus `run_labels`) — and the slice's
 side-table rows:
