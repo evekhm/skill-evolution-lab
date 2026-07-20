@@ -128,8 +128,16 @@ else
 fi
 
 # --- 0.11 gate green on main ---
-gate=$(gh run list --workflow "Eval & Load Test Gate" --branch main --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null)
-if [ "$gate" = "success" ]; then ok "0.11 Eval & Load Test Gate green on main"; else bad "0.11 gate on main" "latest conclusion: ${gate:-none}"; fi
+# Judge the latest COMPLETED run — an in-progress run has no
+# conclusion yet and must not read as failure.
+gate=$(gh run list --workflow "Eval & Load Test Gate" --branch main --status completed --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null)
+running=$(gh run list --workflow "Eval & Load Test Gate" --branch main --status in_progress --limit 1 --json databaseId --jq 'length' 2>/dev/null)
+note=""; [ "${running:-0}" -ge 1 ] && note=" (a newer run is in progress)"
+if [ "$gate" = "success" ]; then
+    ok "0.11 Eval & Load Test Gate green on main${note}"
+else
+    bad "0.11 gate on main" "latest completed conclusion: ${gate:-none}${note}"
+fi
 
 # --- 0.12 branch protection ---
 ctx=$(gh api "repos/{owner}/{repo}/branches/main/protection" --jq '.required_status_checks.contexts | join(",")' 2>/dev/null)
