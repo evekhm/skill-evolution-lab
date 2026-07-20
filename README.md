@@ -13,8 +13,6 @@
       * [0.B.3 — Smoke test](#0b3--smoke-test)
       * [0.B.4 — Connect Gemini Enterprise (optional)](#0b4--connect-gemini-enterprise-optional)
     * [0.C — GitHub: CI + bot wiring](#0c--github-ci--bot-wiring)
-      * [0.C.1 — Prerequisite check, then the GitHub doc](#0c1--prerequisite-check-then-the-github-doc)
-      * [0.C.2 — Verify](#0c2--verify)
     * [0.D — Verify everything: one command](#0d--verify-everything-one-command)
   * [Run the Demo — Steps 1 to 7](#run-the-demo--steps-1-to-7)
     * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
@@ -393,38 +391,14 @@ deployed Agent Engine -- no custom frontend needed.
 
 ### 0.C — GitHub: CI + bot wiring
 
-The production loop treats GitHub as part of the runtime: CI gates
-every skill change, merges trigger deployment, and the evolution job
-opens PRs with a bot credential. One script plus two manual steps wire
-all of it.
-
-#### 0.C.1 — Prerequisite check, then the GitHub doc
-
-Everything needed here was created in 0.0/0.A — verify instead of
-redoing:
-
 ```bash
 test -f .env && gh auth status >/dev/null 2>&1 && echo "OK — continue" \
   || echo "MISSING — do 0.A first (.env + gh auth)"
 ```
 
-Then complete **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)**
-end to end — the PR credential (fine-grained PAT), the optional bot
-identity (GitHub App), and the setup-script run that stores
-everything.
-
-#### 0.C.2 — Verify
-
-```bash
-gh variable list          # 8 variables, PROJECT_ID = your project
-gcloud secrets describe github-pat --project=$PROJECT_ID
-gcloud secrets describe github-app-config --project=$PROJECT_ID   # bot identity (if configured)
-gh api repos/{owner}/{repo}/branches/main/protection --jq '.required_status_checks.contexts'
-```
-
-Open any PR: the **Eval & Load Test Gate** should start automatically,
-and after `scripts/setup/setup_gcp.sh` + a deploy, merging to main
-triggers **Deploy to GCP**.
+Follow **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)** end to
+end (PR credential, optional bot identity, one setup-script run).
+0.D verifies the result.
 
 ### 0.D — Verify everything: one command
 
