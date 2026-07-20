@@ -141,6 +141,11 @@ What the script configures, in order:
 | 7. Branch protection | main requires the Golden Eval + Load Test checks before merge |
 | 8. Bot identity | With `GH_APP_*` set: stores `github-app-key` + `github-app-config` — quality issues then post as `<your-app>[bot]` |
 
+Success signals in the output: every step prints `Created ...` or
+`already exists (skipped)`, and the closing summary shows
+`[8] Bot identity: CONFIGURED` (or the not-configured note if you
+skipped the App).
+
 Run it BEFORE deleting the `.pem` (Step 6). Verify:
 
 ```bash
