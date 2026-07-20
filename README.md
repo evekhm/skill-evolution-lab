@@ -169,7 +169,7 @@ Skip this whole part if the GCP project and the repo already exist.
 gcloud projects create <YOUR_PROJECT_ID>
 gcloud billing projects link <YOUR_PROJECT_ID> --billing-account=<BILLING_ACCOUNT_ID>
 # find the billing account id: gcloud billing accounts list
-gcloud billing projects describe <YOUR_PROJECT_ID> --format="value(billingEnabled)"   # expect: True
+gcloud billing projects describe <YOUR_PROJECT_ID> --format="value(billingEnabled)"
 
 # GitHub repo with this code
 gh repo create <YOUR_GITHUB_USER>/<YOUR_REPO> --public --clone
@@ -177,6 +177,8 @@ gh repo create <YOUR_GITHUB_USER>/<YOUR_REPO> --public --clone
 git add -A && git commit -m "Bootstrap: initial import" && git push origin main
 # the CI gate triggered by this push goes green only after 0.C — expected.
 ```
+
+Should print `True`.
 
 ### 0.A — Local machine: tools, auth, environment
 
@@ -489,25 +491,29 @@ label only.
    ```bash
    uv run python eval/skill_evolution/registry_sync.py verify-read --agent policy_agent
    ```
-   Expected Output:
-    ```text
-   #   OK: GetSkill(ks-policy-agent) revision=<id> SKILL.md=~800 chars
-   #   --- SKILL.md head ---
-   #   ...
-   #   metadata:
-   #     version: "0"
-   # (version "1" here means an evolved revision is still newest —
-   #  re-run the rollback)
+   Expected output:
+
+   ```text
+   OK: GetSkill(ks-policy-agent) revision=<id> SKILL.md=~800 chars
+   --- SKILL.md head ---
+   ...
+   metadata:
+     version: "0"
    ```
+
+   `version: "1"` here means an evolved revision is still newest —
+   re-run the rollback.
 
 
 4. **Verify the starting point:**
 
     ```bash
     bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
-    # expect V0 defect behavior: a deflection ("contact HR"). A grounded
-    # $75/day answer means an evolved revision is live: re-run the rollback.
     ```
+
+    Expect V0 defect behavior: a deflection ("contact HR"). A grounded
+    $75/day answer means an evolved revision is live — re-run the
+    rollback.
 
     ```bash
     EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh --selector
@@ -533,9 +539,15 @@ the evolution job learns from in Step 3:
 bash scripts/demo/generate_traffic.sh --remote \
   --from-file eval/data/questions/two_defect_evolve.json \
   --limit 8 --label $DEMO_LABEL --concurrency 5
-# log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
-# on completion: Recorded labels for 8 deployed sessions in
-#   <project>.agent_logs.run_labels
+```
+
+Expected in the log — the label confirmed at start, the side-table
+write at the end:
+
+```text
+Custom labels for this run: experiment=round1 (run_id=<id>)
+...
+Recorded labels for 8 deployed sessions in <project>.agent_logs.run_labels
 ```
 
 - `--remote` — target the deployed Agent Engine supervisor. Drop the
@@ -845,8 +857,10 @@ and failures:
 bash scripts/demo/skill_evolution/score.sh \
     -i "$RUN_DIR/v0_traffic.json" \
     -o "$RUN_DIR/v0_quality_report.json" --report
-# printed summary: meaningful_rate, unhelpful_rate, failure count
 ```
+
+The printed summary shows `meaningful_rate`, `unhelpful_rate`, and
+the failure count.
 
 **4 + 5. Analysts, patches, consolidation, best-of-N** — one command
 runs the whole evolution stage: an analyst per failure (each
@@ -857,9 +871,10 @@ best candidate:
 ```bash
 uv run python agents/workflow/skill_evolution_agent/main.py \
     --report "$RUN_DIR/v0_quality_report.json"
-# artifacts: $RUN_DIR/*_candidates/, the winning skill deployed to
-# agents/enterprise/policy_agent/skill/SKILL.md
 ```
+
+Artifacts land in `$RUN_DIR/*_candidates/`; the winning skill is
+deployed to `agents/enterprise/policy_agent/skill/SKILL.md`.
 
 **6. Re-score and compare** — fresh traffic against the evolved
 skill, then the before/after table:
