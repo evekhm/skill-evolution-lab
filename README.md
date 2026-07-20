@@ -352,9 +352,15 @@ deployed Agent Engine -- no custom frontend needed.
 * b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise  license -- a trial works)
 * c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
 
-* d. Paste the reasoning-engine path (the `Found:` line from 0.B.3.a)
-   and give the agent a user-facing display name — e.g.
-   **HR Policy Assistant**. This registered agent IS the
+* d. Paste the reasoning-engine path (the `Found:` line from 0.B.3.a),
+   give the agent a user-facing display name — e.g.
+   **HR Policy Assistant** — and a description, e.g.:
+   *"Answers questions about company policies — PTO, sick leave,
+   remote work, expenses, holidays, and benefits — and calculates PTO
+   balances and working days. Ask in plain language, e.g. 'How many
+   PTO days do I have left?'"*
+   The description is shown to employees in the app and helps them
+   understand what the agent can do. This registered agent IS the
    `knowledge_supervisor` root agent; the display name is purely what
    employees see in the picker (internal agent names stay hidden).
 * e. Open the app's web URL and select the display name you chose from
