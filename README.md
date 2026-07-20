@@ -385,6 +385,9 @@ deployed Agent Engine -- no custom frontend needed.
    understand what the agent can do. This registered agent IS the
    `knowledge_supervisor` root agent; the display name is purely what
    employees see in the picker (internal agent names stay hidden).
+   Leave **Authorization** empty — it is for agents that act on the
+   END USER's behalf against other services (per-user OAuth); this
+   agent uses only its own service identity.
 * e. Open the app's web URL and select the display name you chose from
    the agent picker
 
