@@ -465,15 +465,15 @@ Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
 
 ### Step 1 — The starting point (defined, verifiable)
 
-The walkthrough starts from this exact state — reset to it any time:
+The demo runs on a LABELED slice of traces — the table never needs
+cleaning; old conversations coexist and every stage below targets your
+label only.
 
-1. **Empty the traces table** (skip if it is already empty; point
-   `TABLE_ID` in `.env` at a fresh table if you want to keep history):
+1. **Pick the demo label** (one choice, threads the whole demo):
 
    ```bash
    source .env
-   bq query --project_id=$PROJECT_ID --use_legacy_sql=false \
-     "TRUNCATE TABLE \`$PROJECT_ID.$DATASET_ID.$TABLE_ID\`"
+   export DEMO_LABEL="experiment=round1"   # any k=v you like
    ```
 
 2. **V0 skills everywhere** — files, registry latest revision, and the
@@ -493,97 +493,57 @@ The walkthrough starts from this exact state — reset to it any time:
 **Verify the starting point:**
 
 ```bash
-bash scripts/test/show_traces.sh          # expect: zero rows
 bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
-# expect V0 defect behavior: a deflection ("contact HR") — the flaw the
-# loop exists to fix. If you get a grounded $75/day answer, an evolved
-# revision is still live: re-run the rollback.
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=15m --limit=4
-# expect: fresh registry-read lines from the restarted agents
+# expect V0 defect behavior: a deflection ("contact HR"). A grounded
+# $75/day answer means an evolved revision is live: re-run the rollback.
+EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh --selector
+# expect: 0 sessions — your label does not exist yet; whatever else the
+# table holds is irrelevant to this demo
 ```
 
-State captured: empty traces, flawed V0 serving, registry history
-preserved (rollback republishes V0 as the NEWEST revision; evolved
-revisions stay behind it). You are at the top of the loop.
+State captured: flawed V0 serving, your label empty, registry history
+preserved. You are at the top of the loop.
 
-### Step 2 — Generate real traffic (the system observes failures)
+### Step 2 — Generate labeled traffic (the system observes failures)
 
-```bash
-# --concurrency 2 respects the default Agent Engine quota on fresh
-# projects (90 requests/min; the generator also backs off on quota errors)
-uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
-uv run python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_corrections.json --multi-turn --concurrency 2
-```
-
-Drives questions through the deployed Agent Engine supervisor (omit
-`--local` for the deployed path). Every turn is logged to the BigQuery
-`agent_events` table by the Agent Analytics plugin, tagged with the
-skill version from the frontmatter (`custom_tags.agent_version`). The
-corrections file runs multi-turn: the user pushes back with a wrong
-figure, which is how parroting becomes observable in the traces.
-
-**Optional: labeled slices with exact session counts** — the
-"show mixed traffic, then retrieve only MY slice" story. Labels ride
-the `--local` path (deployed agents stamp their own fixed tags);
-`--limit N` gives you an exact conversation count; the generator
-auto-stamps a unique `run_id` on top:
+Everything this step produces carries `$DEMO_LABEL` plus an auto
+`run_id`. Labels ride the `--local` runner (deployed agents stamp
+their own fixed tags); `--limit N` gives exact conversation counts:
 
 ```bash
-# a) Baseline: exactly 5 conversations, no custom label
-uv run python agents/workflow/traffic_generator/main.py \
-  --local --local-agents \
-  --from-file eval/data/questions/two_defect_evolve.json \
-  --limit 5 --concurrency 5
-
-# b) Show everything in the table (baseline is visible, unlabeled)
-bash scripts/test/show_traces.sh
-
-# c) Your labeled load: exactly 8 conversations tagged with YOUR label
 uv run python agents/workflow/traffic_generator/main.py \
   --local --local-agents --multi-turn \
   --from-file eval/data/questions/two_defect_evolve.json \
-  --limit 8 --label experiment=round1 --concurrency 5
+  --limit 8 --label $DEMO_LABEL --concurrency 5
 # log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
-
-# d) Retrieve EXACTLY your slice — this is what the evolution job would fetch
-EVOLUTION_TRACE_LABELS=experiment=round1 EVAL_TIME_PERIOD=6h \
-  bash scripts/test/show_traces.sh --selector
-# expect: 8 root sessions, your label's run window, sample session ids
 ```
 
-Then in Step 3, hand the same label to the job with
-`--trace-labels experiment=round1` — the selector is binding, lands in
-the run's `trace_selector.json`, and is printed in the PR body.
+Show the separation — the whole table vs exactly your slice:
+
+```bash
+bash scripts/test/show_traces.sh                       # all traffic, mixed
+EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
+  bash scripts/test/show_traces.sh --selector          # your 8, precisely
+```
+
+The selector preview is EXACTLY what the evolution job fetches in
+Step 3.
 
 ### Step 3 — Run the evolution job (learn + propose)
 
 ```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,$DEMO_LABEL,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
 ```
 
-The manual trigger above is the primary way to drive a demo. The same
-job also has a scheduled tick (default: Mondays 09:00 UTC; set any
-cadence at deploy time with `EVOLUTION_SCHEDULE="*/30 * * * *"`) and an
-issue-threshold trigger — cadence is deployment policy, never a
-property of the loop. A full agent-decided run
-(3 skills, best-of-5, 55-question validation per candidate) takes
-~3 hours; for a demo-speed run (~1h) scope it to one agent:
+`--trace-labels` is binding: the pre-flight fetches ONLY your labeled
+slice, and the selector lands in the run's `trace_selector.json` and
+the PR body. Drop the flag to run on the whole recent window instead;
+drop all args for the full agent-decided run (3 skills, best-of-5,
+~3h — what the weekly tick and the issue-threshold dispatcher run;
+cadence is deployment policy, set via `EVOLUTION_SCHEDULE`).
 
-```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
-```
-
-Evolving on a labeled slice from Step 2? Add the selector to the args:
-
-```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--trace-labels,experiment=round1,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
-
-
+Inside one run:
 Inside one run:
 
 | Stage | What happens |
