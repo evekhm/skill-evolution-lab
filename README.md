@@ -283,14 +283,15 @@ Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_
 Q: How many PTO days do I have left?
 ─────────────────────────────────────────
   Routed to:  direct
-  Model:      gemini-3.1-flash-lite
+  Model:      gemini-2.5-pro
   Tools:      (none)
-  Tokens:     supervisor 276→13 (thinking: 370)
+  Tokens:     supervisor 276→13 (thinking: 241)
               sub-agent  0→0 (thinking: 0)
 
-  A: You currently have 7.6 PTO days left and 4.7 sick leave days. ...
+  A: You have 7.8 PTO days and 4.8 sick days left.
 
-  Latency: 20.2s
+
+  Latency: 8.9s
  
 ```
 
@@ -330,6 +331,8 @@ Checking A2A agent card...
 Q: How many sick days do I get?
 ─────────────────────────────────────────
 You get 10 sick days per year. They do not roll over.
+
+Latency: 1.6s
 ```
 
 ##### 1.3.3.c — hr_calculator (Cloud Run, direct A2A)
@@ -354,6 +357,8 @@ Checking A2A agent card...
 Q: How many PTO days do I have left?
 ─────────────────────────────────────────
 You have 7.6 PTO days left.
+
+Latency: 2.1s
 ```
 
 Note the contrast across the three: hr_calculator's "7.6" is computed

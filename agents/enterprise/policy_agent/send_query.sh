@@ -86,6 +86,7 @@ echo "────────────────────────�
 TASK_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
 MSG_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
 
+T0=$(date +%s.%N)
 RESPONSE=$(curl -s -X POST \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
@@ -110,4 +111,7 @@ echo "$RESPONSE" | jq -r '
     .error.message //
     "No text in response"
 ' 2>/dev/null || echo "$RESPONSE"
+T1=$(date +%s.%N)
+LATENCY=$(awk "BEGIN{printf \"%.1f\", ${T1}-${T0}}")
 echo ""
+echo "Latency: ${LATENCY}s"
