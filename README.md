@@ -529,9 +529,7 @@ Expected output:
 ```
 
 
-**Restarting the experiment.** A fresh label (`experiment=round2`)
-needs no cleanup — old slices simply stop matching. To delete a
-finished slice:
+**Restarting the experiment.** To delete a finished slice:
 
 ```bash
 bash scripts/demo/skill_evolution/cleanup_label.sh experiment=round1
