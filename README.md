@@ -529,6 +529,15 @@ Expected output:
 ```
 
 
+Restarting the experiment later? A fresh label
+(`experiment=round2`) needs no cleanup — old slices simply stop
+matching. To delete a finished slice (its events plus `run_labels`
+rows; the script is label-scoped and cannot touch anything else):
+
+```bash
+bash scripts/demo/skill_evolution/cleanup_label.sh experiment=round1
+```
+
 ### Step 2 — Generate labeled traffic (the system observes failures)
 
 Send 8 labeled conversations at the deployed V0 supervisor — the
