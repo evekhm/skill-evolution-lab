@@ -14,8 +14,7 @@
       * [0.B.4 — Connect Gemini Enterprise (optional)](#0b4--connect-gemini-enterprise-optional)
     * [0.C — GitHub: CI + bot wiring](#0c--github-ci--bot-wiring)
       * [0.C.1 — Prerequisite check, then the GitHub doc](#0c1--prerequisite-check-then-the-github-doc)
-      * [0.C.2 — What the setup script configured](#0c2--what-the-setup-script-configured)
-      * [0.C.3 — Verify](#0c3--verify)
+      * [0.C.2 — Verify](#0c2--verify)
     * [0.D — Verify everything: one command](#0d--verify-everything-one-command)
   * [Run the Demo — Steps 1 to 7](#run-the-demo--steps-1-to-7)
     * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
@@ -414,22 +413,7 @@ end to end — the PR credential (fine-grained PAT), the optional bot
 identity (GitHub App), and the setup-script run that stores
 everything.
 
-#### 0.C.2 — What the setup script configured
-
-You already ran `scripts/setup/setup_github.sh` as the final step of
-[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md) — nothing to run
-here. That one run configured: WIF (GitHub Actions -> GCP with zero
-stored keys), the CI service account, the 8 Actions repo variables,
-issue labels, branch protection on main, the `github-pat` PR
-credential, and — if you provided the `GH_APP_*` values — the bot
-identity secrets. The full step-by-step table is in the doc.
-
-Success signals in its output: every step prints `Created ...` or
-`already exists (skipped)`, and the closing summary shows
-`[8] Bot identity: CONFIGURED` (or the not-configured note if you
-skipped the App).
-
-#### 0.C.3 — Verify
+#### 0.C.2 — Verify
 
 ```bash
 gh variable list          # 8 variables, PROJECT_ID = your project
