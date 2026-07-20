@@ -267,6 +267,11 @@ call each Cloud Run service directly.
 Tests the full chain: Vertex REST discovery -> Agent Engine session ->
 supervisor (skill loaded) -> streamed response.
 
+What to expect: the chain works end to end, and the V0 supervisor
+answers the balance question CONFIDENTLY with `Tools: (none)` — a
+number produced without any tool call. That is the seeded defect,
+visible from turn one; the demo exists to evolve it away.
+
 ```bash
 bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
 ```
@@ -288,7 +293,7 @@ Q: How many PTO days do I have left?
   Tokens:     supervisor 300→24 (thinking: 0)
               sub-agent  0→0 (thinking: 0)
 
-  A: You currently have **7.8 days** of PTO left.
+  A: You currently have 7.8 days of PTO left.
 
   Latency: 18.9s
 ```
@@ -311,6 +316,13 @@ Output:
 Bypasses the supervisor: fetches the specialist's A2A agent card (the
 skills it advertises to callers), then asks it directly.
 
+What to expect: a REFUSAL, and that is the correct result. This agent
+answers policy questions from documents (`lookup_company_policy`); a
+personal balance is not in any document, so the right behavior is to
+say so and point to HR. An invented number here would be the failure.
+The test passes when the card lists the skills and the answer stays
+inside that scope.
+
 ```bash
 bash agents/enterprise/policy_agent/send_query.sh -q "How many PTO days do I have left?"
 ```
@@ -331,12 +343,17 @@ Q: How many PTO days do I have left?
 I don't have access to your individual PTO balance. Please contact HR
 to find out how many PTO days you have left.
 
-Latency: 2.1s
+
 ```
 
 ##### 1.3.3.c — hr_calculator (Cloud Run, direct A2A)
 
 Same direct test for the math specialist.
+
+What to expect: a computed balance — `calculate_pto_details` accrues
+from demo dates, so the number is grounded in a tool and changes day
+to day. This is the same question 1.3.3.a and 1.3.3.b just answered
+without a tool and with a refusal, respectively.
 
 ```bash
 bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
