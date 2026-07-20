@@ -488,8 +488,9 @@ label only.
 
    ```bash
    uv run python eval/skill_evolution/registry_sync.py verify-read --agent policy_agent
-   
-   # expect the V0 head after the rollback:
+   ```
+   Expected Output:
+    ```text
    #   OK: GetSkill(ks-policy-agent) revision=<id> SKILL.md=~800 chars
    #   --- SKILL.md head ---
    #   ...
@@ -499,12 +500,6 @@ label only.
    #  re-run the rollback)
    ```
 
-3. **No leftover evolution artifacts** (optional, for a pristine demo):
-
-   ```bash
-   gh pr list    # close old skill-evolution/* PRs you are done with
-   gh issue list --label quality   # close or keep; >=10 open will trip the dispatcher
-   ```
 
 4. **Verify the starting point:**
 
@@ -516,12 +511,17 @@ label only.
 
     ```bash
     EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh --selector
-    # expect: 0 sessions — your label does not exist yet; whatever else the
-    # table holds is irrelevant to this demo
     ```
 
-State captured: flawed V0 serving, your label empty, registry history
-preserved. You are at the top of the loop.
+Expected output:
+```text
++----------+--------+----------+--------+
+| sessions | events | earliest | latest |
++----------+--------+----------+--------+
+|        0 |      0 |     NULL |   NULL |
++----------+--------+----------+--------+
+```
+
 
 ### Step 2 — Generate labeled traffic (the system observes failures)
 
@@ -548,6 +548,25 @@ bash scripts/demo/generate_traffic.sh --remote \
   labeled slice: deployed runs record it in the `run_labels` side
   table, local runs carry it inside each trace's `custom_tags`;
   every selector matches both.
+
+While the run streams you'll see each simulated user turn logged
+with a strategy tag, e.g. `Simulator [CORRECTION]: Actually, my
+onboarding packet says...`:
+
+- The tags — `FOLLOWUP` (next question), `SPECIFICS` (press for
+  exact numbers), `VERIFY` (ask to check the policy), `CORRECTION`
+  (push back with a golden fact), `END` (done) — are the simulator's
+  own per-turn decisions; `END` is what closes a conversation.
+- Because the simulator must decide its strategy anyway, the tag is
+  ground truth and costs nothing; the `correction_rate` /
+  `verify_rate` printed at the end of the run come straight from it.
+- The quality report can also tag turns with an LLM pass
+  (`--tag-turns`). That is inference — one judge call per turn, and
+  it can misread a polite correction — but it works on organic
+  traffic that arrives untagged. Rule of thumb: generated traffic
+  keeps its generator tags; real user traffic gets report-side
+  tagging; when comparing the two on one dashboard, tag both with
+  the report path so the bias is uniform.
 
 
 ```bash
