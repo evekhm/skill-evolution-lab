@@ -525,33 +525,7 @@ preserved. You are at the top of the loop.
 
 ### Step 2 — Generate labeled traffic (the system observes failures)
 
-The traffic comes from
-[`eval/data/questions/two_defect_evolve.json`](eval/data/questions/two_defect_evolve.json)
-— 55 HR questions across 13 categories (PTO, sick leave, benefits,
-expenses, ...), phrased so the flawed V0 skill defers to HR even
-though the policy lookup tool has every answer. Each question becomes
-one multi-turn conversation (one BQ session): the simulated user asks
-it, knows the golden facts, and pushes back on wrong answers across
-up to 4 turns.
-
-`--limit 8` is the session-count knob: run only the first 8 questions
-in file order (4x PTO, 3x sick leave, 1x remote work), so exactly 8
-labeled sessions land in BigQuery. Omit it and all 55 run — roughly
-7x the time and model quota for the same demo outcome, since the
-evolution job needs only a handful of failures to learn from. Any N
-works: `--limit 3` for a fast smoke, `--limit 55` (or no flag) for
-the full set.
-
-Every conversation carries `$DEMO_LABEL` plus an auto `run_id`.
-Traffic runs on the **local runner** because that is where per-run
-labels are possible: the generator owns the BigQuery plugin process,
-so `--label` lands in every trace's `custom_tags`. A deployed agent
-stamps its tags once at startup, beyond the reach of any generator
-flag (per-run deployed labels: backlog #13). The local runner reads
-the same Skill Registry revision the deployed agents serve and logs
-to the same BigQuery table, so the evolution job sees identical data.
-For deployed-endpoint traffic, see Demo Variants — isolation there is
-by time window (`EVAL_TIME_PERIOD`) instead of label.
+One command, command first, flags explained below:
 
 ```bash
 bash scripts/demo/generate_traffic.sh \
@@ -559,6 +533,18 @@ bash scripts/demo/generate_traffic.sh \
   --limit 8 --label $DEMO_LABEL --concurrency 5
 # log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
 ```
+
+- `--from-file` — the questions:
+  [`two_defect_evolve.json`](eval/data/questions/two_defect_evolve.json),
+  55 HR questions the flawed V0 skill deflects to HR. A simulated
+  user asks each one and pushes back on wrong answers (up to 4 turns).
+- `--limit 8` — run only the first 8 questions. One question = one
+  conversation = one BigQuery session, so this is how you get an
+  exact session count. Omitted, all 55 run (~7x longer, same demo).
+- `--label $DEMO_LABEL` — stamps every trace; Step 3 fetches only
+  this slice. Works on the local runner only (deployed agents fix
+  their tags at startup — backlog #13); the local runner serves the
+  same registry skill and writes to the same BigQuery table.
 
 Show the separation — the whole table vs exactly your slice:
 
