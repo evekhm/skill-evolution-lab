@@ -933,7 +933,12 @@ async def run_deployed_multiturn(
                 return await asyncio.to_thread(fn)
             except Exception as e:
                 msg = str(e)
-                retryable = "RESOURCE_EXHAUSTED" in msg or "Quota exceeded" in msg
+                retryable = (
+                    "RESOURCE_EXHAUSTED" in msg
+                    or "Quota exceeded" in msg
+                    or "UNAVAILABLE" in msg
+                    or "503" in msg
+                )
                 if not retryable or attempt == len(delays):
                     raise
         raise RuntimeError("unreachable")
