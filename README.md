@@ -352,7 +352,23 @@ deployed Agent Engine -- no custom frontend needed.
 * b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise  license -- a trial works)
 * c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
 
-* d. Paste the reasoning-engine path (the `Found:` line from 0.B.3.a),
+* d. Paste the **reasoning-engine resource path** — it must look like
+   `projects/<NUMBER>/locations/us-central1/reasoningEngines/<ID>`.
+   Print it with:
+
+   ```bash
+   source .env && TOKEN=$(gcloud auth print-access-token) && \
+   curl -s -H "Authorization: Bearer $TOKEN" \
+     "https://${REGION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${REGION}/reasoningEngines" \
+     | jq -r '.reasoningEngines[] | select(.displayName=="knowledge-supervisor") | .name'
+   ```
+
+   (It is also the `Found:` line in 0.B.3.a's output.)
+   **NOT the Cloud Run URLs** from 0.B.3.b/0.B.3.c — those
+   `https://...run.app` addresses are the specialists' A2A services;
+   pasting one gives *"reasoning engine source is invalid"*. Gemini
+   Enterprise fronts only the Agent Engine supervisor.
+   Then
    give the agent a user-facing display name — e.g.
    **HR Policy Assistant** — and a description, e.g.:
    *"Answers questions about company policies — PTO, sick leave,
