@@ -2,11 +2,12 @@
 * [Skill Evolution Lab](#skill-evolution-lab)
   * [What This System Does](#what-this-system-does)
   * [Step 0 — Setup & Prerequisites](#step-0--setup--prerequisites)
+    * [0.0 — First time only: create the project and the repo](#00--first-time-only-create-the-project-and-the-repo)
     * [0.A — Local machine: tools, auth, environment](#0a--local-machine-tools-auth-environment)
       * [Tools and auth](#tools-and-auth)
       * [Configure `.env`](#configure-env)
       * [Python environment](#python-environment)
-    * [0.B — GCP: deploy the stack (skip if already deployed)](#0b--gcp-deploy-the-stack-skip-if-already-deployed)
+    * [0.B — GCP: deploy the stack](#0b--gcp-deploy-the-stack)
       * [0.B.1 — GCP infrastructure](#0b1--gcp-infrastructure)
       * [0.B.2 — Deploy all six components](#0b2--deploy-all-six-components)
       * [0.B.3 — Smoke test](#0b3--smoke-test)
@@ -214,9 +215,7 @@ that all agent modules import correctly.
 
 ### 0.B — GCP: deploy the stack
 
-The complete ordered path from an empty GCP project and empty repo
-follow it top to bottom. The subsections below are the reference
-details for its two big steps.
+Skip this whole part if the stack is already deployed (0.D verifies).
 
 
 
