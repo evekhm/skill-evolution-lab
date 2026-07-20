@@ -625,6 +625,50 @@ def _build_bq_plugins() -> list:
     return plugins
 
 
+def _record_run_labels(session_ids: list) -> None:
+    """Persist session->label rows for deployed traffic.
+
+    Deployed agents stamp their BigQuery custom_tags once at startup, so
+    per-run labels cannot ride the traces themselves. The generator knows
+    the sessions it created, so it records (session_id, label) rows in a
+    small side table; label selectors union this with the trace-tag match,
+    giving --label identical semantics on the local and deployed paths.
+    """
+    dataset_id = os.getenv("DATASET_ID")
+    if not (dataset_id and session_ids):
+        return
+    labels = {"run_id": _RUN_ID, "traffic_source": "generator"}
+    for pair in os.getenv("TRACE_LABELS", "").split(","):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            if k.strip():
+                labels[k.strip()] = v.strip()
+    try:
+        from google.cloud import bigquery
+
+        client = bigquery.Client(project=PROJECT_ID)
+        table = f"{PROJECT_ID}.{dataset_id}.run_labels"
+        client.query(
+            f"CREATE TABLE IF NOT EXISTS `{table}` ("
+            "session_id STRING, label_key STRING, label_value STRING, "
+            "run_id STRING, created_at TIMESTAMP)"
+        ).result()
+        clean = lambda s: str(s).replace("\\", "").replace("'", "")
+        rows = ", ".join(
+            f"('{clean(sid)}', '{clean(k)}', '{clean(v)}', "
+            f"'{_RUN_ID}', CURRENT_TIMESTAMP())"
+            for sid in session_ids
+            for k, v in labels.items()
+        )
+        client.query(f"INSERT INTO `{table}` VALUES {rows}").result()
+        logger.info(
+            "Recorded labels for %d deployed sessions in %s: %s",
+            len(session_ids), table, labels,
+        )
+    except Exception as e:
+        logger.warning("run_labels recording failed: %s", e)
+
+
 async def _send_message(runner, user_id: str, session_id: str, text: str) -> tuple[str, int]:
     """Send a single message and collect the agent's response.
 
@@ -1279,16 +1323,14 @@ async def main():
         extra = ",".join(args.label)
         base = os.getenv("TRACE_LABELS", "")
         os.environ["TRACE_LABELS"] = f"{base},{extra}" if base else extra
+        logger.info(
+            "Custom labels for this run: %s (run_id=%s)", extra, _RUN_ID,
+        )
         if not args.local:
-            logger.warning(
-                "--label only reaches BigQuery on the --local path: deployed "
-                "agents stamp their own tags, fixed at startup. This run's "
-                "labels (%s) will NOT be attached to deployed traffic.",
-                extra,
-            )
-        else:
             logger.info(
-                "Custom labels for this run: %s (run_id=%s)", extra, _RUN_ID,
+                "Deployed run: labels are recorded in the run_labels side "
+                "table when the run completes (deployed traces carry "
+                "startup-fixed tags only)."
             )
 
     # --- Step 1: Get questions ---
@@ -1398,6 +1440,12 @@ async def main():
                 persona=args.persona,
             )
             _print_multiturn_metrics(result["metrics"])
+            if os.getenv("TRACE_LABELS"):
+                _record_run_labels([
+                    c.get("session_id")
+                    for c in result.get("conversations", [])
+                    if c.get("session_id")
+                ])
             output_path = args.output or os.path.join(
                 os.path.dirname(__file__), "../../../eval/load_test_results.json"
             )

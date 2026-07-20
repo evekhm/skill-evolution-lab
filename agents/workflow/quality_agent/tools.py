@@ -287,6 +287,73 @@ def _load_full_sessions(report_path: str) -> dict[str, dict]:
     }
 
 
+def _resolve_labeled_sessions(
+    labels: dict, time_period: str, app_name: str | None,
+) -> list[str]:
+    """Resolve label filters to session ids: trace tags UNION run_labels.
+
+    Local-runner traffic carries labels inside each trace's custom_tags;
+    deployed traffic can't (agent tags are fixed at startup), so the
+    traffic generator records session->label rows in the run_labels side
+    table instead. A label selector must match either source.
+    """
+    import re
+
+    from google.cloud import bigquery
+
+    m = re.match(r"^(\d+)([mhd])$", time_period or "")
+    interval = None
+    if m:
+        unit = {"m": "MINUTE", "h": "HOUR", "d": "DAY"}[m.group(2)]
+        interval = f"INTERVAL {m.group(1)} {unit}"
+
+    client = bigquery.Client(project=PROJECT_ID)
+    events = f"`{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}`"
+    side = f"`{PROJECT_ID}.{DATASET_ID}.run_labels`"
+    clean = lambda s: str(s).replace("\\", "").replace("'", "")
+
+    trace_where = ["1=1"]
+    if interval:
+        trace_where.append(
+            f"timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), {interval})"
+        )
+    if app_name:
+        trace_where.append(f"agent = '{clean(app_name)}'")
+    having = ["1=1"]
+    for k, v in labels.items():
+        trace_where.append(
+            f"JSON_VALUE(attributes, '$.custom_tags.{clean(k)}') = '{clean(v)}'"
+        )
+        having.append(
+            f"COUNTIF(label_key = '{clean(k)}' "
+            f"AND label_value = '{clean(v)}') > 0"
+        )
+    side_where = (
+        f"created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), {interval})"
+        if interval else "1=1"
+    )
+
+    trace_sql = (
+        f"SELECT DISTINCT session_id FROM {events} "
+        f"WHERE {' AND '.join(trace_where)}"
+    )
+    side_sql = (
+        f"SELECT session_id FROM {side} WHERE {side_where} "
+        f"GROUP BY session_id HAVING {' AND '.join(having)}"
+    )
+
+    def _run(sql):
+        return [r.session_id for r in client.query(sql).result()]
+
+    ids = set(_run(trace_sql))
+    try:
+        ids |= set(_run(side_sql))
+    except Exception as e:
+        # run_labels doesn't exist until the first deployed labeled run.
+        logger.info("run_labels side table not queried (%s)", e)
+    return sorted(ids)
+
+
 def run_quality_report(
     time_period: str = "6h",
     output_dir: str | None = None,
@@ -342,14 +409,36 @@ def run_quality_report(
         # run_evaluation uses asyncio.run() internally, which fails
         # when called from the ADK runner's event loop. Run it in a
         # separate thread so it gets its own event loop.
-        custom_labels = dict(labels) if labels else {}
-        if agent_version:
-            custom_labels["agent_version"] = agent_version
-        custom_labels = custom_labels or None
-
         if app_name is None:
             app_name = os.getenv("QUALITY_APP_NAME", "knowledge_supervisor")
         app_name = app_name or None  # "" disables the filter
+
+        # User labels resolve to explicit session ids (trace custom_tags
+        # UNION the run_labels side table) so labeled deployed traffic is
+        # selectable too; agent_version stays a plain trace-tag filter.
+        custom_labels = {}
+        if agent_version:
+            custom_labels["agent_version"] = agent_version
+        custom_labels = custom_labels or None
+        session_ids = None
+        if labels:
+            session_ids = _resolve_labeled_sessions(
+                dict(labels), time_period, app_name,
+            )
+            logger.info(
+                "Labels %s resolved to %d sessions", labels, len(session_ids),
+            )
+            if not session_ids:
+                return {
+                    "summary": {
+                        "total_sessions": 0,
+                        "message": (
+                            f"No sessions match labels {labels} "
+                            f"in last {time_period}"
+                        ),
+                    },
+                    "sessions": [],
+                }
 
         # Golden Q&A ground truth: load the eval spec so the judge grades
         # matched questions against expected answers (see README, "The
@@ -378,10 +467,11 @@ def run_quality_report(
             result = pool.submit(
                 run_evaluation,
                 time_range=time_period,
-                limit=100,
+                limit=max(100, len(session_ids or [])),
                 custom_labels=custom_labels,
                 app_name=app_name,
                 eval_spec=eval_spec,
+                session_ids=session_ids,
             ).result()
         report = result["report"]
         resolved_map = result["resolved_map"]

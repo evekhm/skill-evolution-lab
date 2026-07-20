@@ -5,8 +5,8 @@ result: trigger-to-PR went 73m38s -> **13m45s** (PR #4: real rates in
 the title, regression cases + trace selector included, gate green).
 (*6: pre-check verified locally against PR #2's refused skill;
 in-container confirmation rides the next supervisor-targeted run.
-*7: validated for local-runner traffic; deployed traffic cannot carry
-per-run labels — see item 13.)
+*7: validated for local-runner traffic; deployed traffic gets labels
+via the run_labels side table — see item 13, closed.)
 
 Known issues and planned work, ordered by impact. Measured evidence in
 parentheses; timings from the 2026-07-16 runs on `skill-evolution-lab`.
@@ -77,8 +77,11 @@ Measured breakdown of a warm-BQ, policy-scoped, 3-candidate run
 12. **Old repo parity**: agent-quality-lab's quality wrapper has the
     same missing app_name filter; port if that repo stays active.
 
-13. **Per-run labels for deployed traffic**: agent plugins fix
-    custom_tags at startup, so generator `run_id` labels only reach
-    BigQuery on the local-runner path. Design option: pass a label
-    through session state / request metadata and have the plugin merge
-    it per event (SDK-side change).
+13. **Per-run labels for deployed traffic** — CLOSED 2026-07-20 via
+    the `run_labels` side table: the generator records
+    (session_id, label) rows for the sessions it creates, and every
+    label selector (evolution pre-flight, quality report,
+    show_traces --selector) matches trace custom_tags UNION the side
+    table. Long-term the label should ride session state via the API
+    and be merged per event by the analytics plugin — blocked on SDK
+    support (custom_tags is documented as static at construction).

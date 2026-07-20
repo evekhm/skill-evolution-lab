@@ -60,13 +60,28 @@ if [ "${MODE}" = "--selector" ]; then
     if [ -n "${VERSION}" ]; then
         WHERE="${WHERE} AND JSON_VALUE(attributes, '\$.custom_tags.agent_version') = '${VERSION}'"
     fi
-    # Label filters: k=v,k2=v2
+    # Label filters (k=v,k2=v2): a labeled session matches either via its
+    # trace custom_tags (local runner) or via the run_labels side table
+    # (deployed traffic — the generator records session->label rows there).
+    SIDE_TABLE="\`${PROJECT_ID}.${DATASET_ID}.run_labels\`"
+    HAS_SIDE=false
+    bq show "${PROJECT_ID}:${DATASET_ID}.run_labels" >/dev/null 2>&1 && HAS_SIDE=true
+    TRACE_LBL=""
+    SIDE_HAVING="1=1"
     IFS=',' read -ra PAIRS <<< "${EVOLUTION_TRACE_LABELS:-}"
     for pair in "${PAIRS[@]:-}"; do
         [ -z "${pair}" ] && continue
         key="${pair%%=*}"; val="${pair#*=}"
-        WHERE="${WHERE} AND JSON_VALUE(attributes, '\$.custom_tags.${key}') = '${val}'"
+        TRACE_LBL="${TRACE_LBL} AND JSON_VALUE(attributes, '\$.custom_tags.${key}') = '${val}'"
+        SIDE_HAVING="${SIDE_HAVING} AND COUNTIF(label_key = '${key}' AND label_value = '${val}') > 0"
     done
+    if [ -n "${TRACE_LBL}" ]; then
+        LBL_SEL="SELECT DISTINCT session_id FROM ${TABLE} WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), ${INTERVAL}) ${TRACE_LBL}"
+        if $HAS_SIDE; then
+            LBL_SEL="${LBL_SEL} UNION DISTINCT SELECT session_id FROM ${SIDE_TABLE} WHERE created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), ${INTERVAL}) GROUP BY session_id HAVING ${SIDE_HAVING}"
+        fi
+        WHERE="${WHERE} AND session_id IN (${LBL_SEL})"
+    fi
 
     echo "=== Evolution pre-flight selector preview ==="
     echo "window=${PERIOD}  app=${APP}  version=${VERSION:-any}  labels=${EVOLUTION_TRACE_LABELS:-none}"

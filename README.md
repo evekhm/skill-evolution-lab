@@ -535,19 +535,14 @@ bash scripts/demo/generate_traffic.sh \
 # log prints: Custom labels for this run: experiment=round1 (run_id=<id>)
 ```
 
-- `--from-file` — the questions:
-  [`two_defect_evolve.json`](eval/data/questions/two_defect_evolve.json),
-  55 HR questions the flawed V0 skill deflects to HR. A simulated
-  user asks each one and pushes back on wrong answers (up to 4 turns).
+- `--from-file` — the set of
+  [`55 questions`](eval/data/questions/two_defect_evolve.json) to read from.
 - `--limit 8` — run only the first 8 questions. One question = one
-  conversation = one BigQuery session, so this is how you get an
-  exact session count. Omitted, all 55 run (~7x longer, same demo).
-- `--label $DEMO_LABEL` — stamps every trace; Step 3 fetches only
-  this slice. Works on the local runner only (deployed agents fix
-  their tags at startup — backlog #13); the local runner serves the
-  same registry skill and writes to the same BigQuery table.
+  conversation = one BigQuery session. Omitted, all 55 run.
+- `--label $DEMO_LABEL` — stamps every trace to create a labeled
+  slice. Works on local and deployed runs alike (deployed labels
+  land in the `run_labels` side table; selectors match both).
 
-Show the separation — the whole table vs exactly your slice:
 
 ```bash
 bash scripts/test/show_traces.sh                       # all traffic, mixed
