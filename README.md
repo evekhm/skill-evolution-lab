@@ -529,14 +529,27 @@ Expected output:
 ```
 
 
-Restarting the experiment later? A fresh label
-(`experiment=round2`) needs no cleanup — old slices simply stop
-matching. To delete a finished slice (its events plus `run_labels`
-rows; the script is label-scoped and cannot touch anything else):
+**Restarting the experiment.** A fresh label (`experiment=round2`)
+needs no cleanup — old slices simply stop matching. To delete a
+finished slice:
 
 ```bash
 bash scripts/demo/skill_evolution/cleanup_label.sh experiment=round1
 ```
+
+With `$DEMO_LABEL` exported the argument is optional; `--yes` skips
+the confirmation. The script shows the slice (sessions + events),
+asks, then deletes only the sessions matching that label — resolved
+like every selector (trace tags plus `run_labels`) — and the slice's
+side-table rows:
+
+- Label-scoped by construction: no code path touches rows outside
+  the slice, and there is no truncate anywhere.
+- Refuses broad system tags (`traffic_source`, `agent_version`,
+  `sw_version`) — those match months of traffic, not one experiment.
+- BigQuery cannot DELETE rows written in the last ~30 minutes
+  (streaming buffer); the script detects this and tells you to wait
+  or restart under a fresh label instead.
 
 ### Step 2 — Generate labeled traffic (the system observes failures)
 
