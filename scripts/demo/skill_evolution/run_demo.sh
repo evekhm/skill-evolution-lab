@@ -257,6 +257,11 @@ DEMO_START_TS=$(date +%s)
 # Quick mode pins the fast profile unless the caller chose values:
 # 1 round, 3 candidates. Agent-decided runs were choosing 5 candidates
 # + a second round, doubling runtime for rounds that scored worse.
+# Local demo scale can never reach the agent's 30-failure default —
+# a 13-32 question set tops out well below it. Bind a proportionate
+# floor for BOTH modes; explicit --min-failures still overrides.
+MIN_FAILURES="${MIN_FAILURES:-5}"
+
 if [ "$MODE" = "quick" ]; then
     ROUNDS="${ROUNDS:-1}"
     CANDIDATES="${CANDIDATES:-2}"
