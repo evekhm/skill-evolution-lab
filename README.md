@@ -886,37 +886,35 @@ One-time setup lives in [Setup & Prerequisites](#step-0--setup--prerequisites).
 
 ### One command
 
-Quick — 25 questions, ~30-45 min:
+Three profiles, one script. Pick by how much time you have and what
+the numbers need to prove:
 
-```bash
-bash scripts/demo/skill_evolution/run_demo.sh --quick
-```
+| | Lite (default `--quick`) | Standard | Full (`--full`) |
+|---|---|---|---|
+| Command | `run_demo.sh --quick` | `run_demo.sh --quick --questions eval/data/questions/two_defect_quick.json --candidates 3` | `run_demo.sh --full` |
+| Wall time (measured) | **~17 min** | ~30-40 min | ~1-2 h |
+| Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
+| Candidates | 2 | 3 | agent-decided (up to 5) |
+| Rounds | 1 | 1 | agent-decided |
+| Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
+| Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
 
-Full — 55 questions plus a held-out test split, ~1-2 h:
+All three run identical conversations — 4 turns, adversarial
+simulated user, the serving model — and produce the same artifacts:
+`SUMMARY.md`, `pr_preview.md`, V0 restored, own BigQuery slice.
 
-```bash
-bash scripts/demo/skill_evolution/run_demo.sh --full
-```
+Caveats, honestly:
 
-Both run the identical loop with identical conversations: 4 turns,
-adversarial simulated user, the serving model. What full adds is
-measurement rigor — the bigger question set (each question is worth
-~2pp instead of 4pp, so candidate rankings are more stable), agent-
-decided rounds and candidates, and a final re-score of V0 and the
-winner on a DISJOINT held-out test set, which is the number you can
-quote without an overfitting asterisk.
-
-Quick pins one evolution round and 3 candidates; `--rounds N` and
-`--candidates N` override. Full leaves both agent-decided.
-
-Which to run: start with `--quick` — first run, and every iteration
-loop. It shows the whole system and a credible improvement in half
-an hour. Run `--full` once, when the numbers themselves are the
-deliverable (a writeup, a review, a before/after you will defend).
-
-Either way the script handles everything: V0 restore, traffic,
-judging, evolution, comparison, `SUMMARY.md`, and the local PR
-artifact. All outputs land in `eval/runs/{timestamp}_demo_{mode}/`.
+- **Lite**: each question is worth ~7.7pp, so rates are chunky and
+  two close candidates can swap ranks; one agent is evolved; the
+  improvement you see is directional, not quotable. Right for first
+  contact and every iteration loop.
+- **Standard**: steadier rates (~4pp per question), better candidate
+  ranking, still no held-out set — good for comparing skill ideas.
+- **Full**: the only profile whose final number carries no
+  overfitting asterisk (V0 and the winner are re-scored on questions
+  evolution never saw). Run it when the number is the deliverable —
+  a writeup, a review, a before/after you will defend.
 
 ### What to expect
 
@@ -1402,7 +1400,7 @@ Golden Q&A feeds three consumers:
 
 | Variant | Command | Time | Use when |
 |---|---|---|---|
-| Local quick | `bash scripts/demo/skill_evolution/run_demo.sh --quick` | ~30-45 min | First contact; no deployment |
+| Local quick | `bash scripts/demo/skill_evolution/run_demo.sh --quick` | ~17 min | First contact; no deployment (see the three profiles above) |
 | Local full | `bash scripts/demo/skill_evolution/run_demo.sh --full` | ~1-2 h | Full local evaluation (55 questions + held-out split) |
 | GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,2,--quick"` | ~30-45 min | Live demo of the deployed loop, warm BigQuery window |
 | GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~1.5-3 h | Production cadence: agent-decided scope, full validation |
