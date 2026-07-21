@@ -16,6 +16,8 @@
     * [5 — Verify everything: one command](#5--verify-everything-one-command)
   * [Run the Demo](#run-the-demo)
     * [The one-command run](#the-one-command-run)
+      * [Local](#local)
+      * [Deployed](#deployed)
     * [The step-by-step walkthrough](#the-step-by-step-walkthrough)
     * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
     * [Step 2 — Generate labeled traffic (the system observes failures)](#step-2--generate-labeled-traffic-the-system-observes-failures)
@@ -503,7 +505,9 @@ winner goes live:
 | Winning skill | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed | pushed to the Skill Registry and opened as a PR |
 | Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
 
-**Local** — Three profiles, one script. Pick by how much time you have and what
+#### Local
+
+Three profiles, one script. Pick by how much time you have and what
 the numbers need to prove:
 
 | | Lite (default `--quick`) | Standard | Full (`--full`) |
@@ -555,8 +559,9 @@ Caveats, honestly:
   a writeup, a review, a before/after you will defend.
 
 
-**Deployed** (~30-45 min; the winner lands as a real PR — merge
-activates it):
+#### Deployed
+
+~30-45 min; the winner lands as a real PR — merge activates it:
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
