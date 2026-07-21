@@ -120,7 +120,7 @@
 # ============================================================================
 #
 #   --quick              22 questions (2 per category), ~15 min total
-#   --full               205 questions (all categories), ~1 hour total (default)
+#   --full               55 questions (all categories) + held-out test split (default)
 #   --reuse-v0 [path]    Reuse V0 data. Path is optional and can be:
 #                          - a directory (copies traffic + scoring if available)
 #                          - a .json file (traffic only, will score fresh)
@@ -332,19 +332,19 @@ PERSONA_FLAG=""
 [ -n "$PERSONA" ] && PERSONA_FLAG="--persona $PERSONA"
 
 # Resolve questions file
-# --quick uses demo_quick.json (34 curated test questions, 2 per category)
-# --full uses demo_conversations.json (Alex persona traffic questions)
+# --quick uses two_defect_quick.json (25 questions, 2 per category)
+# --full uses two_defect_evolve.json (55 questions, all categories)
 if [ -n "$QUESTIONS_OVERRIDE" ]; then
     QUESTIONS_FILE="$QUESTIONS_OVERRIDE"
 elif [ "$MODE" = "quick" ]; then
-    QUESTIONS_FILE="$EVAL_DIR/data/questions/demo_quick.json"
+    QUESTIONS_FILE="$EVAL_DIR/data/questions/two_defect_quick.json"
 else
-    QUESTIONS_FILE="$EVAL_DIR/data/questions/demo_conversations.json"
+    QUESTIONS_FILE="$EVAL_DIR/data/questions/two_defect_evolve.json"
 fi
 
 # Make the evolution agent's candidate scoring (score_candidate) use the same
 # question set as the run, so --quick stays quick instead of validating every
-# candidate against the full 235-question set.
+# candidate against the full 55-question set.
 export EVAL_QUESTIONS_FILE="$QUESTIONS_FILE"
 
 # =====================================================================

@@ -875,19 +875,34 @@ One-time setup lives in [Setup & Prerequisites](#step-0--setup--prerequisites).
 
 ### One command
 
-```bash
-# Quick run: 22 questions, ~15 minutes
-bash scripts/demo/skill_evolution/run_demo.sh --quick
+Quick — 25 questions, ~25-35 min:
 
-# Full run: 205 questions, ~1 hour
+```bash
+bash scripts/demo/skill_evolution/run_demo.sh --quick
+```
+
+Full — 55 questions plus a held-out test split, ~1-2 h:
+
+```bash
 bash scripts/demo/skill_evolution/run_demo.sh --full
 ```
 
-The demo script handles everything: restores the V0 baseline skill,
-generates traffic, scores conversations, evolves the skill (V0 -> V1
--> V2), and produces a comparison report.
+Both run the identical loop with identical conversations: 4 turns,
+adversarial simulated user, the serving model. What full adds is
+measurement rigor — the bigger question set (each question is worth
+~2pp instead of 4pp, so candidate rankings are more stable), agent-
+decided rounds and candidates, and a final re-score of V0 and the
+winner on a DISJOINT held-out test set, which is the number you can
+quote without an overfitting asterisk.
 
-All artifacts are saved to `eval/runs/{timestamp}_demo_{mode}/`.
+Which to run: start with `--quick` — first run, and every iteration
+loop. It shows the whole system and a credible improvement in half
+an hour. Run `--full` once, when the numbers themselves are the
+deliverable (a writeup, a review, a before/after you will defend).
+
+Either way the script handles everything: V0 restore, traffic,
+judging, evolution, comparison, `SUMMARY.md`, and the local PR
+artifact. All outputs land in `eval/runs/{timestamp}_demo_{mode}/`.
 
 ### What to expect
 
