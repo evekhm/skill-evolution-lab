@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# verify_setup.sh — the 12 setup checks (README Step 1.5), scripted.
+# verify_setup.sh — the 12 setup checks (README Prerequisites, section 5), scripted.
 #
 # Read-only: verifies tools, auth, .env, deployments, registry, and CI
 # wiring. Prints PASS/FAIL per check; exit code = number of failures.
