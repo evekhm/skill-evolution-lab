@@ -532,8 +532,10 @@ Caveats:
 
 #### Local
 
-One wrapper per profile; extras pass through to the underlying
-script (e.g. `run_standard.sh --candidates 4`):
+The default. Sandbox: agents run in-process (`--local
+--local-agents` on every traffic call — the deployed stack receives
+zero requests), nothing is published; extras pass through
+(e.g. `run_standard.sh --candidates 4`):
 
 ```bash
 bash scripts/demo/skill_evolution/run_lite.sh
@@ -549,17 +551,26 @@ bash scripts/demo/skill_evolution/run_full.sh
 
 #### Deployed
 
-The winner lands as a real PR; merging it activates the skill. The
-lite profile:
+Same commands, one flag. The profile runs as the Cloud Run job
+against the live stack; the winner is pushed to the Skill Registry
+and opened as a real PR — merging activates it:
 
 ```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--mode,supervisor,--rounds,1,--candidates,2,--quick"
+bash scripts/demo/skill_evolution/run_lite.sh --deployed
 ```
 
-The same dials select the other profiles: raise `--candidates` for
-standard; drop `--args` entirely for full (agent-decided scope —
-what the weekly tick runs).
+```bash
+bash scripts/demo/skill_evolution/run_standard.sh --deployed
+```
+
+```bash
+bash scripts/demo/skill_evolution/run_full.sh --deployed
+```
+
+`run_full.sh --deployed` executes the job with its default arguments
+— identical to the weekly scheduled run. Deployed runs validate on
+the 25-question set (the job image carries the question files; lite
+vs standard there differ by candidate count).
 
 Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
 conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.
