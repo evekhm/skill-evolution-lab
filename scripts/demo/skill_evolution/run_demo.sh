@@ -288,6 +288,9 @@ cd "$PROJECT_ROOT"
 
 echo "  [config] EVAL_MODEL_ID=$EVAL_MODEL_ID (all local agents)"
 echo "  [config] BigQuery slice label: $DEMO_TRACE_LABEL"
+echo "  [config] Agents: LOCAL in-process — every traffic call runs with"
+echo "           --local --local-agents; the deployed stack receives ZERO"
+echo "           requests from this run"
 
 # =====================================================================
 # Helpers
@@ -821,6 +824,7 @@ fi
     echo "- BigQuery slice: \`$DEMO_TRACE_LABEL\`"
     echo "  (\`EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh\`)"
     echo "- Published anywhere: $([ "${EVOLUTION_PUBLISH}" = "0" ] && echo "NO (sandbox — registry/PR/issue disabled)" || echo "YES (EVOLUTION_PUBLISH=1)")"
+    echo "- Agents: LOCAL in-process; zero requests to the deployed stack"
     echo "- Live skills: restored to V0; evolved versions snapshotted here as vN_*_skill.md"
     echo ""
     echo "## Quality (meaningful rate)"
