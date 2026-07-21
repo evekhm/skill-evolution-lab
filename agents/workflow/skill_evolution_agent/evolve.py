@@ -632,7 +632,7 @@ def _file_size(path: str) -> str:
 def collect_patches(
     report_path: str,
     skill_dir: str,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     max_success_samples: int = 15,
     analyst_mode: str = "both",
@@ -870,7 +870,7 @@ def consolidate_once(
 def evolve(
     report_path: str,
     skill_dir: str,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     max_success_samples: int = 15,
     hierarchical: bool = False,

@@ -71,7 +71,7 @@ def coevolve(
     report_path: str,
     agent_configs: dict | None = None,
     output_dir: str | None = None,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     candidates: int | None = None,
     template_path: str | None = None,

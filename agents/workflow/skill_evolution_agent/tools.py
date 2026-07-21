@@ -100,7 +100,7 @@ def run_evolution(
     quality_report_path: str,
     skill_dir: str,
     run_dir: str | None = None,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     agentic: bool = True,
     candidates: int | None = None,
@@ -325,7 +325,7 @@ _bottleneck_cache: dict = {}  # report path -> classification (run once per repo
 def run_coevolution(
     quality_report_path: str,
     output_dir: str | None = None,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     agentic: bool = True,
 ) -> dict:
