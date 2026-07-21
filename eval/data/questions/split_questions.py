@@ -71,7 +71,10 @@ def main() -> None:
 
     with open(args.input) as f:
         data = json.load(f)
-    cases = data["eval_cases"]
+    # Both question-file shapes: {"eval_cases": [...]} (golden set) and
+    # {"questions": [...]} (traffic sets like two_defect_evolve.json).
+    key = "eval_cases" if "eval_cases" in data else "questions"
+    cases = data[key]
 
     evolve, test = split_cases(cases, args.evolve_frac, args.seed)
 
@@ -83,7 +86,7 @@ def main() -> None:
         out = dict(data)
         out["name"] = f"{base_name}_{suffix}"
         out["eval_set_id"] = f"{data.get('eval_set_id', base_name)}_{suffix}"
-        out["eval_cases"] = subset
+        out[key] = subset
         with open(path, "w") as f:
             json.dump(out, f, indent=2)
 
