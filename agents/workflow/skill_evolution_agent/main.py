@@ -733,6 +733,10 @@ Examples:
         os.environ["EVAL_MAX_TURNS"] = "1"
         os.environ["SUPERVISOR_MODEL_ID"] = "gemini-2.5-flash"
         os.environ.setdefault("EVOLUTION_MAX_ANALYSTS", "30")
+        # The agent's default threshold (30 failures) is sized for
+        # 205-question runs; a 25-question quick run can only produce
+        # ~25. Bind a proportionate floor unless the caller set one.
+        os.environ.setdefault("MIN_FAILURES", "5")
     bound = {
         k: os.environ[k]
         for k in (
