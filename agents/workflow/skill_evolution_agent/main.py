@@ -728,8 +728,8 @@ Examples:
         # ~12.3 min -> ~2 min per candidate.
         _repo = os.path.dirname(os.path.dirname(os.path.dirname(
             os.path.dirname(os.path.abspath(__file__)))))
-        os.environ["EVAL_QUESTIONS_FILE"] = os.path.join(
-            _repo, "eval", "data", "questions", "two_defect_quick.json")
+        os.environ.setdefault("EVAL_QUESTIONS_FILE", os.path.join(
+            _repo, "eval", "data", "questions", "two_defect_quick.json"))
         # Full conversation depth even in quick mode (Eva's call):
         # deflection shows in turn 1, pushback/parroting in turn 2,
         # drift in turns 3-4 — ranking sees all of it.

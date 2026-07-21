@@ -258,7 +258,9 @@ DEMO_START_TS=$(date +%s)
 # + a second round, doubling runtime for rounds that scored worse.
 if [ "$MODE" = "quick" ]; then
     ROUNDS="${ROUNDS:-1}"
-    CANDIDATES="${CANDIDATES:-3}"
+    CANDIDATES="${CANDIDATES:-2}"
+    # 13-question lite set (1 per category): the 20-minute profile.
+    export EVAL_QUESTIONS_FILE="${EVAL_QUESTIONS_FILE:-$EVAL_DIR/data/questions/two_defect_lite.json}"
 fi
 
 # One auto-generated label for the WHOLE demo run, tied 1:1 to the run
@@ -289,12 +291,26 @@ echo "  [config] BigQuery slice label: $DEMO_TRACE_LABEL"
 # Helpers
 # =====================================================================
 
+# SDK-style stage output (examples/agent_improvement_cycle): each
+# banner closes the previous stage with a green check + elapsed time,
+# then opens the next as a bold headline between dim separators.
+# run.log stays plain — the tee pipeline strips ANSI codes.
+BOLD=$'\033[1m'; DIM=$'\033[2m'; CYAN=$'\033[36m'; GREEN=$'\033[32m'; RESET=$'\033[0m'
+_STAGE_START=""
+_STAGE_NAME=""
 banner() {
+    if [ -n "$_STAGE_START" ]; then
+        local _el=$(( $(date +%s) - _STAGE_START ))
+        echo ""
+        echo -e "  ${GREEN}\xe2\x9c\x94 ${_STAGE_NAME} \xe2\x80\x94 ${_el}s${RESET}"
+    fi
     echo ""
-    echo "================================================================"
-    echo "  $1"
-    echo "================================================================"
+    echo -e "${DIM}$(printf '\xe2\x94\x81%.0s' $(seq 1 70))${RESET}"
     echo ""
+    echo -e "  ${BOLD}${CYAN}\xe2\x96\xb6 $1${RESET}"
+    echo ""
+    _STAGE_START=$(date +%s)
+    _STAGE_NAME="$1"
 }
 
 restore_v0() {

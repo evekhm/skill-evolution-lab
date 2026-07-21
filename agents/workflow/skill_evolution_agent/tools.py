@@ -2198,6 +2198,12 @@ def score_candidate(
     # add noise (verified live: V0 routing flakes 0-3 tests per run).
     if "knowledge_supervisor" not in skill_dir:
         return result
+    if os.getenv("EVOLUTION_PUBLISH", "1") == "0":
+        # Sandbox: nothing gets published, so the ~3-4 min pytest
+        # pre-check per candidate buys nothing — CI gates any real PR.
+        result["gate_passed"] = None
+        result["gate_summary"] = "skipped (sandbox run)"
+        return result
     gate_passed, gate_summary = _golden_gate_check()
     result["gate_passed"] = gate_passed
     result["gate_summary"] = gate_summary
