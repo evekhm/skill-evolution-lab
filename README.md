@@ -478,10 +478,13 @@ All green -> Step 1 is done.
 
 ## Run the Demo
 
-For the demo you can fire the whole loop with one command (below) — or, to see and verify every stage yourself, walk the steps manually one by one.
+For the demo you can fire the whole loop with one command — locally
+or against the deployed stack — or walk Steps 2-8 manually to see
+and verify every stage yourself.
 
-Both commands run the same learning loop (the six steps below). They
-differ in where the agents run and how the winning skill goes live:
+The local and deployed paths run the same learning loop (the six
+steps below). They differ in where the agents run and how the
+winning skill goes live:
 
 | | Local | Deployed |
 |---|---|---|
