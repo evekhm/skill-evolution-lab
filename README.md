@@ -498,12 +498,12 @@ patches into competing candidate skills, validate each candidate on
 replayed traffic, keep the best. Where it runs decides how the
 winner goes live:
 
-| | Local | Deployed |
+| | Deployed (default) | Local (`--local`) |
 |---|---|---|
-| Agents | Python processes on this machine | the live stack (Agent Engine + Cloud Run) |
-| Failures come from | traffic generated during the run, auto-labeled `demo_run=<run-folder>` (its own BigQuery slice) | BigQuery traces of the deployed agents |
-| Winning skill | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed | pushed to the Skill Registry and opened as a PR |
-| Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
+| Agents | the live stack (Agent Engine + Cloud Run) | Python processes on this machine |
+| Failures come from | BigQuery traces of the deployed agents | traffic generated during the run, auto-labeled `demo_run=<run-folder>` (its own BigQuery slice) |
+| Winning skill | pushed to the Skill Registry and opened as a PR | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed |
+| Safety | CI gate on the PR; a human merge activates it | none — it is a sandbox |
 
 Independent of where it runs, pick one of three PROFILES — how much
 time you have vs what the numbers must prove:
