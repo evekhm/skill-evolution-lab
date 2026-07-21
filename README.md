@@ -14,7 +14,9 @@
       * [1.3.4 — Connect Gemini Enterprise (optional)](#134--connect-gemini-enterprise-optional)
     * [1.4 — GitHub: CI + bot wiring](#14--github-ci--bot-wiring)
     * [1.5 — Verify everything: one command](#15--verify-everything-one-command)
-  * [Run the Demo — Steps 2 to 8](#run-the-demo--steps-2-to-8)
+  * [Run the Demo](#run-the-demo)
+    * [The one-command run](#the-one-command-run)
+    * [The step-by-step walkthrough](#the-step-by-step-walkthrough)
     * [Step 2 — The starting point (defined, verifiable)](#step-2--the-starting-point-defined-verifiable)
     * [Step 3 — Generate labeled traffic (the system observes failures)](#step-3--generate-labeled-traffic-the-system-observes-failures)
     * [Step 4 — Run the evolution job (learn + propose)](#step-4--run-the-evolution-job-learn--propose)
@@ -478,13 +480,22 @@ All green -> Step 1 is done.
 
 ## Run the Demo
 
-For the demo you can fire the whole loop with one command — locally
-or against the deployed stack — or walk Steps 2-8 manually to see
-and verify every stage yourself.
+Two ways to run it:
 
-The local and deployed paths run the same learning loop (the six
-steps below). They differ in where the agents run and how the
-winning skill goes live:
+- **One command** — fire the whole loop and read the results
+  ([below](#the-one-command-run)).
+- **Step by step** — walk every stage yourself, with a verification
+  after each ([the walkthrough](#the-step-by-step-walkthrough),
+  Steps 2-8).
+
+### The one-command run
+
+The learning loop is identical everywhere: generate adversarial
+traffic against the weak V0 skill, judge every conversation against
+golden ground truth, send one analyst per failure, consolidate their
+patches into competing candidate skills, validate each candidate on
+replayed traffic, keep the best. Where it runs decides how the
+winner goes live:
 
 | | Local | Deployed |
 |---|---|---|
@@ -493,34 +504,21 @@ winning skill goes live:
 | Winning skill | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed | pushed to the Skill Registry and opened as a PR |
 | Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
 
-Local (~17 min, the lite profile — see the three profiles in
-[Alternative: Local-Only Demo](#alternative-local-only-demo-no-deployment)):
+Local (~17 min, the lite profile; `run_standard.sh` and
+`run_full.sh` are the bigger profiles — see
+[the three profiles](#alternative-local-only-demo-no-deployment)):
 
 ```bash
 bash scripts/demo/skill_evolution/run_lite.sh
 ```
 
-Deployed (~30-45 min):
+Deployed (~30-45 min; the winner lands as a real PR — merge
+activates it):
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
   --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
 ```
-
-**What either command does, in order:**
-
-1. Start from the deliberately weak V0 skill
-2. Generate adversarial traffic (the simulated user knows the golden
-   facts and pushes back on wrong answers)
-3. Judge every conversation against golden ground truth -> failures
-4. One analyst per failure investigates and proposes a patch;
-   consolidation produces N candidate skills
-5. Each candidate is validated on replayed traffic; the best one wins
-   (and, deployed: is pushed to the Skill Registry + opened as a PR
-   with extracted regression cases)
-6. Re-score, compare, repeat — the gate keeps a new version only when
-   it beats the old one
-
 
 Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
 conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.
@@ -528,6 +526,12 @@ Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
 [AutoSkill](https://arxiv.org/abs/2603.01145) —
 [paper analysis](docs/skill-evolution/RESEARCH.md).
 
+### The step-by-step walkthrough
+
+Steps 2-8 run the same loop by hand against the deployed stack, one
+stage at a time, each with its own verification: the starting point
+(Step 2), labeled traffic (3), the evolution job (4), PR review (5),
+merge to activate (6), verify the fix (7), roll back (8).
 
 ### Step 2 — The starting point (defined, verifiable)
 
