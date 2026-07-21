@@ -490,13 +490,13 @@ differ in where the agents run and how the winning skill goes live:
 | Winning skill | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed | pushed to the Skill Registry and opened as a PR |
 | Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
 
-Local (~15 min):
+Local (~30-45 min):
 
 ```bash
 bash scripts/demo/skill_evolution/run_demo.sh --quick
 ```
 
-Deployed (~20 min):
+Deployed (~30-45 min):
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
@@ -700,17 +700,28 @@ EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--trace-labels,$DEMO_LABEL,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
+  --args="--full-loop,--trace-labels,$DEMO_LABEL,--mode,policy_agent,--rounds,1,--candidates,2,--quick"
 ```
 
-`--trace-labels` is binding: the pre-flight fetches ONLY your labeled
-slice, and the selector lands in the run's `trace_selector.json` and
-the PR body. Drop the flag to run on the whole recent window instead;
-drop all args for the full agent-decided run (3 skills, best-of-5,
-~3h — what the weekly tick and the issue-threshold dispatcher run;
-cadence is deployment policy, set via `EVOLUTION_SCHEDULE`).
+- `--full-loop` — the whole pipeline in one execution: fetch traces,
+  judge, analysts, candidates, registry push + PR.
+- `--trace-labels $DEMO_LABEL` — binding: evolve ONLY on your labeled
+  slice; the selector lands in `trace_selector.json` and the PR body.
+- `--mode policy_agent` — evolve just this agent, and skip the ~5-min
+  bottleneck classification (you already named the target).
+- `--rounds 1` — one evolution round, no agent-decided round 2.
+- `--candidates 2` — two competing skills, best one wins. Each extra
+  candidate costs a full validation replay (several minutes); 2 is
+  the lightweight demo setting, 3+ buys better odds.
+- `--quick` — 25-question validation set and a proportionate failure
+  threshold; conversation depth (4 turns) and models stay
+  production-grade.
+- `--wait` — stream until the job finishes; drop it to run async.
 
-Inside one run:
+Drop all args for the full agent-decided run (~3 h — what the weekly
+tick and the issue-threshold dispatcher execute; cadence is set via
+`EVOLUTION_SCHEDULE`).
+
 Inside one run:
 
 | Stage | What happens |
@@ -875,7 +886,7 @@ One-time setup lives in [Setup & Prerequisites](#step-0--setup--prerequisites).
 
 ### One command
 
-Quick — 25 questions, ~25-35 min:
+Quick — 25 questions, ~30-45 min:
 
 ```bash
 bash scripts/demo/skill_evolution/run_demo.sh --quick
@@ -1391,9 +1402,9 @@ Golden Q&A feeds three consumers:
 
 | Variant | Command | Time | Use when |
 |---|---|---|---|
-| Local quick | `bash scripts/demo/skill_evolution/run_demo.sh --quick` | ~15 min | First contact; no deployment |
-| Local full | `bash scripts/demo/skill_evolution/run_demo.sh --full` | ~1-2 h | Full local evaluation (205 questions, V0->V1->V2) |
-| GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"` | ~15 min | Live demo of the deployed loop, warm BigQuery window |
+| Local quick | `bash scripts/demo/skill_evolution/run_demo.sh --quick` | ~30-45 min | First contact; no deployment |
+| Local full | `bash scripts/demo/skill_evolution/run_demo.sh --full` | ~1-2 h | Full local evaluation (55 questions + held-out split) |
+| GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,2,--quick"` | ~30-45 min | Live demo of the deployed loop, warm BigQuery window |
 | GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~1.5-3 h | Production cadence: agent-decided scope, full validation |
 
 ### Every step of the GCP demo run
