@@ -267,10 +267,13 @@ call each Cloud Run service directly.
 Tests the full chain: Vertex REST discovery -> Agent Engine session ->
 supervisor (skill loaded) -> streamed response.
 
-What to expect: the chain works end to end, and the V0 supervisor
-answers the balance question CONFIDENTLY with `Tools: (none)` — a
-number produced without any tool call. That is the seeded defect,
-visible from turn one; the demo exists to evolve it away.
+What to expect: the supervisor routes the balance question to
+hr_calculator over A2A and relays its computed answer. `Routed to`
+and `Tools` show the hop; "2 model turn(s)" = one turn to route, one
+to relay. Balance routing already works at V0 — the seeded defect is
+in POLICY questions, which V0 answers from a four-line baked summary
+or deflects to HR (Step 2 shows it with the meal-reimbursement
+question).
 
 ```bash
 bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
@@ -290,15 +293,15 @@ Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_
 ─────────────────────────────────────────
 Q: How many PTO days do I have left?
 ─────────────────────────────────────────
-  Routed to:  direct
+  Routed to:  hr_calculator
   Model:      gemini-3.1-flash-lite
-  Tools:      (none)
-  Tokens:     supervisor 300→24 (thinking: 0)
-              sub-agent  0→0 (thinking: 0)
+  Tools:      hr_calculator
+  Tokens:     supervisor 650→47 over 2 model turn(s) (thinking: 0)
 
-  A: You currently have 7.8 days of PTO left.
+  A: You currently have 7.8 PTO days left. You also have 4.8 sick
+     leave days remaining.
 
-  Latency: 5.3s
+  Latency: 4.7s
 ```
 
 Output:
@@ -358,8 +361,8 @@ Same direct test for the math specialist.
 
 What to expect: a number, computed by the `calculate_pto_details`
 tool. The balance accrues from a demo start date, so the exact value
-changes from day to day. This agent is the only one of the three
-that actually calculates the answer.
+changes from day to day. This is the same tool the supervisor's
+answer in 1.3.3.a came from, via the A2A hop.
 
 ```bash
 bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
@@ -381,20 +384,18 @@ Checking A2A agent card...
 ─────────────────────────────────────────
 Q: How many PTO days do I have left?
 ─────────────────────────────────────────
-You currently have 7.8 PTO days left.
+You currently have 7.8 PTO days left. You also have 4.8 sick leave days available. You will accrue an additional 10.0 PTO days and 5.0 sick leave days by the end of the year.
 
 Latency: 2.3s
 ```
 
-The supervisor and the calculator returned the SAME number — that is
-what makes the V0 defect dangerous. The calculator computed 7.8 with
-`calculate_pto_details`; the supervisor produced the identical answer
-from its baked summary with no tool call, and nothing in the answer
-text reveals the difference — only `Tools: (none)` does. The policy
-agent is the scope check: it refuses what its documents cannot
-answer. Baked facts look right today; when reality moves (the traffic
-in Step 3 exposes this), the supervisor keeps answering confidently —
-and wrongly.
+The supervisor's answer and the calculator's are identical because
+the supervisor CALLED the calculator — the `Tools: hr_calculator`
+line in 1.3.3.a is the proof of the hop. The policy agent refusing
+the same question is the scope check: balances are not in its
+documents. So all three components behave; what V0 gets wrong is
+policy questions, and Step 2's meal-reimbursement check is where you
+see that defect live.
 
 #### 1.3.4 — Connect Gemini Enterprise (optional)
 
