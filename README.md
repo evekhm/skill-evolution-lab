@@ -505,45 +505,17 @@ winner goes live:
 | Winning skill | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed | pushed to the Skill Registry and opened as a PR |
 | Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
 
-#### Local
+Independent of where it runs, pick one of three PROFILES — how much
+time you have vs what the numbers must prove:
 
-Three profiles, one script. Pick by how much time you have and what
-the numbers need to prove:
-
-| | Lite (default `--quick`) | Standard | Full (`--full`) |
+| | Lite | Standard | Full |
 |---|---|---|---|
-| Command | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
-| Wall time (measured) | **~17 min** | ~30-40 min | ~1-2 h |
+| Wall time (measured locally) | **~17 min** | ~30-40 min | ~1-2 h |
 | Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
 | Candidates | 2 | 3 | agent-decided (up to 5) |
 | Rounds | 1 | 1 | agent-decided |
 | Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
 | Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
-
-Lite:
-
-```bash
-bash scripts/demo/skill_evolution/run_lite.sh
-```
-
-Standard:
-
-```bash
-bash scripts/demo/skill_evolution/run_standard.sh
-```
-
-Full:
-
-```bash
-bash scripts/demo/skill_evolution/run_full.sh
-```
-
-Each wrapper bakes in its profile's arguments and passes any extras
-through to `run_demo.sh` (e.g. `run_standard.sh --candidates 4`).
-
-All three run identical conversations — 4 turns, adversarial
-simulated user, the serving model — and produce the same artifacts:
-`SUMMARY.md`, `pr_preview.md`, V0 restored, own BigQuery slice.
 
 Caveats, honestly:
 
@@ -558,15 +530,36 @@ Caveats, honestly:
   evolution never saw). Run it when the number is the deliverable —
   a writeup, a review, a before/after you will defend.
 
+#### Local
+
+One wrapper per profile; extras pass through to the underlying
+script (e.g. `run_standard.sh --candidates 4`):
+
+```bash
+bash scripts/demo/skill_evolution/run_lite.sh
+```
+
+```bash
+bash scripts/demo/skill_evolution/run_standard.sh
+```
+
+```bash
+bash scripts/demo/skill_evolution/run_full.sh
+```
 
 #### Deployed
 
-~30-45 min; the winner lands as a real PR — merge activates it:
+The winner lands as a real PR; merging it activates the skill. The
+lite profile:
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
-  --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
+  --args="--full-loop,--mode,supervisor,--rounds,1,--candidates,2,--quick"
 ```
+
+The same dials select the other profiles: raise `--candidates` for
+standard; drop `--args` entirely for full (agent-decided scope —
+what the weekly tick runs).
 
 Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
 conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.
