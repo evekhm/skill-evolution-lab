@@ -1615,8 +1615,14 @@ def extract_regression_cases(
             continue
     agent_for_category = {"benefits": "benefits_agent", "calc": "hr_calculator"}
 
-    eval_cases_path = os.path.join(_repo_root, "eval", "data", "eval_cases.json")
-    golden_path = os.path.join(_repo_root, "eval", "data", "golden_evals.json")
+    if os.getenv("EVOLUTION_PUBLISH", "1") == "0":
+        # Local sandbox: regression artifacts belong to the run dir —
+        # never overwrite the repo's tracked eval files.
+        eval_cases_path = os.path.join(run_dir, "eval_cases.json")
+        golden_path = os.path.join(run_dir, "golden_evals.json")
+    else:
+        eval_cases_path = os.path.join(_repo_root, "eval", "data", "eval_cases.json")
+        golden_path = os.path.join(_repo_root, "eval", "data", "golden_evals.json")
     new_eval_cases, new_golden = [], []
     stamp = time.strftime("%Y%m%d")
     for i, s in enumerate(resolved[:max_cases], 1):
