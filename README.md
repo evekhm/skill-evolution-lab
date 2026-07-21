@@ -899,6 +899,26 @@ the numbers need to prove:
 | Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
 | Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
 
+Lite:
+
+```bash
+bash scripts/demo/skill_evolution/run_demo.sh --quick
+```
+
+Standard:
+
+```bash
+bash scripts/demo/skill_evolution/run_demo.sh --quick \
+  --questions eval/data/questions/two_defect_quick.json \
+  --candidates 3
+```
+
+Full:
+
+```bash
+bash scripts/demo/skill_evolution/run_demo.sh --full
+```
+
 All three run identical conversations — 4 turns, adversarial
 simulated user, the serving model — and produce the same artifacts:
 `SUMMARY.md`, `pr_preview.md`, V0 restored, own BigQuery slice.
