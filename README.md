@@ -324,13 +324,14 @@ directly. It does two things: downloads the agent's A2A card — the
 list of skills the agent publishes so other agents know what it can
 do — and then sends the question straight to the agent.
 
-What to expect: a REFUSAL, and that is the correct result. This agent
-answers policy questions from documents (`lookup_company_policy`); a
-personal balance is not in any document, so the right behavior is to
-say so and point to HR.
+What to expect: the CORRECT answer to the exact question the
+supervisor just deflected. This agent looks it up in the policy
+documents with `lookup_company_policy`. That is the discrepancy the
+demo is built on: the knowledge exists one A2A hop away, and V0
+never takes the hop.
 
 ```bash
-bash agents/enterprise/policy_agent/send_query.sh -q "How many PTO days do I have left?"
+bash agents/enterprise/policy_agent/send_query.sh -q "What is the meal reimbursement limit?"
 ```
 
 Expected:
@@ -347,12 +348,11 @@ Checking A2A agent card...
   Skills: model, lookup_company_policy, get_current_date
 
 ─────────────────────────────────────────
-Q: How many PTO days do I have left?
+Q: What is the meal reimbursement limit?
 ─────────────────────────────────────────
-I don't have access to your individual PTO balance. Please contact HR
-to find out how many PTO days you have left.
+Meals are reimbursed up to $75/day during business travel.
 
-Latency: 1.5s
+Latency: 1.9s
 ```
 
 ##### 1.3.3.c — hr_calculator (Cloud Run, direct A2A)
@@ -361,8 +361,8 @@ Same direct test for the math specialist.
 
 What to expect: a number, computed by the `calculate_pto_details`
 tool. The balance accrues from a demo start date, so the exact value
-changes from day to day. This is the same tool the supervisor's
-answer in 1.3.3.a came from, via the A2A hop.
+changes from day to day. Ask the supervisor the same question and
+its Tools line shows `hr_calculator` — balance routing works at V0.
 
 ```bash
 bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
@@ -389,13 +389,12 @@ You currently have 7.8 PTO days left. You also have 4.8 sick leave days availabl
 Latency: 2.3s
 ```
 
-The supervisor's answer and the calculator's are identical because
-the supervisor CALLED the calculator — the `Tools: hr_calculator`
-line in 1.3.3.a is the proof of the hop. The policy agent refusing
-the same question is the scope check: balances are not in its
-documents. So all three components behave; what V0 gets wrong is
-policy questions, and Step 2's meal-reimbursement check is where you
-see that defect live.
+1.3.3.a and 1.3.3.b are the same question with opposite outcomes —
+that is the whole demo in two commands. The supervisor deflects to
+HR with no tool call; the policy agent, one A2A hop away, answers
+$75/day from the documents. The calculator (1.3.3.c) shows routing
+itself works when V0 chooses to route. The evolution loop's job is
+to make policy questions take the hop too.
 
 #### 1.3.4 — Connect Gemini Enterprise (optional)
 
