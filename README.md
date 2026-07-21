@@ -633,17 +633,17 @@ bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_LABEL
 
 ### Step 2 — Generate labeled traffic
 
-Send 8 labeled conversations at the deployed V0 supervisor — the
+Send labeled conversations (amount controlled by `limit` argument) to the deployed V0 supervisor — the
 same endpoint real users hit. Their failures are the raw material
 the evolution job learns from in Step 3:
 
 ```bash
-bash scripts/demo/generate_traffic.sh --remote \
+bash scripts/demo/generate_traffic.sh \
   --from-file eval/data/questions/two_defect_evolve.json \
   --limit 8 --label $DEMO_LABEL --concurrency 5
 ```
-- `--remote` — target the deployed Agent Engine supervisor. Drop the
-  flag to run the identical demo on the local runner.
+- Targets the deployed Agent Engine supervisor by default; add
+  `--local` to run the identical demo on the in-process local runner.
 - `--from-file` — the set of
   [`55 questions`](eval/data/questions/two_defect_evolve.json) to read from.
 - `--limit 8` — run only the first 8 questions. One question = one
@@ -1027,7 +1027,7 @@ questions and, knowing the golden facts, pushes back on wrong answers
 (multi-turn):
 
 ```bash
-bash scripts/demo/generate_traffic.sh \
+bash scripts/demo/generate_traffic.sh --local \
     --from-file eval/data/questions/demo_quick.json \
     -o "$RUN_DIR/v0_traffic.json" --concurrency 10
 ```
@@ -1063,7 +1063,7 @@ deployed to `agents/enterprise/policy_agent/skill/SKILL.md`.
 skill, then the before/after table:
 
 ```bash
-bash scripts/demo/generate_traffic.sh \
+bash scripts/demo/generate_traffic.sh --local \
     --from-file eval/data/questions/demo_quick.json \
     -o "$RUN_DIR/v1_traffic.json" --concurrency 10
 bash scripts/demo/skill_evolution/score.sh \

@@ -13,7 +13,9 @@
 #     ./scripts/demo/generate_traffic.sh --from-file questions.json --output results.json
 #     ./scripts/demo/generate_traffic.sh --from-file questions.json --concurrency 5
 #
-# By default runs against local agents. Pass --remote to hit deployed agents.
+# Targets the DEPLOYED agents by default (consistent with the demo
+# wrappers). Pass --local to run in-process local agents instead
+# (--local --local-agents; zero requests to the deployed stack).
 # All unrecognized flags are passed through to the Python traffic generator.
 
 set -euo pipefail
@@ -23,7 +25,7 @@ source .env 2>/dev/null || true
 unset SUPERVISOR_VERTEX_PROMPT_ID
 
 # ── Parse flags ──────────────────────────────────────────────────────────────
-REMOTE=false
+REMOTE=true
 BATCH=false
 SINGLE_Q=""
 FROM_FILE=""
@@ -36,6 +38,8 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --remote)
             REMOTE=true; shift ;;
+        --local)
+            REMOTE=false; shift ;;
         --from-file|--questions)
             BATCH=true; FROM_FILE="$2"; PASSTHROUGH+=("$1" "$2"); shift 2 ;;
         --concurrency)
