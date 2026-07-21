@@ -26,7 +26,6 @@
     * [Step 6 — Verify the fix (the payoff)](#step-6--verify-the-fix-the-payoff)
     * [Step 7 — Roll back (back to the Step 1 state)](#step-7--roll-back-back-to-the-step-1-state)
   * [Alternative: Local-Only Demo (no deployment)](#alternative-local-only-demo-no-deployment)
-    * [One command](#one-command)
     * [What to expect](#what-to-expect)
     * [Try it interactively](#try-it-interactively)
     * [Manual step-by-step](#manual-step-by-step)
@@ -504,15 +503,59 @@ winner goes live:
 | Winning skill | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed | pushed to the Skill Registry and opened as a PR |
 | Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
 
-Local (~17 min, the lite profile; `run_standard.sh` and
-`run_full.sh` are the bigger profiles — see
-[the three profiles](#alternative-local-only-demo-no-deployment)):
+**Local** — Three profiles, one script. Pick by how much time you have and what
+the numbers need to prove:
+
+| | Lite (default `--quick`) | Standard | Full (`--full`) |
+|---|---|---|---|
+| Command | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
+| Wall time (measured) | **~17 min** | ~30-40 min | ~1-2 h |
+| Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
+| Candidates | 2 | 3 | agent-decided (up to 5) |
+| Rounds | 1 | 1 | agent-decided |
+| Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
+| Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
+
+Lite:
 
 ```bash
 bash scripts/demo/skill_evolution/run_lite.sh
 ```
 
-Deployed (~30-45 min; the winner lands as a real PR — merge
+Standard:
+
+```bash
+bash scripts/demo/skill_evolution/run_standard.sh
+```
+
+Full:
+
+```bash
+bash scripts/demo/skill_evolution/run_full.sh
+```
+
+Each wrapper bakes in its profile's arguments and passes any extras
+through to `run_demo.sh` (e.g. `run_standard.sh --candidates 4`).
+
+All three run identical conversations — 4 turns, adversarial
+simulated user, the serving model — and produce the same artifacts:
+`SUMMARY.md`, `pr_preview.md`, V0 restored, own BigQuery slice.
+
+Caveats, honestly:
+
+- **Lite**: each question is worth ~7.7pp, so rates are chunky and
+  two close candidates can swap ranks; one agent is evolved; the
+  improvement you see is directional, not quotable. Right for first
+  contact and every iteration loop.
+- **Standard**: steadier rates (~4pp per question), better candidate
+  ranking, still no held-out set — good for comparing skill ideas.
+- **Full**: the only profile whose final number carries no
+  overfitting asterisk (V0 and the winner are re-scored on questions
+  evolution never saw). Run it when the number is the deliverable —
+  a writeup, a review, a before/after you will defend.
+
+
+**Deployed** (~30-45 min; the winner lands as a real PR — merge
 activates it):
 
 ```bash
@@ -892,58 +935,9 @@ deployment needed -- only Vertex AI API access for Gemini models.
 
 One-time setup lives in [Prerequisites](#step-0--setup--prerequisites).
 
-### One command
-
-Three profiles, one script. Pick by how much time you have and what
-the numbers need to prove:
-
-| | Lite (default `--quick`) | Standard | Full (`--full`) |
-|---|---|---|---|
-| Command | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
-| Wall time (measured) | **~17 min** | ~30-40 min | ~1-2 h |
-| Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
-| Candidates | 2 | 3 | agent-decided (up to 5) |
-| Rounds | 1 | 1 | agent-decided |
-| Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
-| Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
-
-Lite:
-
-```bash
-bash scripts/demo/skill_evolution/run_lite.sh
-```
-
-Standard:
-
-```bash
-bash scripts/demo/skill_evolution/run_standard.sh
-```
-
-Full:
-
-```bash
-bash scripts/demo/skill_evolution/run_full.sh
-```
-
-Each wrapper bakes in its profile's arguments and passes any extras
-through to `run_demo.sh` (e.g. `run_standard.sh --candidates 4`).
-
-All three run identical conversations — 4 turns, adversarial
-simulated user, the serving model — and produce the same artifacts:
-`SUMMARY.md`, `pr_preview.md`, V0 restored, own BigQuery slice.
-
-Caveats, honestly:
-
-- **Lite**: each question is worth ~7.7pp, so rates are chunky and
-  two close candidates can swap ranks; one agent is evolved; the
-  improvement you see is directional, not quotable. Right for first
-  contact and every iteration loop.
-- **Standard**: steadier rates (~4pp per question), better candidate
-  ranking, still no held-out set — good for comparing skill ideas.
-- **Full**: the only profile whose final number carries no
-  overfitting asterisk (V0 and the winner are re-scored on questions
-  evolution never saw). Run it when the number is the deliverable —
-  a writeup, a review, a before/after you will defend.
+The run profiles and commands live in
+[The one-command run](#the-one-command-run); everything below is
+about what a local run produces and how to work with it.
 
 ### What to expect
 
