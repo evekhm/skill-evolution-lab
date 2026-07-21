@@ -259,8 +259,6 @@ DEMO_START_TS=$(date +%s)
 if [ "$MODE" = "quick" ]; then
     ROUNDS="${ROUNDS:-1}"
     CANDIDATES="${CANDIDATES:-2}"
-    # 13-question lite set (1 per category): the 20-minute profile.
-    export EVAL_QUESTIONS_FILE="${EVAL_QUESTIONS_FILE:-$EVAL_DIR/data/questions/two_defect_lite.json}"
 fi
 
 # One auto-generated label for the WHOLE demo run, tied 1:1 to the run
@@ -361,7 +359,7 @@ PERSONA_FLAG=""
 if [ -n "$QUESTIONS_OVERRIDE" ]; then
     QUESTIONS_FILE="$QUESTIONS_OVERRIDE"
 elif [ "$MODE" = "quick" ]; then
-    QUESTIONS_FILE="$EVAL_DIR/data/questions/two_defect_quick.json"
+    QUESTIONS_FILE="$EVAL_DIR/data/questions/two_defect_lite.json"
 else
     QUESTIONS_FILE="$EVAL_DIR/data/questions/two_defect_evolve.json"
 fi
