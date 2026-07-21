@@ -303,6 +303,26 @@ echo "           requests from this run"
 BOLD=$'\033[1m'; DIM=$'\033[2m'; CYAN=$'\033[36m'; GREEN=$'\033[32m'; RESET=$'\033[0m'
 _STAGE_START=""
 _STAGE_NAME=""
+# Demo step markers — numbering and titles IDENTICAL to the README's
+# "Run the Demo" Steps 1-7, so the console maps 1:1 to the docs.
+# Each step closes with its elapsed time (SDK agent_improvement_cycle
+# step_start/step_end logic).
+_STEP_T0=""; _STEP_NO=""
+step_close() {
+    if [ -n "$_STEP_T0" ]; then
+        local _sel=$(( $(date +%s) - _STEP_T0 ))
+        echo ""
+        echo -e "  ${GREEN}\xe2\x9c\x94 STEP ${_STEP_NO}/7 completed in ${_sel}s.${RESET}"
+        _STEP_T0=""
+    fi
+}
+step() {
+    step_close
+    banner "STEP $1/7 \xe2\x80\x94 $2"
+    echo -e "  ${DIM}README: Run the Demo > Step $1${RESET}"
+    echo ""
+    _STEP_T0=$(date +%s); _STEP_NO="$1"
+}
 banner() {
     if [ -n "$_STAGE_START" ]; then
         local _el=$(( $(date +%s) - _STAGE_START ))
@@ -481,7 +501,8 @@ if $EVOLVE_ONLY; then
     [ -n "${EVOLVE_TARGET:-}" ] && AGENT_FLAGS="$AGENT_FLAGS --mode $EVOLVE_TARGET"
 
     EVOLVE_START=$(date +%s)
-    uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
+    step_close
+uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
         tee "$RUN_DIR/agent_output.log"
     EVOLVE_END=$(date +%s)
 
@@ -651,6 +672,7 @@ if $HELDOUT && [ "$MODE" = "full" ] && ! $REUSE_V0; then
     echo "  Evolving on D_evolve; will report V0/V1 on D_test ($TESTSET)"
 fi
 
+step 1 "The starting point (defined, verifiable)"
 banner "SKILL EVOLUTION AGENT (ADK)"
 echo "  Run directory: $RUN_DIR"
 echo "  Rounds:        ${ROUNDS:-agent-decided}"
@@ -749,6 +771,7 @@ fi
 [ -n "$MIN_FAILURES" ] && AGENT_FLAGS="$AGENT_FLAGS --min-failures $MIN_FAILURES"
     [ -n "${EVOLVE_TARGET:-}" ] && AGENT_FLAGS="$AGENT_FLAGS --mode $EVOLVE_TARGET"
 
+step_close
 uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
     tee "$RUN_DIR/agent_output.log" || \
     echo "  WARNING: agent step exited non-zero — continuing to restore/summary (see agent_output.log)"
@@ -780,12 +803,6 @@ if [ -n "$TESTSET" ]; then
         -o "$RUN_DIR/TRIAGE.md" || echo "  (triage step failed; see logs)"
 fi
 
-# --- Always end at V0: evolved skills stay snapshotted in the run dir ---
-if declare -f restore_v0 >/dev/null; then
-    banner "RESTORE V0 (evolved skills remain in $RUN_DIR as vN_*_skill.md)"
-    restore_v0 || echo "  (restore failed — check agents/enterprise/*/skill/)"
-fi
-
 # --- PR as a local artifact: branch + commit + pr_preview.md, no push.
 # Preview the version with the BEST measured rate (the agent can evolve
 # past its own peak: a later round may score worse than an earlier one).
@@ -808,6 +825,7 @@ for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
     fi
 done
 if [ -n "$BEST_V" ]; then
+    step 4 "Review the PR (learning as an artifact)"
     banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
     bash "$SCRIPT_DIR/create_evolution_pr.sh" \
         --run-dir "$RUN_DIR" --version "$BEST_V" --local \
@@ -815,6 +833,18 @@ if [ -n "$BEST_V" ]; then
         --evolved-report "$BEST_REPORT" \
         || echo "  (pr preview failed; see logs)"
 fi
+
+step_close
+echo ""
+echo -e "  ${DIM}STEPS 5-6/7 \xe2\x80\x94 Merge to activate + Verify the fix: deployed-path"
+echo -e "  steps; in the sandbox the PR stays a local artifact (pr_preview.md)${RESET}"
+
+step 7 "Roll back (back to the Step 1 state)"
+if declare -f restore_v0 >/dev/null; then
+    restore_v0 || echo "  (restore failed — check agents/enterprise/*/skill/)"
+    echo "  Evolved skills remain in $RUN_DIR as vN_*_skill.md"
+fi
+step_close
 
 # --- SUMMARY.md: one file that reads the whole run ---
 {

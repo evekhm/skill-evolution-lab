@@ -143,6 +143,32 @@ def _run_traffic_orchestration(
         return {"status": "error", "error": str(e)}
 
 
+_STEP_STATE = {"n": None, "t0": None}
+
+
+def _step_close() -> None:
+    if _STEP_STATE["t0"] is not None:
+        el = int(time.time() - _STEP_STATE["t0"])
+        print(f"\n  \033[32m\u2714 STEP {_STEP_STATE['n']}/7 completed "
+              f"in {el}s.\033[0m", flush=True)
+        _STEP_STATE["t0"] = None
+
+
+def _step_banner(n: int, title: str) -> None:
+    """Demo step marker — numbering and titles are IDENTICAL to the
+    README's "Run the Demo" Steps 1-7 so the console maps 1:1 to the
+    documentation. Each step closes with its elapsed time."""
+    _step_close()
+    line = "\u2501" * 70
+    print(f"\n\033[2m{line}\033[0m\n", flush=True)
+    print(f"  \033[1m\033[36m\u25b6 STEP {n}/7 \u2014 {title}\033[0m", flush=True)
+    print(f"  \033[2mREADME: Run the Demo > Step {n}\033[0m\n", flush=True)
+    _STEP_STATE["n"] = n
+    _STEP_STATE["t0"] = time.time()
+    import atexit
+    atexit.register(_step_close)
+
+
 def _bigquery_quality_report(run_dir: str) -> str | None:
     """Pre-flight from real traces: score BigQuery sessions instead of
     generating synthetic traffic (QUALITY_SOURCE=bigquery).
@@ -383,6 +409,7 @@ async def run_evolution_agent(
             _QUESTIONS_QUICK if quick else _QUESTIONS_FULL
         )
 
+        _step_banner(2, "Generate labeled traffic (the system observes failures)")
         # Pre-flight source: real BigQuery traces (QUALITY_SOURCE=bigquery)
         # with a generated-traffic fallback below MIN_SESSIONS, or generated
         # traffic directly (default).
@@ -412,6 +439,7 @@ async def run_evolution_agent(
                 return f"ERROR: Quality scoring failed: {scoring_result}"
 
         logger.info("Pre-flight complete. Starting agent with report: %s", report_path)
+        _step_banner(3, "Run the evolution job (learn + propose)")
 
         questions_note = "Use 22-question quick set for candidate scoring." if not quick else "Use 22-question quick set for ALL traffic."
         prompt = (
