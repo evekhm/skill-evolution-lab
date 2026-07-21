@@ -85,3 +85,17 @@ Measured breakdown of a warm-BQ, policy-scoped, 3-candidate run
     table. Long-term the label should ride session state via the API
     and be merged per event by the analytics plugin — blocked on SDK
     support (custom_tags is documented as static at construction).
+
+14. **Supervisor serve latency is bimodal in skill-evolution-lab**
+    (measured 2026-07-21, six runs after a fresh redeploy: 1.7s, 1.8s
+    vs 12.3-16.7s). The slow requests stall ~11s BEFORE the model
+    call (silent gap in the engine log between request arrival and
+    "Sending out request"; the model turn itself is ~0.7s). Not the
+    model (flash-lite), not our code (same on pro before the switch),
+    not a package release (none in the window), and a fresh
+    deployment reproduces it — points at the new Agent Engine runtime
+    generation or a per-worker connection stall (session backend /
+    BQ write path). The old project's engine (May runtime) serves the
+    same code at a flat ~6s. Next isolation step: variant deploy
+    without the BQ plugin, then without telemetry env, to pin the
+    blocking call.

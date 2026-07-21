@@ -281,6 +281,9 @@ bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
 Expected:
 
 ```text
+==========================================
+  TARGET PROJECT: <PROJECT_ID>
+==========================================
 Discovering Reasoning Engine 'knowledge-supervisor' in <PROJECT_ID>/us-central1...
 Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_ID>
 
@@ -295,7 +298,7 @@ Q: How many PTO days do I have left?
 
   A: You currently have 7.8 days of PTO left.
 
-  Latency: 18.9s
+  Latency: 5.3s
 ```
 
 Output:
@@ -313,15 +316,15 @@ Output:
 
 ##### 1.3.3.b — policy_agent (Cloud Run, direct A2A)
 
-Bypasses the supervisor: fetches the specialist's A2A agent card (the
-skills it advertises to callers), then asks it directly.
+This test skips the supervisor and talks to the policy agent
+directly. It does two things: downloads the agent's A2A card — the
+list of skills the agent publishes so other agents know what it can
+do — and then sends the question straight to the agent.
 
 What to expect: a REFUSAL, and that is the correct result. This agent
 answers policy questions from documents (`lookup_company_policy`); a
 personal balance is not in any document, so the right behavior is to
-say so and point to HR. An invented number here would be the failure.
-The test passes when the card lists the skills and the answer stays
-inside that scope.
+say so and point to HR.
 
 ```bash
 bash agents/enterprise/policy_agent/send_query.sh -q "How many PTO days do I have left?"
@@ -330,6 +333,9 @@ bash agents/enterprise/policy_agent/send_query.sh -q "How many PTO days do I hav
 Expected:
 
 ```text
+==========================================
+  TARGET PROJECT: <PROJECT_ID>
+==========================================
 Discovering policy-agent in <PROJECT_ID>/us-central1...
 Service URL: https://policy-agent-<HASH>-uc.a.run.app
 
@@ -343,7 +349,7 @@ Q: How many PTO days do I have left?
 I don't have access to your individual PTO balance. Please contact HR
 to find out how many PTO days you have left.
 
-
+Latency: 1.5s
 ```
 
 ##### 1.3.3.c — hr_calculator (Cloud Run, direct A2A)
@@ -362,6 +368,9 @@ bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I ha
 Expected:
 
 ```text
+==========================================
+  TARGET PROJECT: <PROJECT_ID>
+==========================================
 Discovering hr-calculator in <PROJECT_ID>/us-central1...
 Service URL: https://hr-calculator-<HASH>-uc.a.run.app
 
