@@ -808,6 +808,7 @@ if [ -n "$BEST_V" ]; then
     banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
     bash "$SCRIPT_DIR/create_evolution_pr.sh" \
         --run-dir "$RUN_DIR" --version "$BEST_V" --local \
+        --agent "${EVOLVE_TARGET:-policy_agent}" \
         --evolved-report "$BEST_REPORT" \
         || echo "  (pr preview failed; see logs)"
 fi
