@@ -779,6 +779,7 @@ fi
 {
     echo "# Demo Run Summary — $(basename "$RUN_DIR")"
     echo ""
+    echo "- Wall time: $(( ($(date +%s) - DEMO_START_TS) / 60 ))m $(( ($(date +%s) - DEMO_START_TS) % 60 ))s"
     echo "- BigQuery slice: \`$DEMO_TRACE_LABEL\`"
     echo "  (\`EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh\`)"
     echo "- Published anywhere: $([ "${EVOLUTION_PUBLISH}" = "0" ] && echo "NO (sandbox — registry/PR/issue disabled)" || echo "YES (EVOLUTION_PUBLISH=1)")"
