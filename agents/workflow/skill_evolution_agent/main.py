@@ -734,7 +734,11 @@ Examples:
         # deflection shows in turn 1, pushback/parroting in turn 2,
         # drift in turns 3-4 — ranking sees all of it.
         os.environ["EVAL_MAX_TURNS"] = "4"
-        os.environ["SUPERVISOR_MODEL_ID"] = "gemini-2.5-flash"
+        # Score on the SERVING model so candidate ranking measures what
+        # production will actually run (flash-lite lives on the global
+        # endpoint only).
+        os.environ["SUPERVISOR_MODEL_ID"] = "gemini-3.1-flash-lite"
+        os.environ.setdefault("MODEL_LOCATION", "global")
         os.environ.setdefault("EVOLUTION_MAX_ANALYSTS", "30")
         # The agent's default threshold (30 failures) is sized for
         # 205-question runs; a 25-question quick run can only produce

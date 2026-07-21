@@ -1,5 +1,0 @@
-deploy.sh
-send_query.sh
-run_local.sh
-run_job.sh
-.dockerignore

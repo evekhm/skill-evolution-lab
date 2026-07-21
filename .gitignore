@@ -52,3 +52,12 @@ eval/*_report.json
 *.bak
 *.v0bak
 *.orig.json
+
+# Docker build staging inside job/agent dirs (deploy.sh copies these in
+# and removes them after the build — never track them)
+agents/workflow/skill_evolution_agent/traffic_generator/
+agents/workflow/skill_evolution_agent/quality_agent/
+agents/workflow/skill_evolution_agent/enterprise/
+agents/workflow/skill_evolution_agent/eval/
+agents/workflow/skill_evolution_agent/ensure_sdk.py
+agents/workflow/skill_evolution_agent/gcs_utils.py
