@@ -252,6 +252,15 @@ if [[ -z "${RUN_DIR:-}" ]]; then
 fi
 mkdir -p "$RUN_DIR"
 
+# One auto-generated label for the WHOLE demo run, tied 1:1 to the run
+# folder name. Every traffic invocation inside inherits it via
+# TRACE_LABELS, so this run is its own BigQuery slice — guaranteed
+# distinct from everything already in the table. Override the label
+# with DEMO_TRACE_LABEL=k=v; user-set TRACE_LABELS are kept additively.
+DEMO_TRACE_LABEL="${DEMO_TRACE_LABEL:-demo_run=$(basename "$RUN_DIR")}"
+export TRACE_LABELS="${TRACE_LABELS:+$TRACE_LABELS,}$DEMO_TRACE_LABEL"
+echo "BigQuery slice label for this run: $DEMO_TRACE_LABEL"
+
 # Tee output to log file
 RUN_LOG="$RUN_DIR/run.log"
 echo "$ $0 $ORIGINAL_ARGS" > "$RUN_LOG"
@@ -732,9 +741,20 @@ if [ -n "$TESTSET" ]; then
         -o "$RUN_DIR/TRIAGE.md" || echo "  (triage step failed; see logs)"
 fi
 
+# --- PR as a local artifact: branch + commit + pr_preview.md, no push ---
+LATEST_V=$(ls "$RUN_DIR" 2>/dev/null | grep -oE '^v[0-9]+' | grep -v '^v0$' | sort -V | tail -1)
+if [ -n "$LATEST_V" ]; then
+    banner "PR PREVIEW (local branch + $RUN_DIR/pr_preview.md, nothing pushed)"
+    bash "$SCRIPT_DIR/create_evolution_pr.sh" \
+        --run-dir "$RUN_DIR" --version "$LATEST_V" --local \
+        || echo "  (pr preview failed; see logs)"
+fi
+
 banner "Done"
 echo "  All outputs: $RUN_DIR"
+echo "  This run's BigQuery slice:"
+echo "    EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh"
 echo "  Finished:    $(date)"
 echo ""
-echo "  To create a PR with the evolved skill:"
-echo "    ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir $RUN_DIR"
+echo "  To publish the previewed PR:"
+echo "    ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir $RUN_DIR --version ${LATEST_V:-v1}"

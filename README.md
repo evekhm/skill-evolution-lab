@@ -486,8 +486,8 @@ differ in where the agents run and how the winning skill goes live:
 | | Local | Deployed |
 |---|---|---|
 | Agents | Python processes on this machine | the live stack (Agent Engine + Cloud Run) |
-| Failures come from | traffic generated during the run | BigQuery traces of the deployed agents |
-| Winning skill | written to the local `SKILL.md`, active immediately | pushed to the Skill Registry and opened as a PR |
+| Failures come from | traffic generated during the run, auto-labeled `demo_run=<run-folder>` (its own BigQuery slice) | BigQuery traces of the deployed agents |
+| Winning skill | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed | pushed to the Skill Registry and opened as a PR |
 | Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
 
 Local (~15 min):

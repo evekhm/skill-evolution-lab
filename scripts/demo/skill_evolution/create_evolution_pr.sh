@@ -11,6 +11,9 @@
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/2026-05-18_...
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --version v2
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --dry-run
+#   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --local
+#       (--local: create the branch + commit + PR document in the run
+#        dir, but push NOTHING — the PR as a local artifact)
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --output /tmp/evolved.md
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --create-issue
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --issue 42
@@ -44,6 +47,7 @@ RUN_DIR=""
 VERSION="v2"
 AGENT="policy_agent"
 DRY_RUN=false
+LOCAL_ONLY=false
 OUTPUT_FILE=""
 BASE_BRANCH="${GITHUB_BASE_BRANCH:-main}"
 CREATE_ISSUE=false
@@ -61,6 +65,7 @@ while [[ $# -gt 0 ]]; do
         --evolved-report)   EVOLVED_REPORT="$2"; shift 2 ;;
         --baseline-report)  BASELINE_REPORT_OVERRIDE="$2"; shift 2 ;;
         --dry-run)          DRY_RUN=true; shift ;;
+        --local)            LOCAL_ONLY=true; shift ;;
         --create-issue)     CREATE_ISSUE=true; shift ;;
         --issue)            ISSUE_NUMBER="$2"; shift 2 ;;
         -h|--help)
@@ -333,8 +338,10 @@ Run: $(basename "$RUN_DIR")
 EOF
 )"
 
-# --- Push ---
-git push -u origin "$BRANCH"
+# --- Push (skipped in --local mode) ---
+if ! $LOCAL_ONLY; then
+    git push -u origin "$BRANCH"
+fi
 
 # --- Generate PR body (try agy, fall back to static) ---
 DIFF_TEXT=$(git diff "origin/${BASE_BRANCH}...HEAD" -- "$SKILL_PATH")
@@ -376,6 +383,35 @@ if [ -n "$ISSUE_NUMBER" ]; then
     PR_BODY="${PR_BODY}
 
 Fixes #${ISSUE_NUMBER}"
+fi
+
+# --- Local mode: the PR as an artifact, nothing leaves the machine ---
+if $LOCAL_ONLY; then
+    PREVIEW="$RUN_DIR/pr_preview.md"
+    {
+        echo "# ${TITLE}"
+        echo ""
+        echo "Branch: \`${BRANCH}\` (local only — not pushed)"
+        echo "Base:   \`${BASE_BRANCH}\`"
+        echo ""
+        echo "$PR_BODY"
+        echo ""
+        echo "## Diff"
+        echo ""
+        echo '\`\`\`diff'
+        echo "$DIFF_TEXT"
+        echo '\`\`\`'
+        echo ""
+        echo "To publish:"
+        echo '\`\`\`bash'
+        echo "git push -u origin ${BRANCH}"
+        echo "gh pr create --base ${BASE_BRANCH} --head ${BRANCH} --title \"${TITLE}\" --body-file ${PREVIEW}"
+        echo '\`\`\`'
+    } > "$PREVIEW"
+    echo ""
+    echo "Local PR artifact: $PREVIEW"
+    echo "Local branch:      $BRANCH (commit kept, nothing pushed)"
+    exit 0
 fi
 
 # --- Create PR via gh ---
