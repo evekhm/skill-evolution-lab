@@ -481,7 +481,9 @@ All green -> Step 1 is done.
 For the demo you can fire the whole loop with one command (below) — or, to see and verify every stage yourself, walk the steps manually one by one.
 
 **Local** (~15 min, no deployment) — runs the entire loop on this
-machine with local agents; results land in `eval/runs/`:
+machine with local agents; the winning skill is written straight to
+the local `SKILL.md` and results land in `eval/runs/`. No PR, no
+registry, no CI — the learning loop without the governance around it:
 
 ```bash
 bash scripts/demo/skill_evolution/run_demo.sh --quick
