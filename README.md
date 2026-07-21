@@ -16,8 +16,8 @@
     * [5 — Verify everything: one command](#5--verify-everything-one-command)
   * [Run the Demo](#run-the-demo)
     * [The one-command run](#the-one-command-run)
-      * [Local](#local)
-      * [Deployed](#deployed)
+      * [Deployed (default)](#deployed-default)
+      * [Local (`--local`)](#local---local)
     * [The step-by-step walkthrough](#the-step-by-step-walkthrough)
     * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
     * [Step 2 — Generate labeled traffic (the system observes failures)](#step-2--generate-labeled-traffic-the-system-observes-failures)
@@ -530,12 +530,11 @@ Caveats:
   evolution never saw). Run it when the number is the deliverable —
   a writeup, a review, a before/after you will defend.
 
-#### Local
+#### Deployed (default)
 
-The default. Sandbox: agents run in-process (`--local
---local-agents` on every traffic call — the deployed stack receives
-zero requests), nothing is published; extras pass through
-(e.g. `run_standard.sh --candidates 4`):
+The commands run the profile as the Cloud Run job against the live
+stack; the winner is pushed to the Skill Registry and opened as a
+real PR — merging activates it:
 
 ```bash
 bash scripts/demo/skill_evolution/run_lite.sh
@@ -549,28 +548,28 @@ bash scripts/demo/skill_evolution/run_standard.sh
 bash scripts/demo/skill_evolution/run_full.sh
 ```
 
-#### Deployed
+`run_full.sh` executes the job with its default arguments —
+identical to the weekly scheduled run. Deployed runs validate on the
+25-question set (lite vs standard there differ by candidate count).
 
-Same commands, one flag. The profile runs as the Cloud Run job
-against the live stack; the winner is pushed to the Skill Registry
-and opened as a real PR — merging activates it:
+#### Local (`--local`)
+
+Same commands with `--local`: a sandbox on this machine. Agents run
+in-process (`--local --local-agents` on every traffic call — the
+deployed stack receives zero requests) and nothing is published;
+extras pass through (e.g. `run_standard.sh --local --candidates 4`):
 
 ```bash
-bash scripts/demo/skill_evolution/run_lite.sh --deployed
+bash scripts/demo/skill_evolution/run_lite.sh --local
 ```
 
 ```bash
-bash scripts/demo/skill_evolution/run_standard.sh --deployed
+bash scripts/demo/skill_evolution/run_standard.sh --local
 ```
 
 ```bash
-bash scripts/demo/skill_evolution/run_full.sh --deployed
+bash scripts/demo/skill_evolution/run_full.sh --local
 ```
-
-`run_full.sh --deployed` executes the job with its default arguments
-— identical to the weekly scheduled run. Deployed runs validate on
-the 25-question set (the job image carries the question files; lite
-vs standard there differ by candidate count).
 
 Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
 conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.

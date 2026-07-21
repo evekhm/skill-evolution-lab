@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Lite profile — ~17 min local. 13 questions, 2 candidates, 1 round,
 # supervisor target.
-#   run_lite.sh              local sandbox (nothing published)
-#   run_lite.sh --deployed   Cloud Run job: winner -> registry + real PR
+#   run_lite.sh              Cloud Run job: winner -> registry + real PR
+#   run_lite.sh --local      local sandbox (nothing published)
 # Extra args pass through (local: to run_demo.sh; deployed: to the job).
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-TARGET=local; ARGS=()
+TARGET=deployed; ARGS=()
 for a in "$@"; do case "$a" in
     --deployed) TARGET=deployed ;;
     --local)    TARGET=local ;;

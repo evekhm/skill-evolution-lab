@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Standard profile — ~30-40 min local. 25 questions, 3 candidates,
 # 1 round, supervisor target.
-#   run_standard.sh              local sandbox (nothing published)
-#   run_standard.sh --deployed   Cloud Run job: winner -> registry + real PR
+#   run_standard.sh              Cloud Run job: winner -> registry + real PR
+#   run_standard.sh --local      local sandbox (nothing published)
 # Extra args pass through (local: to run_demo.sh; deployed: to the job).
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-TARGET=local; ARGS=()
+TARGET=deployed; ARGS=()
 for a in "$@"; do case "$a" in
     --deployed) TARGET=deployed ;;
     --local)    TARGET=local ;;
