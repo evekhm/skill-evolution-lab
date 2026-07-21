@@ -279,8 +279,6 @@ only, and it is what the evolution fixes.
 bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
 ```
 
-> without -q it runs a default question set
-
 Expected:
 
 ```text
@@ -316,6 +314,31 @@ Output:
 * `A` — the final answer returned to the user
 * `Latency` — end-to-end time for the turn
 
+Another question with proper routing:
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
+```
+
+```text
+==========================================
+  TARGET PROJECT: <PROJECT_ID>
+==========================================
+Discovering Reasoning Engine 'knowledge-supervisor' in <PROJECT_ID>/us-central1...
+Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_ID>
+
+─────────────────────────────────────────
+Q: How many PTO days do I have left?
+─────────────────────────────────────────
+  Routed to:  hr_calculator
+  Model:      gemini-3.1-flash-lite
+  Tools:      hr_calculator
+  Tokens:     supervisor 647→46 over 2 model turn(s) (thinking: 0)
+
+  A: You have 7.8 PTO days left. You also have 4.8 sick leave days remaining.
+
+  Latency: 5.3s
+```
 
 ##### 1.3.3.b — policy_agent (Cloud Run, direct A2A)
 
@@ -389,12 +412,6 @@ You currently have 7.8 PTO days left. You also have 4.8 sick leave days availabl
 Latency: 2.3s
 ```
 
-1.3.3.a and 1.3.3.b are the same question with opposite outcomes —
-that is the whole demo in two commands. The supervisor deflects to
-HR with no tool call; the policy agent, one A2A hop away, answers
-$75/day from the documents. The calculator (1.3.3.c) shows routing
-itself works when V0 chooses to route. The evolution loop's job is
-to make policy questions take the hop too.
 
 #### 1.3.4 — Connect Gemini Enterprise (optional)
 
@@ -430,14 +447,9 @@ deployed Agent Engine -- no custom frontend needed.
 
 ### 1.4 — GitHub: CI + bot wiring
 
-```bash
-test -f .env && gh auth status >/dev/null 2>&1 && echo "OK — continue" \
-  || echo "MISSING — do 1.2 first (.env + gh auth)"
-```
 
-Follow **[docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md)** end to
-end (PR credential, optional bot identity, one setup-script run).
-1.5 verifies the result.
+Follow **[GITHUB_APP_SETUP](docs/GITHUB_APP_SETUP.md)** (PR credential, optional bot identity, one setup-script run).
+
 
 ### 1.5 — Verify everything: one command
 
@@ -462,18 +474,26 @@ RESULT: 17 passed, 0 failed
 ==========================================
 ```
 
-All green -> Step 1 is done. Anything `[FAIL]` prints its own fix;
-anything missing entirely: the 1.2-1.4 subsections above create it.
+All green -> Step 1 is done. 
 
-## Run the Demo — Steps 2 to 8
+## Run the Demo
 
-Step 1 done? Then either fire the whole loop with one command —
+For the demo you can fire the whole loop with one command (below) — or, to see and verify every stage yourself, walk the steps manually one by one.
+
+**Local** (~15 min, no deployment) — runs the entire loop on this
+machine with local agents; results land in `eval/runs/`:
 
 ```bash
-# Local (no deployment, ~15 min):
 bash scripts/demo/skill_evolution/run_demo.sh --quick
+```
 
-# Deployed (the production loop, ~15 min, warm BigQuery window):
+**Deployed** (~20 min, the production loop) — the Cloud Run job runs
+the same loop against the deployed stack: scores traces from
+BigQuery, evolves, validates candidates, pushes the winner to the
+Skill Registry, and opens a PR with regression cases; merging the PR
+activates the skill:
+
+```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
   --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,3,--quick"
 ```
@@ -492,8 +512,6 @@ gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
 6. Re-score, compare, repeat — the gate keeps a new version only when
    it beats the old one
 
-— or, to see and verify every stage yourself, walk Steps 2-8
-below (same loop, one stage at a time).
 
 Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
 conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.
