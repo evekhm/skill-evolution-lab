@@ -223,6 +223,7 @@ while [[ $# -gt 0 ]]; do
         --rescore)      RESCORE=true; shift ;;
         --resume)       RUN_DIR="$2"; shift 2 ;;
         --v0-only)      V0_ONLY=true; shift ;;
+        --eval-only)    V0_ONLY=true; shift ;;
         --evolve-only)  EVOLVE_ONLY=true; shift ;;
         --rescore-only) RESCORE_ONLY=true; shift ;;
         --test-version) TEST_VERSION="$2"; shift 2 ;;
@@ -288,6 +289,7 @@ cd "$PROJECT_ROOT"
 
 echo "  [config] EVAL_MODEL_ID=$EVAL_MODEL_ID (all local agents)"
 echo "  [config] BigQuery slice label: $DEMO_TRACE_LABEL"
+echo "  [config] Quality gate: QUALITY_THRESHOLD=${QUALITY_THRESHOLD:-0.95} (skip evolution if V0 already meets it)"
 echo "  [config] Agents: LOCAL in-process — every traffic call runs with"
 echo "           --local --local-agents; the deployed stack receives ZERO"
 echo "           requests from this run"
@@ -320,6 +322,7 @@ step() {
     step_close
     banner "STEP $1/7 \xe2\x80\x94 $2"
     echo -e "  ${DIM}README: Run the Demo > Step $1${RESET}"
+    [ -n "${3:-}" ] && echo -e "  ${DIM}Goal: $3${RESET}"
     echo ""
     # The step's completion line comes from step_close (with the real
     # elapsed time) — clear the stage timer so the next banner doesn't
@@ -718,7 +721,7 @@ if $REUSE_V0; then
     # cp -n avoids "same file" error when V0_SRC == RUN_DIR (resume in-place)
     cp -n "$V0_TRAFFIC_SRC" "$RUN_DIR/v0_traffic.json" 2>/dev/null || true
 
-    step 1 "Reset to the V0 baseline"
+    step 1 "Reset to the V0 baseline" "start from the known-weak V0 skill so the improvement is measurable"
     restore_v0
     cp -n "$POLICY_SKILL/SKILL.md" "$RUN_DIR/v0_policy_skill.md" 2>/dev/null || true
     cp -n "$BENEFITS_SKILL/SKILL.md" "$RUN_DIR/v0_benefits_skill.md" 2>/dev/null || true
@@ -758,7 +761,7 @@ else
     # Restore the V0 baseline skills BEFORE the full loop runs its pre-flight,
     # so the V0 measurement reflects the true weak baseline — not whatever a
     # previous run left deployed (which would have no evolution headroom).
-    step 1 "Reset to the V0 baseline"
+    step 1 "Reset to the V0 baseline" "start from the known-weak V0 skill so the improvement is measurable"
     restore_v0
     cp "$POLICY_SKILL/SKILL.md" "$RUN_DIR/v0_policy_skill.md" 2>/dev/null || true
     cp "$BENEFITS_SKILL/SKILL.md" "$RUN_DIR/v0_benefits_skill.md" 2>/dev/null || true
@@ -830,7 +833,7 @@ for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
     fi
 done
 if [ -n "$BEST_V" ]; then
-    step 4 "Review the PR"
+    step 4 "Review the PR" "the learning as a reviewable artifact: metrics, diff, regression cases"
     banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
     bash "$SCRIPT_DIR/create_evolution_pr.sh" \
         --run-dir "$RUN_DIR" --version "$BEST_V" --local \
@@ -844,7 +847,7 @@ echo ""
 echo -e "  ${DIM}STEPS 5-6/7 \xe2\x80\x94 Merge to activate + Verify the fix: deployed-path"
 echo -e "  steps; in the sandbox the PR stays a local artifact (pr_preview.md)${RESET}"
 
-step 7 "Roll back"
+step 7 "Roll back" "leave the system at V0; evolved skills stay snapshotted in the run dir"
 if declare -f restore_v0 >/dev/null; then
     restore_v0 || echo "  (restore failed — check agents/enterprise/*/skill/)"
     echo "  Evolved skills remain in $RUN_DIR as vN_*_skill.md"
@@ -876,6 +879,12 @@ step_close
         echo "| $v | $(jq -r '.summary.meaningful_rate // "?"' "$f")% |"
     done
     [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
+    _thr=$(awk "BEGIN{printf \"%.0f\", ${QUALITY_THRESHOLD:-0.95}*100}")
+    if [ -n "$BEST_V" ] && awk "BEGIN{exit !($BEST_RATE >= $_thr)}"; then
+        echo "Quality gate: winner ${BEST_RATE}% MEETS the ${_thr}% threshold"
+    elif [ -n "$BEST_V" ]; then
+        echo "Quality gate: winner ${BEST_RATE}% below the ${_thr}% threshold — another cycle is warranted"
+    fi
     echo ""
     echo "## Files worth reading"
     echo ""

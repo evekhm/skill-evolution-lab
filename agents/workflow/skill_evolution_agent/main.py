@@ -155,7 +155,7 @@ def _step_close() -> None:
         _STEP_STATE["t0"] = None
 
 
-def _step_banner(n: int, title: str) -> None:
+def _step_banner(n: int, title: str, goal: str = "") -> None:
     """Demo step marker — numbering and titles are IDENTICAL to the
     README's "Run the Demo" Steps 1-7 so the console maps 1:1 to the
     documentation. Each step closes with its elapsed time."""
@@ -163,7 +163,10 @@ def _step_banner(n: int, title: str) -> None:
     line = "\u2501" * 70
     print(f"\n\033[2m{line}\033[0m\n", flush=True)
     print(f"  \033[1m\033[36m\u25b6 STEP {n}/7 \u2014 {title}\033[0m", flush=True)
-    print(f"  \033[2mREADME: Run the Demo > Step {n}\033[0m\n", flush=True)
+    print(f"  \033[2mREADME: Run the Demo > Step {n}\033[0m", flush=True)
+    if goal:
+        print(f"  \033[2mGoal: {goal}\033[0m", flush=True)
+    print("", flush=True)
     _STEP_STATE["n"] = n
     _STEP_STATE["t0"] = time.time()
     import atexit
@@ -410,7 +413,9 @@ async def run_evolution_agent(
             _QUESTIONS_QUICK if quick else _QUESTIONS_FULL
         )
 
-        _step_banner(2, "Generate labeled traffic")
+        _step_banner(2, "Generate labeled traffic",
+                     "adversarial conversations against V0; their "
+                     "failures are the evolution input")
         # Pre-flight source: real BigQuery traces (QUALITY_SOURCE=bigquery)
         # with a generated-traffic fallback below MIN_SESSIONS, or generated
         # traffic directly (default).
@@ -440,7 +445,30 @@ async def run_evolution_agent(
                 return f"ERROR: Quality scoring failed: {scoring_result}"
 
         logger.info("Pre-flight complete. Starting agent with report: %s", report_path)
-        _step_banner(3, "Run the evolution job")
+
+        # Quality gate (SDK agent_improvement_cycle parity): when the
+        # baseline already meets the threshold there is nothing to
+        # evolve — stop instead of burning an evolution round.
+        threshold = float(os.environ.get("QUALITY_THRESHOLD", "0.95")) * 100
+        try:
+            with open(report_path) as _f:
+                _v0_rate = float(
+                    json.load(_f).get("summary", {}).get("meaningful_rate", 0)
+                )
+        except Exception:
+            _v0_rate = 0.0
+        if _v0_rate >= threshold:
+            _step_close()
+            msg = (
+                f"QUALITY GATE: V0 meaningful rate {_v0_rate:.1f}% meets the "
+                f"threshold ({threshold:.0f}%) — nothing to evolve, stopping."
+            )
+            print(f"\n  \033[32m\u2714 {msg}\033[0m\n", flush=True)
+            logger.info(msg)
+            return msg
+        _step_banner(3, "Run the evolution job",
+                     "one analyst per failure -> candidate skills -> "
+                     "replay validation -> best one wins")
 
         questions_note = "Use 22-question quick set for candidate scoring." if not quick else "Use 22-question quick set for ALL traffic."
         prompt = (
