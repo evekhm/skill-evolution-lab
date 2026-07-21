@@ -672,7 +672,7 @@ if $HELDOUT && [ "$MODE" = "full" ] && ! $REUSE_V0; then
     echo "  Evolving on D_evolve; will report V0/V1 on D_test ($TESTSET)"
 fi
 
-step 1 "The starting point (defined, verifiable)"
+step 1 "Reset to the V0 baseline"
 banner "SKILL EVOLUTION AGENT (ADK)"
 echo "  Run directory: $RUN_DIR"
 echo "  Rounds:        ${ROUNDS:-agent-decided}"
@@ -825,7 +825,7 @@ for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
     fi
 done
 if [ -n "$BEST_V" ]; then
-    step 4 "Review the PR (learning as an artifact)"
+    step 4 "Review the PR"
     banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
     bash "$SCRIPT_DIR/create_evolution_pr.sh" \
         --run-dir "$RUN_DIR" --version "$BEST_V" --local \
@@ -839,7 +839,7 @@ echo ""
 echo -e "  ${DIM}STEPS 5-6/7 \xe2\x80\x94 Merge to activate + Verify the fix: deployed-path"
 echo -e "  steps; in the sandbox the PR stays a local artifact (pr_preview.md)${RESET}"
 
-step 7 "Roll back (back to the Step 1 state)"
+step 7 "Roll back"
 if declare -f restore_v0 >/dev/null; then
     restore_v0 || echo "  (restore failed — check agents/enterprise/*/skill/)"
     echo "  Evolved skills remain in $RUN_DIR as vN_*_skill.md"

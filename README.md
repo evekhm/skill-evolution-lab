@@ -17,14 +17,14 @@
   * [Run the Demo](#run-the-demo)
     * [The one-command run](#the-one-command-run)
     * [The step-by-step walkthrough](#the-step-by-step-walkthrough)
-    * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
-    * [Step 2 — Generate labeled traffic (the system observes failures)](#step-2--generate-labeled-traffic-the-system-observes-failures)
-    * [Step 3 — Run the evolution job (learn + propose)](#step-3--run-the-evolution-job-learn--propose)
-    * [Step 4 — Review the PR (learning as an artifact)](#step-4--review-the-pr-learning-as-an-artifact)
+    * [Step 1 — Reset to the V0 baseline](#step-1--reset-to-the-v0-baseline)
+    * [Step 2 — Generate labeled traffic](#step-2--generate-labeled-traffic)
+    * [Step 3 — Run the evolution job](#step-3--run-the-evolution-job)
+    * [Step 4 — Review the PR](#step-4--review-the-pr)
     * [Choosing which traces to evolve on (labels)](#choosing-which-traces-to-evolve-on-labels)
     * [Step 5 — Merge to activate](#step-5--merge-to-activate)
-    * [Step 6 — Verify the fix (the payoff)](#step-6--verify-the-fix-the-payoff)
-    * [Step 7 — Roll back (back to the Step 1 state)](#step-7--roll-back-back-to-the-step-1-state)
+    * [Step 6 — Verify the fix](#step-6--verify-the-fix)
+    * [Step 7 — Roll back](#step-7--roll-back)
   * [Alternative: Local-Only Demo (no deployment)](#alternative-local-only-demo-no-deployment)
     * [What to expect](#what-to-expect)
     * [Try it interactively](#try-it-interactively)
@@ -548,7 +548,7 @@ stage at a time, each with its own verification: the starting point
 (Step 1), labeled traffic (3), the evolution job (4), PR review (5),
 merge to activate (6), verify the fix (7), roll back (8).
 
-### Step 1 — The starting point (defined, verifiable)
+### Step 1 — Reset to the V0 baseline
 
 The BigQuery table holds every conversation from every source — old
 demo runs, scheduled traffic, other experiments — and is never
@@ -631,7 +631,7 @@ label — its BigQuery events plus `run_labels` rows, nothing else:
 bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_LABEL
 ```
 
-### Step 2 — Generate labeled traffic (the system observes failures)
+### Step 2 — Generate labeled traffic
 
 Send 8 labeled conversations at the deployed V0 supervisor — the
 same endpoint real users hit. Their failures are the raw material
@@ -719,7 +719,7 @@ EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
 ```
 
 
-### Step 3 — Run the evolution job (learn + propose)
+### Step 3 — Run the evolution job
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
@@ -757,7 +757,7 @@ Inside one run:
 | Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge |
 | PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) |
 
-### Step 4 — Review the PR (learning as an artifact)
+### Step 4 — Review the PR
 
 The PR body carries the baseline quality numbers; the diff is the
 evolved skill plus any regression cases extracted from failures this
@@ -870,7 +870,7 @@ Merging triggers `deploy.yml`: it re-seeds the registry from the merged
 revision -- the SKIP is the git-registry reconciliation proof), then
 redeploys the agents, which fetch the merged revision at startup.
 
-### Step 6 — Verify the fix (the payoff)
+### Step 6 — Verify the fix
 
 The question that deflected in Step 1 now gets the grounded answer:
 
@@ -887,7 +887,7 @@ gcloud logging read 'textPayload:"Loaded skill from registry"' \
   --project=$PROJECT_ID --freshness=15m --limit=4
 ```
 
-### Step 7 — Roll back (back to the Step 1 state)
+### Step 7 — Roll back
 
 ```bash
 bash scripts/demo/skill_evolution/rollback_demo.sh

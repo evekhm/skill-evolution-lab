@@ -410,7 +410,7 @@ async def run_evolution_agent(
             _QUESTIONS_QUICK if quick else _QUESTIONS_FULL
         )
 
-        _step_banner(2, "Generate labeled traffic (the system observes failures)")
+        _step_banner(2, "Generate labeled traffic")
         # Pre-flight source: real BigQuery traces (QUALITY_SOURCE=bigquery)
         # with a generated-traffic fallback below MIN_SESSIONS, or generated
         # traffic directly (default).
@@ -440,7 +440,7 @@ async def run_evolution_agent(
                 return f"ERROR: Quality scoring failed: {scoring_result}"
 
         logger.info("Pre-flight complete. Starting agent with report: %s", report_path)
-        _step_banner(3, "Run the evolution job (learn + propose)")
+        _step_banner(3, "Run the evolution job")
 
         questions_note = "Use 22-question quick set for candidate scoring." if not quick else "Use 22-question quick set for ALL traffic."
         prompt = (
