@@ -1401,7 +1401,7 @@ same step at production settings for contrast.
 | Dial | Full | Quick | Why it is safe to cut | What it costs |
 |---|---|---|---|---|
 | Validation question set | 55 questions | 25 (2 per category, all 13 categories kept) | Coverage per category is preserved | Coarser scores: each question is worth 4pp, so two close candidates can swap ranks |
-| Turns per validation conversation | up to 4 (simulated user pushes back) | 2 | Turn 1 exposes the deflection defect; turn 2 carries the pushback that exposes parroting | Longer multi-turn drift (turns 3-4) is unmeasured during ranking; analysts still see every real failure from BigQuery |
+| Turns per validation conversation | up to 4 (simulated user pushes back) | up to 4 — not cut | Full conversation depth is kept: deflection (turn 1), pushback/parroting (turn 2), drift (turns 3-4) all measured | Quick runs take longer than a 1-turn profile would (~2-3x per candidate) |
 | Validation supervisor model | the serving model (`SUPERVISOR_MODEL_ID`, default gemini-3.1-flash-lite) | gemini-2.5-flash | All candidates are scored under identical conditions, so the ranking stays fair | Absolute scores can shift slightly vs the serving model |
 | Bottleneck classification | runs (~5 min) | skipped when `--mode` names the target | You already gave the answer on the command line | None for a scoped run; scheduled runs (no `--mode`) still classify |
 | Rounds / candidates | agent-decided (up to 5 x 5) | bound to your `--rounds`/`--candidates` | Demo needs a bounded runtime | Fewer shots at a better skill per run |
