@@ -321,6 +321,10 @@ step() {
     banner "STEP $1/7 \xe2\x80\x94 $2"
     echo -e "  ${DIM}README: Run the Demo > Step $1${RESET}"
     echo ""
+    # The step's completion line comes from step_close (with the real
+    # elapsed time) — clear the stage timer so the next banner doesn't
+    # ALSO close the step header as a 0s stage.
+    _STAGE_START=""
     _STEP_T0=$(date +%s); _STEP_NO="$1"
 }
 banner() {
@@ -672,7 +676,6 @@ if $HELDOUT && [ "$MODE" = "full" ] && ! $REUSE_V0; then
     echo "  Evolving on D_evolve; will report V0/V1 on D_test ($TESTSET)"
 fi
 
-step 1 "Reset to the V0 baseline"
 banner "SKILL EVOLUTION AGENT (ADK)"
 echo "  Run directory: $RUN_DIR"
 echo "  Rounds:        ${ROUNDS:-agent-decided}"
@@ -715,6 +718,7 @@ if $REUSE_V0; then
     # cp -n avoids "same file" error when V0_SRC == RUN_DIR (resume in-place)
     cp -n "$V0_TRAFFIC_SRC" "$RUN_DIR/v0_traffic.json" 2>/dev/null || true
 
+    step 1 "Reset to the V0 baseline"
     restore_v0
     cp -n "$POLICY_SKILL/SKILL.md" "$RUN_DIR/v0_policy_skill.md" 2>/dev/null || true
     cp -n "$BENEFITS_SKILL/SKILL.md" "$RUN_DIR/v0_benefits_skill.md" 2>/dev/null || true
@@ -754,6 +758,7 @@ else
     # Restore the V0 baseline skills BEFORE the full loop runs its pre-flight,
     # so the V0 measurement reflects the true weak baseline — not whatever a
     # previous run left deployed (which would have no evolution headroom).
+    step 1 "Reset to the V0 baseline"
     restore_v0
     cp "$POLICY_SKILL/SKILL.md" "$RUN_DIR/v0_policy_skill.md" 2>/dev/null || true
     cp "$BENEFITS_SKILL/SKILL.md" "$RUN_DIR/v0_benefits_skill.md" 2>/dev/null || true
