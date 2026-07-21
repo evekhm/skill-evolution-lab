@@ -517,7 +517,7 @@ time you have vs what the numbers must prove:
 | Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
 | Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
 
-Caveats, honestly:
+Caveats:
 
 - **Lite**: each question is worth ~7.7pp, so rates are chunky and
   two close candidates can swap ranks; one agent is evolved; the
