@@ -253,6 +253,14 @@ fi
 mkdir -p "$RUN_DIR"
 DEMO_START_TS=$(date +%s)
 
+# Quick mode pins the fast profile unless the caller chose values:
+# 1 round, 3 candidates. Agent-decided runs were choosing 5 candidates
+# + a second round, doubling runtime for rounds that scored worse.
+if [ "$MODE" = "quick" ]; then
+    ROUNDS="${ROUNDS:-1}"
+    CANDIDATES="${CANDIDATES:-3}"
+fi
+
 # One auto-generated label for the WHOLE demo run, tied 1:1 to the run
 # folder name. Every traffic invocation inside inherits it via
 # TRACE_LABELS, so this run is its own BigQuery slice — guaranteed

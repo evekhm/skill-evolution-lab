@@ -895,6 +895,9 @@ decided rounds and candidates, and a final re-score of V0 and the
 winner on a DISJOINT held-out test set, which is the number you can
 quote without an overfitting asterisk.
 
+Quick pins one evolution round and 3 candidates; `--rounds N` and
+`--candidates N` override. Full leaves both agent-decided.
+
 Which to run: start with `--quick` — first run, and every iteration
 loop. It shows the whole system and a credible improvement in half
 an hour. Run `--full` once, when the numbers themselves are the
