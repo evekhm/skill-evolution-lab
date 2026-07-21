@@ -259,7 +259,6 @@ mkdir -p "$RUN_DIR"
 # with DEMO_TRACE_LABEL=k=v; user-set TRACE_LABELS are kept additively.
 DEMO_TRACE_LABEL="${DEMO_TRACE_LABEL:-demo_run=$(basename "$RUN_DIR")}"
 export TRACE_LABELS="${TRACE_LABELS:+$TRACE_LABELS,}$DEMO_TRACE_LABEL"
-echo "BigQuery slice label for this run: $DEMO_TRACE_LABEL"
 
 # Tee output to log file
 RUN_LOG="$RUN_DIR/run.log"
@@ -270,6 +269,7 @@ exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$RUN_LOG")) 2>&1
 cd "$PROJECT_ROOT"
 
 echo "  [config] EVAL_MODEL_ID=$EVAL_MODEL_ID (all local agents)"
+echo "  [config] BigQuery slice label: $DEMO_TRACE_LABEL"
 
 # =====================================================================
 # Helpers
