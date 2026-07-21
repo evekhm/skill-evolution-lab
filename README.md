@@ -510,7 +510,7 @@ time you have vs what the numbers must prove:
 
 | | Lite | Standard | Full |
 |---|---|---|---|
-| Caveats | chunky rates (each question ~7.7pp; close candidates can swap ranks) — directional, for first contact and iteration | steadier rates (~4pp/question), better ranking; still no held-out set — for comparing skill ideas | winner re-scored on unseen questions, no overfitting asterisk — when the number is the deliverable |
+| Caveats | chunky rates (each question is worth ~7.7 percentage points of the score; close candidates can swap ranks) — directional, for first contact and iteration | steadier rates (~4 percentage points per question), better ranking; still no held-out set — for comparing skill ideas | winner re-scored on unseen questions, no overfitting asterisk — when the number is the deliverable |
 | Wall time (measured locally) | **~17 min** | ~30-40 min | ~1-2 h |
 | Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
 | Candidates | 2 | 3 | agent-decided (up to 5) |
