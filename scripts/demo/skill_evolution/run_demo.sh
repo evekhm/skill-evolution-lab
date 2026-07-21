@@ -741,7 +741,8 @@ fi
 [ -n "$MIN_FAILURES" ] && AGENT_FLAGS="$AGENT_FLAGS --min-failures $MIN_FAILURES"
 
 uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
-    tee "$RUN_DIR/agent_output.log"
+    tee "$RUN_DIR/agent_output.log" || \
+    echo "  WARNING: agent step exited non-zero — continuing to restore/summary (see agent_output.log)"
 
 # Held-out evaluation: the agent leaves V1 deployed. Score V1 on the disjoint
 # test set, snapshot V1, restore V0, then score V0 on the same test set. These

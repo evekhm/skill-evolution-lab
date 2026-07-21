@@ -1668,9 +1668,13 @@ def extract_regression_cases(
 
 def _append_regression_cases(path: str, new_cases: list[dict]) -> int:
     """Append cases with id+question dedup. Handles both file shapes
-    ({"eval_cases": [...]} and bare list)."""
-    with open(path) as f:
-        data = json.load(f)
+    ({"eval_cases": [...]} and bare list). A missing file starts empty
+    (sandbox runs write into a fresh run dir)."""
+    if os.path.isfile(path):
+        with open(path) as f:
+            data = json.load(f)
+    else:
+        data = {"eval_cases": []}
     cases = data["eval_cases"] if isinstance(data, dict) else data
     existing_ids = {c.get("id") for c in cases}
     existing_questions = {c.get("question") for c in cases}
