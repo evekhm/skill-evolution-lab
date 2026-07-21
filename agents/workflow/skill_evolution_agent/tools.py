@@ -1441,6 +1441,48 @@ def _ensure_git_workdir() -> str:
     return workdir
 
 
+_publish_gate_cache: dict = {}
+
+
+def _publish_gate_check(run_dir: str, version: str, agent: str) -> tuple[bool | None, str]:
+    """Full CI-equivalent gate on the WINNER before anything is
+    published. Deploys the evolved skill to the local skill dir, runs
+    the COMPLETE golden suite (no -k filter — the exact tests the PR
+    gate runs), restores the previous skill, caches per winner so the
+    registry push and the PR share one check. Green -> publish; red ->
+    no registry push, no PR, no refusal email."""
+    key = (os.path.abspath(run_dir), version, agent)
+    if key in _publish_gate_cache:
+        return _publish_gate_cache[key]
+    entry = _AGENTS.get(agent) or {}
+    skill_dir = entry.get("skill_dir")
+    evolved = _find_evolved_skill(run_dir, version, agent)
+    if not (skill_dir and evolved):
+        result = (None, "publish gate inconclusive: skill file/dir not found")
+        _publish_gate_cache[key] = result
+        return result
+    live = os.path.join(_repo_root, skill_dir, "SKILL.md")
+    backup = None
+    try:
+        if os.path.isfile(live):
+            with open(live) as f:
+                backup = f.read()
+        with open(evolved) as f:
+            candidate = f.read()
+        with open(live, "w") as f:
+            f.write(candidate)
+        result = _golden_gate_check(select=None)
+    finally:
+        if backup is not None:
+            with open(live, "w") as f:
+                f.write(backup)
+    logger.info(
+        "Publish gate for %s %s: %s (%s)", agent, version, result[0], result[1],
+    )
+    _publish_gate_cache[key] = result
+    return result
+
+
 def push_skill_to_registry(
     run_dir: str,
     version: str = "v1",
@@ -2222,9 +2264,13 @@ def score_candidate(
     return result
 
 
-def _golden_gate_check(timeout: int = 1200) -> tuple[bool | None, str]:
-    """Run the CI gate's routing + compound asserts against the skills
-    currently on disk (same tests eval.yml runs on the PR).
+def _golden_gate_check(
+    timeout: int = 1200, select: str | None = "routing or compound",
+) -> tuple[bool | None, str]:
+    """Run the CI gate's asserts against the skills currently on disk
+    (same tests eval.yml runs on the PR). select=None runs the FULL
+    suite — the publish gate uses that so a PR is only opened when the
+    CI gate will pass.
 
     Returns (passed, summary). passed is None when the check could not
     run (pytest missing, unexpected crash) — treated as inconclusive so
@@ -2233,9 +2279,10 @@ def _golden_gate_check(timeout: int = 1200) -> tuple[bool | None, str]:
     cmd = [
         sys.executable, "-m", "pytest",
         os.path.join("eval", "tests", "test_eval.py"),
-        "-k", "routing or compound",
         "-q", "--tb=no", "-p", "no:cacheprovider",
     ]
+    if select:
+        cmd[3:3] = ["-k", select]
     try:
         r = subprocess.run(
             cmd, cwd=_repo_root, capture_output=True, text=True,
