@@ -55,19 +55,13 @@
       "id": "compound_meal_hsa",
       "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
       "category": "compound_xdomain",
-      "expected_agents": [
-        "policy_agent",
-        "benefits_agent"
-      ]
+      "expected_agents": ["policy_agent", "benefits_agent"]
     },
     {
       "id": "compound_bereavement_parental",
       "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
       "category": "compound_xdomain",
-      "expected_agents": [
-        "policy_agent",
-        "benefits_agent"
-      ]
+      "expected_agents": ["policy_agent", "benefits_agent"]
     },
     {
       "id": "oos_severance",
@@ -80,146 +74,6 @@
       "question": "Can I get a standing desk for my home office?",
       "category": "out_of_scope",
       "expected_behavior": "decline_gracefully"
-    },
-    {
-      "id": "regression_conv_694be30",
-      "question": "What percentage of my medical premium does the employer pay?",
-      "category": "benefits",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_694be302",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it did not have the information and directed the user to HR, instead of using its tools to find the answer."
-    },
-    {
-      "id": "regression_conv_5a01dc2",
-      "question": "Which health plan types can I choose from?",
-      "category": "general",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_5a01dc22",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it did not have the information and directed the user to HR, despite the question being in scope and answerable by the benefits_agent."
-    },
-    {
-      "id": "regression_conv_b0aee97",
-      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
-      "category": "general",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_b0aee97c",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it could not provide the information without the user's salary, but the user had already provided it in the prompt. The agent failed to extract and use the provided salary information."
-    },
-    {
-      "id": "regression_conv_fef1080",
-      "question": "On a $130,000 salary, how much would short-term disability pay me per week?",
-      "category": "compensation",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_fef10800",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it could not calculate the weekly amount and directed the user to HR, failing to provide a substantive answer despite having the salary information and the percentage for short-term disability."
-    },
-    {
-      "id": "regression_conv_0b8c814",
-      "question": "What's the per-diem for meals while traveling for work?",
-      "category": "general",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_0b8c8147",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it did not have the information and directed the user to HR, despite the information being available in the provided context."
-    },
-    {
-      "id": "regression_conv_3cec43f",
-      "question": "Is a receipt needed for a $40 purchase?",
-      "category": "expenses",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_3cec43f7",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it could not find the specific policy and directed the user to HR, failing to provide the requested information."
-    },
-    {
-      "id": "regression_conv_76502a3",
-      "question": "Can I do a compressed schedule of four 10-hour days?",
-      "category": "general",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_76502a30",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it could not give a definitive answer and punted the user to their manager and the flex time policy, rather than directly answering the question about compressed schedules which is covered under flex time."
-    },
-    {
-      "id": "regression_conv_4a6e387",
-      "question": "What's the earliest I can begin work under flexible hours?",
-      "category": "general",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_4a6e3875",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it could not answer a question about flexible hours, which is an in-scope topic according to the provided documentation. It should have used its tools to find this information."
-    },
-    {
-      "id": "regression_conv_938c17c",
-      "question": "How many company-paid holidays are there?",
-      "category": "holidays",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_938c17cf",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to answer an in-scope question."
-    },
-    {
-      "id": "regression_conv_2fd858a",
-      "question": "Does working remotely require sign-off from anyone?",
-      "category": "remote_work",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_2fd858ac",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent returned an error message indicating a tool was not found, which is not a useful response to the user's query."
-    },
-    {
-      "id": "regression_conv_ff1e1a3",
-      "question": "What portion of my pay does short-term disability replace?",
-      "category": "general",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_ff1e1a31",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to use its tools to answer an in-scope question."
-    },
-    {
-      "id": "regression_conv_f5a373a",
-      "question": "What's the maximum duration of short-term disability?",
-      "category": "general",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_f5a373ab",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it could not answer an in-scope question and directed the user to HR, rather than using its tools to find the information."
-    },
-    {
-      "id": "regression_conv_2db8834",
-      "question": "How much will the company reimburse for tuition each year?",
-      "category": "expenses",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_2db88344",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it could not answer an in-scope question and directed the user to HR, rather than using its tools to find the information."
-    },
-    {
-      "id": "regression_conv_139f975",
-      "question": "What grade must I earn to get tuition reimbursed?",
-      "category": "expenses",
-      "expected_agent": "unknown",
-      "source": "skill_evolution",
-      "source_session_id": "conv_139f9751",
-      "verdict": "unhelpful",
-      "failure_reason": "The agent stated it did not have information on tuition reimbursement, which is an in-scope topic. It should have used its tools to find this information."
     }
   ]
 }
