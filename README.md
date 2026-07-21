@@ -16,8 +16,6 @@
     * [5 — Verify everything: one command](#5--verify-everything-one-command)
   * [Run the Demo](#run-the-demo)
     * [The one-command run](#the-one-command-run)
-      * [Deployed (default)](#deployed-default)
-      * [Local (`--local`)](#local---local)
     * [The step-by-step walkthrough](#the-step-by-step-walkthrough)
     * [Step 1 — The starting point (defined, verifiable)](#step-1--the-starting-point-defined-verifiable)
     * [Step 2 — Generate labeled traffic (the system observes failures)](#step-2--generate-labeled-traffic-the-system-observes-failures)
@@ -510,6 +508,8 @@ time you have vs what the numbers must prove:
 
 | | Lite | Standard | Full |
 |---|---|---|---|
+| Run deployed (default) | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
+| Run local (sandbox) | `run_lite.sh --local` | `run_standard.sh --local` | `run_full.sh --local` |
 | Caveats | chunky rates (each question is worth ~7.7 percentage points of the score; close candidates can swap ranks) — directional, for first contact and iteration | steadier rates (~4 percentage points per question), better ranking; still no held-out set — for comparing skill ideas | winner re-scored on unseen questions, no overfitting asterisk — when the number is the deliverable |
 | Wall time (measured locally) | **~17 min** | ~30-40 min | ~1-2 h |
 | Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
@@ -518,46 +518,22 @@ time you have vs what the numbers must prove:
 | Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
 | Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
 
-#### Deployed (default)
-
-The commands run the profile as the Cloud Run job against the live
-stack; the winner is pushed to the Skill Registry and opened as a
-real PR — merging activates it:
-
-```bash
-bash scripts/demo/skill_evolution/run_lite.sh
-```
-
-```bash
-bash scripts/demo/skill_evolution/run_standard.sh
-```
-
-```bash
-bash scripts/demo/skill_evolution/run_full.sh
-```
-
-`run_full.sh` executes the job with its default arguments —
-identical to the weekly scheduled run. Deployed runs validate on the
-25-question set (lite vs standard there differ by candidate count).
-
-#### Local (`--local`)
-
-Same commands with `--local`: a sandbox on this machine. Agents run
-in-process (`--local --local-agents` on every traffic call — the
-deployed stack receives zero requests) and nothing is published;
-extras pass through (e.g. `run_standard.sh --local --candidates 4`):
+All commands live in `scripts/demo/skill_evolution/`, e.g.:
 
 ```bash
 bash scripts/demo/skill_evolution/run_lite.sh --local
 ```
 
-```bash
-bash scripts/demo/skill_evolution/run_standard.sh --local
-```
+**Deployed** (the default) runs the profile as the Cloud Run job
+against the live stack; the winner is pushed to the Skill Registry
+and opened as a real PR — merging activates it. `run_full.sh` uses
+the job's default arguments, identical to the weekly scheduled run;
+deployed runs validate on the 25-question set.
 
-```bash
-bash scripts/demo/skill_evolution/run_full.sh --local
-```
+**Local** (`--local`) is a sandbox on this machine: agents run
+in-process (`--local --local-agents` on every traffic call — the
+deployed stack receives zero requests) and nothing is published.
+Extras pass through, e.g. `run_standard.sh --local --candidates 4`.
 
 Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
 conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.
