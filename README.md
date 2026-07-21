@@ -480,20 +480,23 @@ All green -> Step 1 is done.
 
 For the demo you can fire the whole loop with one command (below) — or, to see and verify every stage yourself, walk the steps manually one by one.
 
-**Local** (~15 min, no deployment) — runs the entire loop on this
-machine with local agents; the winning skill is written straight to
-the local `SKILL.md` and results land in `eval/runs/`. No PR, no
-registry, no CI — the learning loop without the governance around it:
+Both commands run the same learning loop (the six steps below). They
+differ in where the agents run and how the winning skill goes live:
+
+| | Local | Deployed |
+|---|---|---|
+| Agents | Python processes on this machine | the live stack (Agent Engine + Cloud Run) |
+| Failures come from | traffic generated during the run | BigQuery traces of the deployed agents |
+| Winning skill | written to the local `SKILL.md`, active immediately | pushed to the Skill Registry and opened as a PR |
+| Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
+
+Local (~15 min):
 
 ```bash
 bash scripts/demo/skill_evolution/run_demo.sh --quick
 ```
 
-**Deployed** (~20 min, the production loop) — the Cloud Run job runs
-the same loop against the deployed stack: scores traces from
-BigQuery, evolves, validates candidates, pushes the winner to the
-Skill Registry, and opens a PR with regression cases; merging the PR
-activates the skill:
+Deployed (~20 min):
 
 ```bash
 gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
