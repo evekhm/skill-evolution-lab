@@ -901,12 +901,25 @@ V0 -> V1 is the key jump. The evolved skill gains structured sections
 (Tool Usage, Anti-Patterns, Out-of-Scope, Keyword Mappings) that the
 V0 baseline lacks entirely.
 
-Use `--reuse-v0` to skip V0 traffic generation on subsequent runs
-(saves ~20 minutes on full runs):
+**Reusing the V0 baseline.** The demo's first phase measures how bad
+V0 is: send traffic at the V0 skill, judge every conversation,
+produce the "before" numbers. That result barely changes between
+runs — V0 fails the same way every time — so on repeat runs you can
+skip re-measuring it. The startup banner shows which mode you are in
+(`Reuse V0: false` = fresh baseline, the default; `true` = borrowed):
 
 ```bash
 bash scripts/demo/skill_evolution/run_demo.sh --full --reuse-v0
 ```
+
+`--reuse-v0` takes the V0 traffic and quality report from a previous
+run (`--resume <run-dir>` picks which; without it, the pre-built
+reference baseline) and spends the saved ~20 minutes on the part
+that changes: evolution and the V1 proof. First run: leave the
+default, so before and after come from the same session and model.
+Iterating on evolution: add the flag. One label caveat: borrowed V0
+traffic keeps its original run's `demo_run` label — only the newly
+generated conversations carry this run's label.
 
 ### Try it interactively
 
