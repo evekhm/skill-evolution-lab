@@ -787,13 +787,21 @@ fi
 # Preview the version with the BEST measured rate (the agent can evolve
 # past its own peak: a later round may score worse than an earlier one).
 BEST_V=""; BEST_RATE=-1; BEST_REPORT=""
-for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json; do
+for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
+         "$RUN_DIR"/candidate_*_report.json; do
     [ -f "$f" ] || continue
-    v=$(basename "$f" | grep -oE '^v[0-9]+')
+    v=$(basename "$f" | grep -oE '^v[0-9]+' || true)
     [ "$v" = "v0" ] && continue
     rate=$(jq -r '.summary.meaningful_rate // -1' "$f" 2>/dev/null)
     if awk "BEGIN{exit !($rate > $BEST_RATE)}"; then
-        BEST_RATE="$rate"; BEST_V="$v"; BEST_REPORT="$f"
+        BEST_RATE="$rate"; BEST_REPORT="$f"
+        # candidate reports carry no version; the deployed winner is
+        # the highest vN skill snapshot in the run dir
+        if [ -z "$v" ]; then
+            BEST_V=$(ls "$RUN_DIR" | grep -oE '^v[0-9]+' | grep -v '^v0$' | sort -V | tail -1)
+        else
+            BEST_V="$v"
+        fi
     fi
 done
 if [ -n "$BEST_V" ]; then
@@ -820,9 +828,11 @@ fi
     echo "|---|---|"
     v0r=$(jq -r '.summary.meaningful_rate // "?"' "$RUN_DIR/v0_quality_report.json" 2>/dev/null)
     echo "| V0 baseline | ${v0r}% |"
-    for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json; do
+    for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
+             "$RUN_DIR"/candidate_*_report.json; do
         [ -f "$f" ] || continue
-        v=$(basename "$f" | grep -oE '^v[0-9]+'); [ "$v" = "v0" ] && continue
+        n=$(basename "$f"); v=$(echo "$n" | grep -oE '^v[0-9]+' || echo "${n%_report.json}")
+        [ "$v" = "v0" ] && continue
         echo "| $v | $(jq -r '.summary.meaningful_rate // "?"' "$f")% |"
     done
     [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
