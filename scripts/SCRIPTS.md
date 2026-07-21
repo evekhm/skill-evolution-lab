@@ -65,6 +65,9 @@ bash scripts/deploy/deploy_gcp.sh
 | Script | Description |
 |--------|-------------|
 | `run_demo.sh` | Full local E2E pipeline: `--full` (205q, ~2h), `--quick` (22q, ~15min), `--reuse-v0` (skip V0 traffic). Handles traffic, scoring, agentic evolution with best-of-N, and V0 restore. |
+| `run_lite.sh` | Lite demo profile (~17 min): 13q, 2 candidates, 1 round, supervisor target |
+| `run_standard.sh` | Standard demo profile (~30-40 min): 25q, 3 candidates, 1 round |
+| `run_full.sh` | Full demo profile (~1-2 h): 55q + held-out split, agent-decided scope |
 | `rollback_demo.sh` | One-command rollback: resets SKILL.md files to V0, republishes V0 to the Skill Registry, restarts the agents. Flags: `--baseline stub\|two-defect`, `--skip-redeploy` |
 | `score.sh` | Score conversations: SDK turn tagger + quality scoring with ground truth. Auto-detects `eval/data/golden_evals.json` for per-question embedding matching. |
 | `create_evolution_pr.sh` | Create a PR with the evolved skill and quality metrics for review |

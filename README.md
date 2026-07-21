@@ -891,7 +891,7 @@ the numbers need to prove:
 
 | | Lite (default `--quick`) | Standard | Full (`--full`) |
 |---|---|---|---|
-| Command | `run_demo.sh --quick` | `run_demo.sh --quick --questions eval/data/questions/two_defect_quick.json --candidates 3` | `run_demo.sh --full` |
+| Command | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
 | Wall time (measured) | **~17 min** | ~30-40 min | ~1-2 h |
 | Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
 | Candidates | 2 | 3 | agent-decided (up to 5) |
@@ -902,22 +902,23 @@ the numbers need to prove:
 Lite:
 
 ```bash
-bash scripts/demo/skill_evolution/run_demo.sh --quick
+bash scripts/demo/skill_evolution/run_lite.sh
 ```
 
 Standard:
 
 ```bash
-bash scripts/demo/skill_evolution/run_demo.sh --quick \
-  --questions eval/data/questions/two_defect_quick.json \
-  --candidates 3
+bash scripts/demo/skill_evolution/run_standard.sh
 ```
 
 Full:
 
 ```bash
-bash scripts/demo/skill_evolution/run_demo.sh --full
+bash scripts/demo/skill_evolution/run_full.sh
 ```
+
+Each wrapper bakes in its profile's arguments and passes any extras
+through to `run_demo.sh` (e.g. `run_standard.sh --candidates 4`).
 
 All three run identical conversations — 4 turns, adversarial
 simulated user, the serving model — and produce the same artifacts:
