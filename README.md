@@ -490,10 +490,11 @@ differ in where the agents run and how the winning skill goes live:
 | Winning skill | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed | pushed to the Skill Registry and opened as a PR |
 | Safety | none — it is a sandbox | CI gate on the PR; a human merge activates it |
 
-Local (~30-45 min):
+Local (~17 min, the lite profile — see the three profiles in
+[Alternative: Local-Only Demo](#alternative-local-only-demo-no-deployment)):
 
 ```bash
-bash scripts/demo/skill_evolution/run_demo.sh --quick
+bash scripts/demo/skill_evolution/run_lite.sh
 ```
 
 Deployed (~30-45 min):
@@ -957,7 +958,7 @@ skip re-measuring it. The startup banner shows which mode you are in
 (`Reuse V0: false` = fresh baseline, the default; `true` = borrowed):
 
 ```bash
-bash scripts/demo/skill_evolution/run_demo.sh --full --reuse-v0
+bash scripts/demo/skill_evolution/run_full.sh --reuse-v0
 ```
 
 `--reuse-v0` takes the V0 traffic and quality report from a previous
@@ -1421,8 +1422,8 @@ Golden Q&A feeds three consumers:
 
 | Variant | Command | Time | Use when |
 |---|---|---|---|
-| Local quick | `bash scripts/demo/skill_evolution/run_demo.sh --quick` | ~17 min | First contact; no deployment (see the three profiles above) |
-| Local full | `bash scripts/demo/skill_evolution/run_demo.sh --full` | ~1-2 h | Full local evaluation (55 questions + held-out split) |
+| Local quick | `bash scripts/demo/skill_evolution/run_lite.sh` | ~17 min | First contact; no deployment (lite profile; run_standard.sh for steadier numbers) |
+| Local full | `bash scripts/demo/skill_evolution/run_full.sh` | ~1-2 h | Full local evaluation (55 questions + held-out split) |
 | GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,2,--quick"` | ~30-45 min | Live demo of the deployed loop, warm BigQuery window |
 | GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~1.5-3 h | Production cadence: agent-decided scope, full validation |
 
@@ -1648,7 +1649,7 @@ LLM judge. Re-run whenever your golden evals change.
 ### Step 5: Run evolution
 
 ```bash
-bash scripts/demo/skill_evolution/run_demo.sh --quick
+bash scripts/demo/skill_evolution/run_lite.sh
 ```
 
 Or run the six bootstrap stages one at a time against your agent —
@@ -1760,6 +1761,7 @@ scripts/
   local/local_start.sh       Start all agents locally
   demo/skill_evolution/
     run_demo.sh              Full local E2E pipeline (--full/--quick/--reuse-v0)
+    run_lite.sh / run_standard.sh / run_full.sh   Profile wrappers (see Local-Only Demo)
     rollback_demo.sh         One-command rollback to V0 (registry + redeploy)
     score.sh                 Score conversations with golden eval matching
   test/smoke_test_deployed.sh  End-to-end smoke test of the deployed stack
