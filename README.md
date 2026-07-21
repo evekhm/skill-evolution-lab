@@ -356,10 +356,10 @@ Latency: 1.5s
 
 Same direct test for the math specialist.
 
-What to expect: a computed balance — `calculate_pto_details` accrues
-from demo dates, so the number is grounded in a tool and changes day
-to day. This is the same question 1.3.3.a and 1.3.3.b just answered
-without a tool and with a refusal, respectively.
+What to expect: a number, computed by the `calculate_pto_details`
+tool. The balance accrues from a demo start date, so the exact value
+changes from day to day. This agent is the only one of the three
+that actually calculates the answer.
 
 ```bash
 bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
