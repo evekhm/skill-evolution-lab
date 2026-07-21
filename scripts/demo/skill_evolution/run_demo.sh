@@ -807,6 +807,12 @@ fi
 
 banner "Done"
 echo "  Summary:     $RUN_DIR/SUMMARY.md"
+echo ""
+echo "  To reset EVERYTHING before a fresh run (skill files + registry"
+echo "  newest revision + live agents back to V0):"
+echo "    bash scripts/demo/skill_evolution/rollback_demo.sh"
+echo "  Optional — also delete this run's BigQuery slice:"
+echo "    bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_TRACE_LABEL"
 echo "  All outputs: $RUN_DIR"
 echo "  This run's BigQuery slice:"
 echo "    EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh"

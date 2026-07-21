@@ -945,6 +945,24 @@ run dir keeps every evolved version. A later round can score WORSE
 than an earlier one (the agent explores) — the preview always carries
 the best-measured version, and `SUMMARY.md` shows the full curve.
 
+### Resetting between runs
+
+The run already restores the local `SKILL.md` files to V0 when it
+ends. For a guaranteed-clean slate — files, Skill Registry newest
+revision, and the live agents all back to V0 — run the same rollback
+the deployed demo uses:
+
+```bash
+bash scripts/demo/skill_evolution/rollback_demo.sh
+```
+
+Optionally delete a finished run's BigQuery slice (label printed in
+the run's `SUMMARY.md`):
+
+```bash
+bash scripts/demo/skill_evolution/cleanup_label.sh demo_run=<run-folder>
+```
+
 ### Try it interactively
 
 Start the agents locally and chat with the supervisor through the
