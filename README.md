@@ -267,16 +267,16 @@ call each Cloud Run service directly.
 Tests the full chain: Vertex REST discovery -> Agent Engine session ->
 supervisor (skill loaded) -> streamed response.
 
-What to expect: the supervisor routes the balance question to
-hr_calculator over A2A and relays its computed answer. `Routed to`
-and `Tools` show the hop; "2 model turn(s)" = one turn to route, one
-to relay. Balance routing already works at V0 — the seeded defect is
-in POLICY questions, which V0 answers from a four-line baked summary
-or deflects to HR (Step 2 shows it with the meal-reimbursement
-question).
+What to expect: a DEFLECTION — this is the seeded V0 defect, live.
+The question is a policy question; the answer sits in policy_agent's
+documents one A2A hop away (1.3.3.b proves it). V0 never takes the
+hop: `Routed to: direct`, `Tools: (none)`, "contact HR". Balance
+questions DO route (ask "How many PTO days do I have left?" and the
+Tools line shows hr_calculator) — the defect is policy questions
+only, and it is what the evolution fixes.
 
 ```bash
-bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
 ```
 
 > without -q it runs a default question set
@@ -291,17 +291,17 @@ Discovering Reasoning Engine 'knowledge-supervisor' in <PROJECT_ID>/us-central1.
 Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_ID>
 
 ─────────────────────────────────────────
-Q: How many PTO days do I have left?
+Q: What is the meal reimbursement limit?
 ─────────────────────────────────────────
-  Routed to:  hr_calculator
+  Routed to:  direct
   Model:      gemini-3.1-flash-lite
-  Tools:      hr_calculator
-  Tokens:     supervisor 650→47 over 2 model turn(s) (thinking: 0)
+  Tools:      (none)
+  Tokens:     supervisor 298→19 over 1 model turn(s) (thinking: 0)
 
-  A: You currently have 7.8 PTO days left. You also have 4.8 sick
-     leave days remaining.
+  A: I do not have information regarding meal reimbursement limits.
+     Please contact HR for assistance with this question.
 
-  Latency: 4.7s
+  Latency: 1.6s
 ```
 
 Output:
