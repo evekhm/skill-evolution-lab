@@ -1514,6 +1514,16 @@ def push_skill_to_registry(
 
     if agent is None:
         agent = _DEFAULT_AGENT
+    gate_ok, gate_summary = _publish_gate_check(run_dir, version, agent)
+    if gate_ok is False:
+        return {
+            "status": "refused_by_gate",
+            "reason": (
+                "Winner failed the full CI-equivalent golden suite — "
+                f"NOT pushed to the registry ({gate_summary}). No PR "
+                "will be opened; no refusal email."
+            ),
+        }
     entry = _AGENTS.get(agent)
     if not entry:
         return {"status": "error", "error": f"Unknown agent: {agent}"}
@@ -1779,6 +1789,19 @@ def create_evolution_pr(
             "reason": "EVOLUTION_PUBLISH=0 — local sandbox run; the demo "
                       "creates a local PR preview instead (pr_preview.md)",
         }
+    if not dry_run and not output_file:
+        _gate_agent = agent or _DEFAULT_AGENT
+        gate_ok, gate_summary = _publish_gate_check(run_dir, version, _gate_agent)
+        if gate_ok is False:
+            return {
+                "status": "refused_by_gate",
+                "reason": (
+                    "Winner failed the full CI-equivalent golden suite — "
+                    f"PR NOT opened ({gate_summary}). Fix the skill or run "
+                    "another round; the refusal stays in this log instead "
+                    "of an email."
+                ),
+            }
     if agent is None:
         agent = _DEFAULT_AGENT
     run_dir = os.path.abspath(run_dir)
