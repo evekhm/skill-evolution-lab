@@ -259,6 +259,10 @@ DEMO_START_TS=$(date +%s)
 if [ "$MODE" = "quick" ]; then
     ROUNDS="${ROUNDS:-1}"
     CANDIDATES="${CANDIDATES:-2}"
+    # One target agent: evolving all three (supervisor+policy+benefits)
+    # triples candidate scoring for no demo gain — the supervisor stage
+    # alone reaches the headline number. EVOLVE_TARGET overrides.
+    EVOLVE_TARGET="${EVOLVE_TARGET:-supervisor}"
 fi
 
 # One auto-generated label for the WHOLE demo run, tied 1:1 to the run
@@ -471,6 +475,7 @@ if $EVOLVE_ONLY; then
     [ -n "$ROUNDS" ] && AGENT_FLAGS="$AGENT_FLAGS --rounds $ROUNDS"
     [ -n "$CANDIDATES" ] && AGENT_FLAGS="$AGENT_FLAGS --candidates $CANDIDATES"
     [ -n "$MIN_FAILURES" ] && AGENT_FLAGS="$AGENT_FLAGS --min-failures $MIN_FAILURES"
+    [ -n "${EVOLVE_TARGET:-}" ] && AGENT_FLAGS="$AGENT_FLAGS --mode $EVOLVE_TARGET"
 
     EVOLVE_START=$(date +%s)
     uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
@@ -739,6 +744,7 @@ fi
 [ -n "$ROUNDS" ] && AGENT_FLAGS="$AGENT_FLAGS --rounds $ROUNDS"
 [ -n "$CANDIDATES" ] && AGENT_FLAGS="$AGENT_FLAGS --candidates $CANDIDATES"
 [ -n "$MIN_FAILURES" ] && AGENT_FLAGS="$AGENT_FLAGS --min-failures $MIN_FAILURES"
+    [ -n "${EVOLVE_TARGET:-}" ] && AGENT_FLAGS="$AGENT_FLAGS --mode $EVOLVE_TARGET"
 
 uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
     tee "$RUN_DIR/agent_output.log" || \
