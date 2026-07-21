@@ -921,6 +921,30 @@ Iterating on evolution: add the flag. One label caveat: borrowed V0
 traffic keeps its original run's `demo_run` label — only the newly
 generated conversations carry this run's label.
 
+### Reading the output
+
+Every run writes to `eval/runs/<timestamp>_demo_<mode>/`. Start with
+`SUMMARY.md` — the run's slice label, whether anything was published
+(local runs: no), a quality table for every version, and which
+version the PR preview carries. From there:
+
+- `run.log` — everything the run printed, including the slice label
+- `v0_quality_report.md` — the judged baseline, failure by failure;
+  these failures are the evolution's input
+- `_score_candidate_N_report.json` — each candidate's replay score;
+  the best one becomes the next version
+- `vN_*_skill.md` — the evolved skill text per version. Read these:
+  the diff against V0 IS the learning, in plain markdown
+- `pr_preview.md` — the PR as a local artifact: metrics table,
+  summary of changes, diff, and the two commands that publish it
+- `TRIAGE.md` — failures split into what evolution fixed vs what it
+  cannot fix (tool bugs -> ENG, missing facts -> KNOWLEDGE)
+
+The live `SKILL.md` files are restored to V0 when the run ends; the
+run dir keeps every evolved version. A later round can score WORSE
+than an earlier one (the agent explores) — the preview always carries
+the best-measured version, and `SUMMARY.md` shows the full curve.
+
 ### Try it interactively
 
 Start the agents locally and chat with the supervisor through the

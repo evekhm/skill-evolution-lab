@@ -220,6 +220,166 @@
       "source_session_id": "conv_139f9751",
       "verdict": "unhelpful",
       "failure_reason": "The agent stated it did not have information on tuition reimbursement, which is an in-scope topic. It should have used its tools to find this information."
+    },
+    {
+      "id": "regression_conv_89d0f4a",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_89d0f4ad",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, rather than using its tools to find the answer about benefits."
+    },
+    {
+      "id": "regression_conv_ad65516",
+      "question": "Which health plan types can I choose from?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_ad655167",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent asked a clarifying question instead of directly answering the user's question about available health plan types, which is information that should be readily available."
+    },
+    {
+      "id": "regression_conv_76c25ae",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_76c25ae1",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, instead of using its tools to look up the bereavement leave policy."
+    },
+    {
+      "id": "regression_conv_a1d7304",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_a1d73048",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not help with short-term disability, which is an in-scope topic according to the AGENT SCOPE. It then directed the user to HR, which is not a tool-based resolution."
+    },
+    {
+      "id": "regression_conv_841dc10",
+      "question": "On a $130,000 salary, how much would short-term disability pay me per week?",
+      "category": "compensation",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_841dc10a",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not answer an in-scope question and directed the user to HR, instead of using its tools to find the information."
+    },
+    {
+      "id": "regression_conv_7f00362",
+      "question": "How many counseling visits does the EAP cover?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_7f003621",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent returned an error message indicating a tool was not found, which is not a useful response to any user query."
+    },
+    {
+      "id": "regression_conv_aeea873",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_aeea8738",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to provide the meal allowance which is explicitly listed in the GROUND TRUTH DATA."
+    },
+    {
+      "id": "regression_conv_37c301d",
+      "question": "Is a receipt needed for a $40 purchase?",
+      "category": "expenses",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_37c301d9",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not provide specific details and directed the user to the expense policy or HR, rather than using its tools to find the answer."
+    },
+    {
+      "id": "regression_conv_c41f847",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_c41f8475",
+      "verdict": "partial",
+      "failure_reason": "The agent acknowledges the question and directs the user to their manager, which is a reasonable next step, but it does not provide specific information about compressed schedules from its knowledge base."
+    },
+    {
+      "id": "regression_conv_a09bb08",
+      "question": "What's the earliest I can begin work under flexible hours?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_a09bb08e",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not find the information and directed the user to HR, rather than using its tools to find the answer. The policy document does contain the answer."
+    },
+    {
+      "id": "regression_conv_c6aad9f",
+      "question": "How many company-paid holidays are there?",
+      "category": "holidays",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_c6aad9f8",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to answer an in-scope question."
+    },
+    {
+      "id": "regression_conv_e3a404c",
+      "question": "How many unused vacation days carry into next year?",
+      "category": "pto",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_e3a404cc",
+      "verdict": "partial",
+      "failure_reason": "The agent acknowledges the question and states the annual PTO, but fails to provide the specific information about carry-over days, which was the core of the user's question. It then suggests checking the policy details, which is what the user was trying to do by asking the agent."
+    },
+    {
+      "id": "regression_conv_44f876d",
+      "question": "What portion of my pay does short-term disability replace?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_44f876d0",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent incorrectly stated it could not answer questions about short-term disability, which is an in-scope topic according to the provided AGENT SCOPE."
+    },
+    {
+      "id": "regression_conv_e14c6fa",
+      "question": "What's the maximum duration of short-term disability?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_e14c6fa1",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to use its tools to answer an in-scope question."
+    },
+    {
+      "id": "regression_conv_18f303d",
+      "question": "How much will the company reimburse for tuition each year?",
+      "category": "expenses",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_18f303da",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not find the information and directed the user to HR, rather than using its tools to look up tuition reimbursement policy."
+    },
+    {
+      "id": "regression_conv_fd68061",
+      "question": "What grade must I earn to get tuition reimbursed?",
+      "category": "expenses",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_fd68061d",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent incorrectly stated that tuition reimbursement is out of scope and directed the user to HR, when it is an in-scope topic that the benefits_agent should handle."
     }
   ]
 }

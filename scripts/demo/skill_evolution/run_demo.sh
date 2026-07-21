@@ -260,6 +260,11 @@ mkdir -p "$RUN_DIR"
 DEMO_TRACE_LABEL="${DEMO_TRACE_LABEL:-demo_run=$(basename "$RUN_DIR")}"
 export TRACE_LABELS="${TRACE_LABELS:+$TRACE_LABELS,}$DEMO_TRACE_LABEL"
 
+# Local demo is a SANDBOX: the evolution agent's registry/PR/issue tools
+# are disabled (BQ trace logging stays on). The PR is produced as a
+# local artifact instead. Override with EVOLUTION_PUBLISH=1.
+export EVOLUTION_PUBLISH="${EVOLUTION_PUBLISH:-0}"
+
 # Tee output to log file
 RUN_LOG="$RUN_DIR/run.log"
 echo "$ $0 $ORIGINAL_ARGS" > "$RUN_LOG"
@@ -741,16 +746,67 @@ if [ -n "$TESTSET" ]; then
         -o "$RUN_DIR/TRIAGE.md" || echo "  (triage step failed; see logs)"
 fi
 
-# --- PR as a local artifact: branch + commit + pr_preview.md, no push ---
-LATEST_V=$(ls "$RUN_DIR" 2>/dev/null | grep -oE '^v[0-9]+' | grep -v '^v0$' | sort -V | tail -1)
-if [ -n "$LATEST_V" ]; then
-    banner "PR PREVIEW (local branch + $RUN_DIR/pr_preview.md, nothing pushed)"
+# --- Always end at V0: evolved skills stay snapshotted in the run dir ---
+if declare -f restore_v0 >/dev/null; then
+    banner "RESTORE V0 (evolved skills remain in $RUN_DIR as vN_*_skill.md)"
+    restore_v0 || echo "  (restore failed — check agents/enterprise/*/skill/)"
+fi
+
+# --- PR as a local artifact: branch + commit + pr_preview.md, no push.
+# Preview the version with the BEST measured rate (the agent can evolve
+# past its own peak: a later round may score worse than an earlier one).
+BEST_V=""; BEST_RATE=-1; BEST_REPORT=""
+for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json; do
+    [ -f "$f" ] || continue
+    v=$(basename "$f" | grep -oE '^v[0-9]+')
+    [ "$v" = "v0" ] && continue
+    rate=$(jq -r '.summary.meaningful_rate // -1' "$f" 2>/dev/null)
+    if awk "BEGIN{exit !($rate > $BEST_RATE)}"; then
+        BEST_RATE="$rate"; BEST_V="$v"; BEST_REPORT="$f"
+    fi
+done
+if [ -n "$BEST_V" ]; then
+    banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
     bash "$SCRIPT_DIR/create_evolution_pr.sh" \
-        --run-dir "$RUN_DIR" --version "$LATEST_V" --local \
+        --run-dir "$RUN_DIR" --version "$BEST_V" --local \
+        --evolved-report "$BEST_REPORT" \
         || echo "  (pr preview failed; see logs)"
 fi
 
+# --- SUMMARY.md: one file that reads the whole run ---
+{
+    echo "# Demo Run Summary — $(basename "$RUN_DIR")"
+    echo ""
+    echo "- BigQuery slice: \`$DEMO_TRACE_LABEL\`"
+    echo "  (\`EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh\`)"
+    echo "- Published anywhere: $([ "${EVOLUTION_PUBLISH}" = "0" ] && echo "NO (sandbox — registry/PR/issue disabled)" || echo "YES (EVOLUTION_PUBLISH=1)")"
+    echo "- Live skills: restored to V0; evolved versions snapshotted here as vN_*_skill.md"
+    echo ""
+    echo "## Quality (meaningful rate)"
+    echo ""
+    echo "| Version | Rate |"
+    echo "|---|---|"
+    v0r=$(jq -r '.summary.meaningful_rate // "?"' "$RUN_DIR/v0_quality_report.json" 2>/dev/null)
+    echo "| V0 baseline | ${v0r}% |"
+    for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json; do
+        [ -f "$f" ] || continue
+        v=$(basename "$f" | grep -oE '^v[0-9]+'); [ "$v" = "v0" ] && continue
+        echo "| $v | $(jq -r '.summary.meaningful_rate // "?"' "$f")% |"
+    done
+    [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
+    echo ""
+    echo "## Files worth reading"
+    echo ""
+    echo "- \`run.log\` — full console output of the run"
+    echo "- \`v0_quality_report.json/.md\` — the judged baseline (failures = evolution input)"
+    echo "- \`_score_candidate_N_report.json\` — each candidate's replay score"
+    echo "- \`vN_*_skill.md\` — every evolved skill, per version"
+    echo "- \`pr_preview.md\` — the PR as a local artifact (branch name inside)"
+    echo "- \`TRIAGE.md\` — what evolution fixed vs what it cannot fix (if generated)"
+} > "$RUN_DIR/SUMMARY.md"
+
 banner "Done"
+echo "  Summary:     $RUN_DIR/SUMMARY.md"
 echo "  All outputs: $RUN_DIR"
 echo "  This run's BigQuery slice:"
 echo "    EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh"

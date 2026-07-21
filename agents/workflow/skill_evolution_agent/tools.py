@@ -1230,6 +1230,11 @@ def create_evolution_issue(
     Returns:
         Dict with status, issue URL/number, or dry_run file path.
     """
+    if os.getenv("EVOLUTION_PUBLISH", "1") == "0" and not dry_run:
+        return {
+            "status": "skipped",
+            "reason": "EVOLUTION_PUBLISH=0 — local sandbox run",
+        }
     if agent is None:
         agent = _DEFAULT_AGENT
     run_dir = os.path.abspath(run_dir)
@@ -1456,6 +1461,12 @@ def push_skill_to_registry(
     Returns:
         Dict with status, skill_id and revision count.
     """
+    if os.getenv("EVOLUTION_PUBLISH", "1") == "0":
+        return {
+            "status": "skipped",
+            "reason": "EVOLUTION_PUBLISH=0 — local sandbox run; nothing "
+                      "leaves this machine (registry push disabled)",
+        }
     import shutil
     import tempfile
 
@@ -1709,6 +1720,13 @@ def create_evolution_pr(
     Returns:
         Dict with status, PR URL, and metrics.
     """
+    if (os.getenv("EVOLUTION_PUBLISH", "1") == "0"
+            and not dry_run and not output_file):
+        return {
+            "status": "skipped",
+            "reason": "EVOLUTION_PUBLISH=0 — local sandbox run; the demo "
+                      "creates a local PR preview instead (pr_preview.md)",
+        }
     if agent is None:
         agent = _DEFAULT_AGENT
     run_dir = os.path.abspath(run_dir)
