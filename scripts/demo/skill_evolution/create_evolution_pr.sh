@@ -307,16 +307,16 @@ cp "$EVOLVED_SKILL" "$TMPFILE"
 # --- Stash uncommitted changes ---
 STASHED=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
-    git stash push -m "create_evolution_pr: temp stash"
+    git stash push --quiet -m "create_evolution_pr: temp stash"
     STASHED=true
 fi
 
 ORIGINAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 cleanup() {
-    git checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
+    git checkout --quiet "$ORIGINAL_BRANCH" 2>/dev/null || true
     if $STASHED; then
-        git stash pop 2>/dev/null || true
+        git stash pop --quiet >/dev/null 2>&1 || true
     fi
     rm -f "$TMPFILE"
 }
@@ -324,12 +324,12 @@ trap cleanup EXIT
 
 # --- Create branch from base, commit ONLY the skill file ---
 git fetch origin "$BASE_BRANCH" --quiet
-git checkout -b "$BRANCH" "origin/$BASE_BRANCH"
+git checkout --quiet -b "$BRANCH" "origin/$BASE_BRANCH"
 
 mkdir -p "$(dirname "$SKILL_PATH")"
 cp "$TMPFILE" "$SKILL_PATH"
 git add "$SKILL_PATH"
-git commit -m "$(cat <<EOF
+git commit --quiet -m "$(cat <<EOF
 Evolve ${AGENT} skill to ${VERSION}
 
 Meaningful rate: ${BASE_M_DISP} -> ${EVO_M_DISP}${MEANINGFUL_DELTA:+ (${MEANINGFUL_DELTA}pp)}

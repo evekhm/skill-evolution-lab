@@ -251,6 +251,7 @@ if [[ -z "${RUN_DIR:-}" ]]; then
     RUN_DIR="$EVAL_DIR/runs/$(date +%Y-%m-%d_%H%M%S)_demo_${MODE}"
 fi
 mkdir -p "$RUN_DIR"
+DEMO_START_TS=$(date +%s)
 
 # One auto-generated label for the WHOLE demo run, tied 1:1 to the run
 # folder name. Every traffic invocation inside inherits it via
@@ -458,6 +459,7 @@ if $EVOLVE_ONLY; then
     echo "  All outputs: $RUN_DIR"
     echo "  Elapsed:     $((EVOLVE_END - EVOLVE_START))s"
     echo "  Finished:    $(date)"
+echo "  Wall time:   $(( ($(date +%s) - DEMO_START_TS) / 60 ))m $(( ($(date +%s) - DEMO_START_TS) % 60 ))s"
     exit 0
 fi
 
@@ -817,6 +819,7 @@ echo "  All outputs: $RUN_DIR"
 echo "  This run's BigQuery slice:"
 echo "    EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh"
 echo "  Finished:    $(date)"
+echo "  Wall time:   $(( ($(date +%s) - DEMO_START_TS) / 60 ))m $(( ($(date +%s) - DEMO_START_TS) % 60 ))s"
 echo ""
 echo "  To publish the previewed PR:"
 echo "    ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir $RUN_DIR --version ${LATEST_V:-v1}"
