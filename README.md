@@ -510,25 +510,13 @@ time you have vs what the numbers must prove:
 
 | | Lite | Standard | Full |
 |---|---|---|---|
+| Caveats | chunky rates (each question ~7.7pp; close candidates can swap ranks) — directional, for first contact and iteration | steadier rates (~4pp/question), better ranking; still no held-out set — for comparing skill ideas | winner re-scored on unseen questions, no overfitting asterisk — when the number is the deliverable |
 | Wall time (measured locally) | **~17 min** | ~30-40 min | ~1-2 h |
 | Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
 | Candidates | 2 | 3 | agent-decided (up to 5) |
 | Rounds | 1 | 1 | agent-decided |
 | Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
 | Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
-
-Caveats:
-
-- **Lite**: each question is worth ~7.7pp, so rates are chunky and
-  two close candidates can swap ranks; one agent is evolved; the
-  improvement you see is directional, not quotable. Right for first
-  contact and every iteration loop.
-- **Standard**: steadier rates (~4pp per question), better candidate
-  ranking, still no held-out set — good for comparing skill ideas.
-- **Full**: the only profile whose final number carries no
-  overfitting asterisk (V0 and the winner are re-scored on questions
-  evolution never saw). Run it when the number is the deliverable —
-  a writeup, a review, a before/after you will defend.
 
 #### Deployed (default)
 
