@@ -730,7 +730,9 @@ Examples:
             os.path.dirname(os.path.abspath(__file__)))))
         os.environ["EVAL_QUESTIONS_FILE"] = os.path.join(
             _repo, "eval", "data", "questions", "two_defect_quick.json")
-        os.environ["EVAL_MAX_TURNS"] = "1"
+        # 2 turns: turn 1 exposes the deflection defect, turn 2 lets the
+        # simulated user push back so parroting behavior is measured too.
+        os.environ["EVAL_MAX_TURNS"] = "2"
         os.environ["SUPERVISOR_MODEL_ID"] = "gemini-2.5-flash"
         os.environ.setdefault("EVOLUTION_MAX_ANALYSTS", "30")
         # The agent's default threshold (30 failures) is sized for
