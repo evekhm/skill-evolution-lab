@@ -66,10 +66,11 @@ fi
 # ── Single-query mode (no --from-file) ───────────────────────────────────────
 if ! $BATCH; then
     SINGLE_Q="${SINGLE_Q:-What is our PTO policy?}"
-    MODE_LABEL="local"
-    $REMOTE && MODE_LABEL="remote (deployed)"
+    MODE_LABEL="LOCAL in-process (zero requests to the deployed stack)"
+    $REMOTE && MODE_LABEL="DEPLOYED (live Agent Engine supervisor, project ${PROJECT_ID})"
 
-    echo "=== Single Query ($MODE_LABEL) ==="
+    echo "=== Single Query ==="
+    echo "  MODE: $MODE_LABEL"
     echo "  Q: $SINGLE_Q"
     echo ""
 
@@ -92,10 +93,11 @@ if [ -z "${OUTPUT:-}" ]; then
     mkdir -p "$(dirname "$OUTPUT")"
 fi
 
-MODE_LABEL="local"
-$REMOTE && MODE_LABEL="remote (deployed)"
+MODE_LABEL="LOCAL in-process (zero requests to the deployed stack)"
+$REMOTE && MODE_LABEL="DEPLOYED (live Agent Engine supervisor, project ${PROJECT_ID})"
 
-echo "=== Batch Traffic ($MODE_LABEL) ==="
+echo "=== Batch Traffic ==="
+echo "  MODE: $MODE_LABEL"
 echo "  Questions:   ${FROM_FILE}${LIMIT:+ (limit: $LIMIT)}"
 echo "  Concurrency: $CONCURRENCY"
 echo "  Max turns:   $MAX_TURNS"

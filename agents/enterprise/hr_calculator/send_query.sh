@@ -50,6 +50,7 @@ done
 # Discover Cloud Run URL
 echo "=========================================="
 echo "  TARGET PROJECT: ${PROJECT_ID}"
+echo "  MODE: DEPLOYED (Cloud Run A2A service)"
 echo "=========================================="
 echo "Discovering ${SERVICE_NAME} in ${PROJECT}/${REGION}..."
 SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \

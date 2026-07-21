@@ -14,9 +14,11 @@ for a in "$@"; do case "$a" in
 esac; done
 if [ "$TARGET" = deployed ]; then
     set -a; source .env; set +a
+    echo "MODE: DEPLOYED — Cloud Run job 'skill-evolution-agent' in project ${PROJECT_ID} (winner -> Skill Registry + real PR)"
     JOB_ARGS="--full-loop,--mode,supervisor,--rounds,1,--candidates,2,--quick"
     for a in ${ARGS[@]+"${ARGS[@]}"}; do [ -n "$a" ] && JOB_ARGS="$JOB_ARGS,$a"; done
     exec gcloud run jobs execute skill-evolution-agent \
         --region "$REGION" --wait --args="$JOB_ARGS"
 fi
+echo "MODE: LOCAL sandbox — in-process agents, nothing published"
 exec bash scripts/demo/skill_evolution/run_demo.sh --quick ${ARGS[@]+"${ARGS[@]}"}

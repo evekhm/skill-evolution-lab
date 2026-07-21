@@ -40,6 +40,7 @@ set +a
 
 TABLE="\`${PROJECT_ID}.${DATASET_ID}.${TABLE_ID}\`"
 MODE="${1:-summary}"
+echo "TARGET: BigQuery ${PROJECT_ID}.${DATASET_ID}.${TABLE_ID}"
 
 # A filter in the environment means the caller wants the selector
 # preview; the --selector flag is kept for backward compatibility.

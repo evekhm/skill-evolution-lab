@@ -57,6 +57,7 @@ if $HAS_SIDE; then
     SEL="${SEL} UNION DISTINCT SELECT session_id FROM ${SIDE} WHERE label_key = '${KEY}' AND label_value = '${VAL}'"
 fi
 
+echo "TARGET: BigQuery ${PROJECT_ID}.${DATASET_ID}.${TABLE_ID}"
 echo "=== Slice matching ${LABEL} ==="
 bq query --project_id="${PROJECT_ID}" --use_legacy_sql=false --format=pretty \
   "SELECT COUNT(*) AS events, COUNT(DISTINCT session_id) AS sessions

@@ -34,6 +34,7 @@ LOCATION="${SUPERVISOR_REGION:-us-central1}"
 DISPLAY_NAME="knowledge-supervisor"
 echo "=========================================="
 echo "  TARGET PROJECT: ${PROJECT}"
+echo "  MODE: DEPLOYED (Agent Engine reasoning engine)"
 echo "=========================================="
 
 # Parse arguments
