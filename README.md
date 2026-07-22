@@ -1,3 +1,63 @@
+<!-- TOC -->
+* [Skill Evolution Lab](#skill-evolution-lab)
+  * [What This System Does](#what-this-system-does)
+  * [Prerequisites](#prerequisites)
+    * [1 — First time only: create the project and the repo](#1--first-time-only-create-the-project-and-the-repo)
+    * [2 — Local machine: tools, auth, environment](#2--local-machine-tools-auth-environment)
+      * [Tools and auth](#tools-and-auth)
+      * [Configure `.env`](#configure-env)
+      * [Python environment](#python-environment)
+    * [3 — GCP: deploy the stack](#3--gcp-deploy-the-stack)
+      * [3.1 — GCP infrastructure](#31--gcp-infrastructure)
+      * [3.2 — Deploy all six components](#32--deploy-all-six-components)
+      * [3.3 — Smoke test](#33--smoke-test)
+      * [3.4 — Connect Gemini Enterprise (optional)](#34--connect-gemini-enterprise-optional)
+    * [4 — GitHub: CI + bot wiring](#4--github-ci--bot-wiring)
+    * [5 — Verify everything: one command](#5--verify-everything-one-command)
+  * [Run the Demo](#run-the-demo)
+    * [The one-command run](#the-one-command-run)
+    * [The step-by-step walkthrough](#the-step-by-step-walkthrough)
+    * [Step 1 — Reset to the V0 baseline](#step-1--reset-to-the-v0-baseline)
+    * [Step 2 — Generate labeled traffic](#step-2--generate-labeled-traffic)
+    * [Step 3 — Run the evolution job](#step-3--run-the-evolution-job)
+    * [Step 4 — Review the PR](#step-4--review-the-pr)
+    * [Choosing which traces to evolve on (labels)](#choosing-which-traces-to-evolve-on-labels)
+    * [Step 5 — Merge to activate](#step-5--merge-to-activate)
+    * [Step 6 — Verify the fix](#step-6--verify-the-fix)
+    * [Step 7 — Roll back](#step-7--roll-back)
+  * [Alternative: Local-Only Demo (no deployment)](#alternative-local-only-demo-no-deployment)
+    * [What to expect](#what-to-expect)
+    * [Try it interactively](#try-it-interactively)
+    * [Manual step-by-step](#manual-step-by-step)
+  * [Architecture](#architecture)
+    * [Serving path (what runs where)](#serving-path-what-runs-where)
+    * [How a question flows (Agent Engine, AgentTool, A2A)](#how-a-question-flows-agent-engine-agenttool-a2a)
+    * [The evolution loop (end to end)](#the-evolution-loop-end-to-end)
+    * [Where each piece runs](#where-each-piece-runs)
+    * [Components in detail](#components-in-detail)
+    * [The full cycle, actor by actor](#the-full-cycle-actor-by-actor)
+    * [The one manual input: Golden Q&A](#the-one-manual-input-golden-qa)
+  * [Demo Variants — What Runs, What Is Cut, and Why](#demo-variants--what-runs-what-is-cut-and-why)
+    * [The four ways to run it](#the-four-ways-to-run-it)
+    * [Every step of the GCP demo run](#every-step-of-the-gcp-demo-run)
+    * [What `--quick` cuts — and what it never touches](#what---quick-cuts--and-what-it-never-touches)
+  * [Quality Monitoring & Automated Evolution](#quality-monitoring--automated-evolution)
+    * [Quality Agent -- Daily Sentinel](#quality-agent----daily-sentinel)
+    * [Skill Evolution Agent -- Weekly Healer](#skill-evolution-agent----weekly-healer)
+    * [Version-Aware Filtering](#version-aware-filtering)
+    * [Why Separate Monitoring and Healing?](#why-separate-monitoring-and-healing)
+  * [Plug In Your Own Agent](#plug-in-your-own-agent)
+    * [Step 1: Create golden evals](#step-1-create-golden-evals)
+    * [Step 2: Create the V0 skill](#step-2-create-the-v0-skill)
+    * [Step 3: Register the agent](#step-3-register-the-agent)
+    * [Step 4: Extract ground truth](#step-4-extract-ground-truth)
+    * [Step 5: Run evolution](#step-5-run-evolution)
+  * [CI/CD and GitHub Integration](#cicd-and-github-integration)
+  * [Project Structure](#project-structure)
+  * [Backlog](#backlog)
+  * [Next Directions](#next-directions)
+  * [Related Posts](#related-posts)
+<!-- TOC -->
 # Skill Evolution Lab
 
 A multi-agent system that **learns from its own execution traces** and
@@ -14,77 +74,1027 @@ flowing through a pull request.
 > multi-agent stack, on a schedule, with CI gates and one-command
 > rollback.
 
-## What are Skills?
+## What This System Does
 
-A **skill** is a structured markdown document (`SKILL.md`) that encodes
-everything an agent needs to know about its domain: role, tool-use
-instructions, topic expertise, scope boundaries, and response patterns.
+This repo is a complete, deployed demonstration of an agent system that
+improves itself from its own production traffic — with humans approving
+every change.
 
-```text
-agents/enterprise/policy_agent/skill/
-  SKILL.md              # The skill document (loaded as system instruction)
-  references/           # Supporting data referenced by the skill
+**The product side — enterprise agents** (`agents/enterprise/`, they
+serve end users):
+
+- **`knowledge_supervisor`** — the root agent, deployed on **Vertex AI
+  Agent Engine**. It owns the conversation: receives every employee
+  question, decides which specialists are needed, calls them (several
+  in one turn for compound questions), and synthesizes one answer.
+- **`policy_agent`** — the company-policy specialist, deployed on
+  **Cloud Run** behind an **A2A** endpoint. Answers PTO, sick leave,
+  remote work, expense, and holiday questions using the
+  `lookup_company_policy` tool. Its `SKILL.md` is the main evolution
+  target.
+- **`hr_calculator`** — the math specialist, also on **Cloud Run**
+  behind A2A: PTO balances, working days between dates, disability
+  pay. Deterministic tools, no skill to evolve.
+- **`benefits_agent`** — the benefits specialist. It exists as a skill
+  document (`agents/enterprise/benefits_agent/skill/`) with a Skill
+  Registry entry and it evolves like the others; it runs **in-process**
+  in the local topology, and the reference deployment has no Cloud Run
+  service for it yet (the supervisor wires it in automatically once one
+  is deployed — tracked in the backlog).
+
+Employees reach the supervisor through a Gemini Enterprise chat UI (or
+any API client); the specialists are implementation details they never
+see.
+
+**The operations side — workflow agents** (`agents/workflow/`, they
+test, monitor, and evolve the enterprise agents; users never talk to
+them):
+
+- **`traffic_generator`** — produces synthetic traffic: question sets,
+  scripted correction pushback, and a golden-aware adversarial user
+  simulator. Local CLI or Cloud Run Job.
+- **`quality_agent`** — the daily sentinel (Cloud Run Job, 08:00 UTC
+  scheduler): judges recent sessions from BigQuery and files labeled
+  GitHub issues for failures.
+- **`skill_evolution_agent`** — the healer (Cloud Run Job; on demand,
+  issue-threshold, or scheduled tick): runs the learn-propose pipeline
+  described below and opens the PR.
+
+**The learning side** is a closed loop around that assistant:
+
+1. **Observe** — every conversation turn is logged to BigQuery,
+   tagged with the skill version that produced it.
+2. **Detect** — **`quality_agent`** (`agents/workflow/quality_agent/`,
+   the Cloud Run Job `quality-agent`, daily scheduler at 08:00 UTC)
+   scores recent root-agent sessions with the LLM judge, matched
+   against the golden eval spec (scope + ground truth; full
+   expected-answer grading on the BigQuery path lands with SDK #358),
+   and files labeled GitHub issues for failures.
+3. **Learn** — an evolution job reads the failing traces — run it
+   on demand (a scoped run takes ~10-15 minutes), let accumulating
+   quality issues trigger it, or leave the scheduled tick (weekly by
+   default, one env var to change). The job
+   dispatches a fleet of analyst agents to diagnose each failure,
+   consolidates their patches into candidate `SKILL.md` documents, and
+   keeps only the candidate that empirically scores best on replayed
+   traffic.
+4. **Propose** — the winning skills are published to the Skill
+   Registry as new revisions and arrive as a pull request. CI
+   hard-tests the evolved skill (routing, fan-out, quality budgets);
+   candidates that gamed their training score die here.
+5. **Activate** — a human merges the PR; the deploy workflow
+   reconciles git with the Skill Registry and redeploys, and the
+   agents fetch the new revision at startup. Rollback to the baseline
+   is one command.
+
+The demo ships with a deliberately flawed V0 skill (baked facts that
+block the agent's own lookup tool, plus "accept the user's figure"
+parroting on corrections) so you can watch the loop find and repair
+real, reproducible defects end to end. Behavior lives in `SKILL.md`
+documents — versioned, diffable, PR-reviewable — so "the agent
+learned something" is always a concrete artifact a human signed off
+on.
+
+## Prerequisites
+
+Everything one-time lives here — from an empty GCP project and empty
+repo to a verified environment; every run section after this assumes
+it. Local-only usage needs 2; the GCP loop needs all of it.
+
+### 1 — First time only: create the project and the repo
+
+Skip this whole part if the GCP project and the repo already exist.
+
+```bash
+# GCP project + billing
+gcloud projects create <YOUR_PROJECT_ID>
+gcloud billing projects link <YOUR_PROJECT_ID> --billing-account=<BILLING_ACCOUNT_ID>
+# find the billing account id: gcloud billing accounts list
+gcloud billing projects describe <YOUR_PROJECT_ID> --format="value(billingEnabled)"
+
+# GitHub repo with this code
+gh repo create <YOUR_GITHUB_USER>/<YOUR_REPO> --public --clone
+# copy this project's files in (or clone your fork), then:
+git add -A && git commit -m "Bootstrap: initial import" && git push origin main
+# the CI gate triggered by this push goes green only after 4 — expected.
 ```
 
-Skills turn agent behavior into a **learnable, versionable, reviewable**
-artifact:
+Should print `True`.
 
-- **Human-readable** -- markdown a domain expert can read and edit
-- **Version-controlled** -- diffs show exactly what the agent learned
-- **PR-reviewable** -- domain experts approve changes before deployment
-- **Evolved** -- the system writes skills from execution experience
+### 2 — Local machine: tools, auth, environment
 
-At startup, each agent loads `SKILL.md` as its system instruction via
-`skill_loader.py` -- from the **Skill Registry** (newest revision) when
-`SKILL_SOURCE=registry`, with the packaged file as fallback. The skill
-document is the single source of truth for agent behavior.
+#### Tools and auth
 
-## How Skills Evolve
+- A Google Cloud project with Vertex AI API enabled
+- `gcloud` CLI installed and authenticated:
+  ```bash
+  gcloud auth login
+  gcloud auth application-default login
+  gh auth login
+  ```
+- `uv` installed ([Python package manager](https://docs.astral.sh/uv/))
 
-The system has one manual input: **Golden Q&A** -- curated
-question-answer pairs that define what correct behavior looks like.
-Everything else is automated.
+#### Configure `.env`
 
-### The single input
+```bash
+export PROJECT_ID="<your-actual-project-id>"
+sed -e "s/<YOUR_PROJECT_ID>/$PROJECT_ID/g" .env.example > .env
+```
 
-Golden Q&A (`eval/data/golden_evals.json`) feeds three consumers:
-- **The user simulator** mirrors these facts to adversarially
-  stress-test the agent
-- **The LLM Judge** embedding-matches conversations to Golden Q&A to
-  inject expected answers into the scoring prompt
-- **The evolution engine** works on the T+/T- labels the judge produces
+Generates `.env` from the template with your project id substituted —
+no manual editing. The rest of the defaults work out of the box.
 
-### Bootstrap: V0 to production-ready
+#### Python environment
 
-1. Deploy the agent with a deliberately minimal skill (V0)
-2. The user simulator generates adversarial traffic -- multi-turn
-   conversations that push back on wrong answers using Golden Q&A facts
-3. The LLM Judge scores each conversation against Golden Q&A ground
-   truth and partitions into successes (T+) and failures (T-)
-4. A parallel analyst fleet (~100 agents) examines trajectories and
-   proposes skill patches
-5. A patch consolidator merges patches into an evolved SKILL.md
-6. Redeploy, re-generate traffic, re-score, repeat
+```bash
+bash scripts/local/local_setup.sh
+```
 
-Results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
-conversations. Inspired by [Trace2Skill](https://arxiv.org/abs/2603.25158)
-and [AutoSkill](https://arxiv.org/abs/2603.01145) -- see
-[the paper analysis](docs/skill-evolution/RESEARCH.md).
+Syncs Python dependencies with `uv`, verifies GCP auth, and tests
+that all agent modules import correctly.
 
-### Production: monitoring and healing
 
-Once deployed, two workflow agents maintain quality autonomously:
-- **Quality Agent** (daily sentinel) scores production sessions
-  against Golden Q&A, detects regressions via BigQuery history,
-  creates GitHub issues
-- **Skill Evolution Agent** (weekly healer) re-runs the evolution loop
-  when enough failures accumulate, using real production traces
+### 3 — GCP: deploy the stack
 
-New topics that Golden Q&A doesn't cover surface as `new-topic` issues
-for a human decision: add the capability or mark it out-of-scope.
 
-See [Skill Evolution docs](docs/skill-evolution/) for the full lifecycle
-narrative and algorithm details.
+Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
+first deploy, faster on subsequent runs.
+
+#### 3.1 — GCP infrastructure
+
+```bash
+source .env
+gcloud config set project $PROJECT_ID
+bash scripts/setup/setup_gcp.sh
+```
+
+This enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
+creates the BigQuery dataset for Agent Analytics, seeds the Skill
+Registry with the V0 skills, and grants IAM permissions.
+
+#### 3.2 — Deploy all six components
+
+```bash
+bash scripts/deploy/deploy_gcp.sh
+```
+
+Deploys all components in order:
+
+| Step | Component | Time |
+|------|-----------|------|
+| 1 | policy_agent (Cloud Run) | ~3.5 min |
+| 2 | hr_calculator (Cloud Run) | ~3 min |
+| 3 | knowledge_supervisor (Agent Engine) | ~15 min |
+| 4 | traffic_generator (Cloud Run Job) | ~2.5 min |
+| 5 | quality_agent (Cloud Run Job + Scheduler) | ~3 min |
+| 6 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
+| | **Total** | **~30 min** |
+
+
+
+> **First deploy note:** On a fresh project, the first Agent Engine
+> deploy may fail with "failed to start and cannot serve traffic."
+> This is a known race condition -- re-run `deploy_gcp.sh` and it
+> will succeed.
+
+#### 3.3 — Smoke test
+
+One test per component: the supervisor test exercises the full
+chain (routing, A2A, specialist answer); the two specialist tests
+call each Cloud Run service directly.
+
+##### 3.3.a — knowledge_supervisor (Agent Engine, end-to-end)
+
+Tests the full chain: Vertex REST discovery -> Agent Engine session ->
+supervisor (skill loaded) -> streamed response.
+
+What to expect: a DEFLECTION — this is the seeded V0 defect, live.
+The question is a policy question; the answer sits in policy_agent's
+documents one A2A hop away (3.3.b proves it). V0 never takes the
+hop: `Routed to: direct`, `Tools: (none)`, "contact HR". Balance
+questions DO route (ask "How many PTO days do I have left?" and the
+Tools line shows hr_calculator) — the defect is policy questions
+only, and it is what the evolution fixes.
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+```
+
+Expected:
+
+```text
+==========================================
+  TARGET PROJECT: <PROJECT_ID>
+==========================================
+Discovering Reasoning Engine 'knowledge-supervisor' in <PROJECT_ID>/us-central1...
+Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_ID>
+
+─────────────────────────────────────────
+Q: What is the meal reimbursement limit?
+─────────────────────────────────────────
+  Routed to:  direct
+  Model:      gemini-3.1-flash-lite
+  Tools:      (none)
+  Tokens:     supervisor 298→19 over 1 model turn(s) (thinking: 0)
+
+  A: I do not have information regarding meal reimbursement limits.
+     Please contact HR for assistance with this question.
+
+  Latency: 1.6s
+```
+
+Output:
+* `Found` — the deployed supervisor (reasoning engine) the script discovered
+* `Routed to` — the specialist the supervisor picked; `direct` means it
+  answered itself, no A2A hop
+* `Model` — the model the supervisor ran this turn on
+* `Tools` — tool calls made during the turn; `(none)` on a policy
+  question is the V0 defect showing
+* `Tokens` — prompt→answer token counts for supervisor and sub-agent;
+  thinking tokens listed separately
+* `A` — the final answer returned to the user
+* `Latency` — end-to-end time for the turn
+
+Another question with proper routing:
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
+```
+
+```text
+==========================================
+  TARGET PROJECT: <PROJECT_ID>
+==========================================
+Discovering Reasoning Engine 'knowledge-supervisor' in <PROJECT_ID>/us-central1...
+Found: projects/<PROJECT_NUMBER>/locations/us-central1/reasoningEngines/<ENGINE_ID>
+
+─────────────────────────────────────────
+Q: How many PTO days do I have left?
+─────────────────────────────────────────
+  Routed to:  hr_calculator
+  Model:      gemini-3.1-flash-lite
+  Tools:      hr_calculator
+  Tokens:     supervisor 647→46 over 2 model turn(s) (thinking: 0)
+
+  A: You have 7.8 PTO days left. You also have 4.8 sick leave days remaining.
+
+  Latency: 5.3s
+```
+
+##### 3.3.b — policy_agent (Cloud Run, direct A2A)
+
+This test skips the supervisor and talks to the policy agent
+directly. It does two things: downloads the agent's A2A card — the
+list of skills the agent publishes so other agents know what it can
+do — and then sends the question straight to the agent.
+
+What to expect: the CORRECT answer to the exact question the
+supervisor just deflected. This agent looks it up in the policy
+documents with `lookup_company_policy`. That is the discrepancy the
+demo is built on: the knowledge exists one A2A hop away, and V0
+never takes the hop.
+
+```bash
+bash agents/enterprise/policy_agent/send_query.sh -q "What is the meal reimbursement limit?"
+```
+
+Expected:
+
+```text
+==========================================
+  TARGET PROJECT: <PROJECT_ID>
+==========================================
+Discovering policy-agent in <PROJECT_ID>/us-central1...
+Service URL: https://policy-agent-<HASH>-uc.a.run.app
+
+Checking A2A agent card...
+  Agent: policy_agent
+  Skills: model, lookup_company_policy, get_current_date
+
+─────────────────────────────────────────
+Q: What is the meal reimbursement limit?
+─────────────────────────────────────────
+Meals are reimbursed up to $75/day during business travel.
+
+Latency: 1.9s
+```
+
+##### 3.3.c — hr_calculator (Cloud Run, direct A2A)
+
+Same direct test for the math specialist.
+
+What to expect: a number, computed by the `calculate_pto_details`
+tool. The balance accrues from a demo start date, so the exact value
+changes from day to day. Ask the supervisor the same question and
+its Tools line shows `hr_calculator` — balance routing works at V0.
+
+```bash
+bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
+```
+
+Expected:
+
+```text
+==========================================
+  TARGET PROJECT: <PROJECT_ID>
+==========================================
+Discovering hr-calculator in <PROJECT_ID>/us-central1...
+Service URL: https://hr-calculator-<HASH>-uc.a.run.app
+
+Checking A2A agent card...
+  Agent: hr_calculator
+  Skills: model, calculate_pto_details
+
+─────────────────────────────────────────
+Q: How many PTO days do I have left?
+─────────────────────────────────────────
+You currently have 7.8 PTO days left. You also have 4.8 sick leave days available. You will accrue an additional 10.0 PTO days and 5.0 sick leave days by the end of the year.
+
+Latency: 2.3s
+```
+
+
+#### 3.4 — Connect Gemini Enterprise (optional)
+
+Gemini Enterprise provides a chat UI that connects directly to the
+deployed Agent Engine -- no custom frontend needed.
+
+* a. Go to [Gemini Enterprise](https://console.cloud.google.com/gemini-enterprise)in the GCP Console
+* b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise  license -- a trial works)
+* c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
+
+* d. Paste the reasoning-engine path — print it with:
+
+   ```bash
+   bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
+   ```
+
+   Then
+   give the agent a user-facing display name — e.g.
+   **HR Policy Assistant** — and a description, e.g.:
+   *"Answers questions about company policies — PTO, sick leave,
+   remote work, expenses, holidays, and benefits — and calculates PTO
+   balances and working days. Ask in plain language, e.g. 'How many
+   PTO days do I have left?'"*
+   The description is shown to employees in the app and helps them
+   understand what the agent can do. This registered agent IS the
+   `knowledge_supervisor` root agent; the display name is purely what
+   employees see in the picker (internal agent names stay hidden).
+   Leave **Authorization** empty — it is for agents that act on the
+   END USER's behalf against other services (per-user OAuth); this
+   agent uses only its own service identity.
+* e. Open the app's web URL and select the display name you chose from
+   the agent picker
+
+### 4 — GitHub: CI + bot wiring
+
+
+Follow **[GITHUB_APP_SETUP](docs/GITHUB_APP_SETUP.md)** (PR credential, optional bot identity, one setup-script run).
+
+
+### 5 — Verify everything: one command
+
+```bash
+bash scripts/setup/verify_setup.sh
+```
+
+Runs every setup check (tools, auth, `.env`, both Cloud Run services,
+the Agent Engine supervisor, jobs + schedulers, Skill Registry, repo
+variables, PR credential, bot identity, gate status, branch
+protection) and prints one `[PASS]`/`[FAIL]` line per check with the
+fix command on failures. Expected:
+
+```text
+[PASS] 0.1 tools: gcloud gh uv bq jq
+[PASS] 0.2 GCP auth + ADC (<you>)
+...
+[PASS] 0.12 branch protection (requires: Golden Eval,Load Test)
+
+==========================================
+RESULT: 17 passed, 0 failed
+==========================================
+```
+
+All green -> Step 1 is done. 
+
+## Run the Demo
+
+Two ways to run it:
+
+- **One command** — fire the whole loop and read the results
+  ([below](#the-one-command-run)).
+- **Step by step** — walk every stage yourself, with a verification
+  after each ([the walkthrough](#the-step-by-step-walkthrough),
+  Steps 1-7).
+
+### The one-command run
+
+The learning loop is identical everywhere: generate adversarial
+traffic against the weak V0 skill, judge every conversation against
+golden ground truth, send one analyst per failure, consolidate their
+patches into competing candidate skills, validate each candidate on
+replayed traffic, keep the best. Where it runs decides how the
+winner goes live:
+
+| | Deployed (default) | Local (`--local`) |
+|---|---|---|
+| Agents | the live stack (Agent Engine + Cloud Run) | Python processes on this machine |
+| Failures come from | BigQuery traces of the deployed agents | traffic generated during the run, auto-labeled `demo_run=<run-folder>` (its own BigQuery slice) |
+| Winning skill | pushed to the Skill Registry and opened as a PR | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed |
+| Safety | CI gate on the PR; a human merge activates it | none — it is a sandbox |
+
+Independent of where it runs, pick one of three PROFILES. More
+compute does not buy more improvement — the seeded defect is one
+behavior and every profile cures it; the profiles differ in what
+they deliver:
+
+| | Lite | Standard | Full |
+|---|---|---|---|
+| Deliverable | see the loop work | reach the quality bar | evidence for a writeup or review |
+| Rounds | 1 | 2 — round 2 repeats the process from the round-1 winner, on the failures round 1 left | agent-decided, until a round stops improving |
+| Measured outcome (same 25-question exam for all) | being re-measured | being re-measured | being re-measured |
+| Cost (measured, local) | 26-44 min | ~92 min | ~3.5 h |
+| Run deployed (default) | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
+| Run local (sandbox) | `run_lite.sh --local` | `run_standard.sh --local` | `run_full.sh --local` |
+| Candidates per round | 2 | 3 | agent-decided (up to 5) |
+| Training questions | 13 (1 per category) | 25 (2 per category) | all 55 |
+| Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (any of the 3) |
+| Final score measured on | the SAME 25-question exam of unseen questions — identical for all three profiles, so the scores are directly comparable |||
+| Extra artifacts | SUMMARY + PR preview | SUMMARY + PR preview | + triage report, regression cases |
+
+What each step costs per profile (measured on local runs; deployed
+adds Agent Engine serve latency to Steps 2 and 6):
+
+| Step | Lite | Standard | Full | What differs |
+|---|---|---|---|---|
+| 1 Reset to the V0 baseline | <1s | <1s | <1s | Nothing — all profiles restore the same three V0 skill files and stamp a fresh run label. |
+| 2 Generate labeled traffic | ~4 min (13q) | ~5 min (25q) | ~8 min (32q) | Question count only — same 4-turn adversarial simulator, same judging. The count sets two things downstream: how many failures the analysts get to learn from, and how coarse the score is: the score is correct-answers divided by question count, so at 13 questions one answer moves it by 7.7 points, at 25 by 4 points — small sets move in big jumps. Full uses the 32-question evolve half of its 55-question split. |
+| 3 Run the evolution job | ~14 min | ~26 min | ~3 h | After analyzing the failures, the system drafts several new versions of the skill and holds a tryout to pick the best. Lite and standard both improve ONE agent (the supervisor); lite writes 2 drafts, standard writes 3. Full may improve all three agents and lets the system decide the draft count (up to 5 per agent, over several rounds). Each draft is then measured the same way V0 was measured in Step 2: the full question set runs against it and every answer is graded. That measurement takes 5-8 minutes per draft, and it is what this step's time consists of: 2 drafts = ~14 min, 3 drafts = ~26 min, dozens (full) = hours. |
+| Held-out measurement | ~6 min (13-question exam) | ~10 min (25-question exam) | ~11 min (23-question exam) | The final exam, on questions the skill never trained on. Taken twice — once by the new skill, once by V0 — and the run's reported result is the difference between the two scores. Longer exams take proportionally longer. |
+| 4 Review the PR | <1 min | <1 min | <1 min | Mechanics identical: local branch + `pr_preview.md` with the grounded metrics table, skill diff, and publish commands. Only the numbers inside differ — they come from that profile's own reports. |
+| 5-6 Merge + verify | skipped | skipped | skipped | Local runs are a sandbox, so the activation steps have nothing to act on. Deployed runs replace this row with the real thing: the winner is pushed to the Skill Registry and opened as a PR (Step 5: a human merge activates it), then the Step-1 deflection question is re-asked live to prove the fix (Step 6). |
+| 7 Roll back | <1s | <1s | <1s | Nothing — V0 files restored; every evolved skill stays snapshotted in the run dir as `vN_*_skill.md`. |
+| **Total (measured)** | **~26 min** | **~45 min** (add ~47 min for a 2nd round) | **~3.5 h** | |
+
+All commands live in `scripts/demo/skill_evolution/`, e.g.:
+
+```bash
+bash scripts/demo/skill_evolution/run_lite.sh --local
+```
+
+**Deployed** (the default) runs the profile as the Cloud Run job
+against the live stack; the winner is pushed to the Skill Registry
+and opened as a real PR — merging activates it. `run_full.sh` uses
+the job's default arguments, identical to the weekly scheduled run;
+deployed runs validate on the 25-question set.
+
+**Local** (`--local`) is a sandbox on this machine: agents run
+in-process (`--local --local-agents` on every traffic call — the
+deployed stack receives zero requests) and nothing is published.
+Extras pass through, e.g. `run_standard.sh --local --candidates 4`.
+
+Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
+conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.
+Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
+[AutoSkill](https://arxiv.org/abs/2603.01145) —
+[paper analysis](docs/skill-evolution/RESEARCH.md).
+
+### The step-by-step walkthrough
+
+Steps 1-7 run the same loop by hand against the deployed stack, one
+stage at a time, each with its own verification: the starting point
+(Step 1), labeled traffic (3), the evolution job (4), PR review (5),
+merge to activate (6), verify the fix (7), roll back (8).
+
+### Step 1 — Reset to the V0 baseline
+
+The BigQuery table holds every conversation from every source — old
+demo runs, scheduled traffic, other experiments — and is never
+cleaned. Isolation comes from labels instead: Step 2 stamps
+`$DEMO_LABEL` on every conversation it generates, and each later
+stage selects sessions by that label, so the rest of the table is
+invisible to your run. Local runs carry the label inside each
+trace's `custom_tags`; deployed runs record it in the `run_labels`
+side table; every selector matches both.
+
+1. **Pick the demo label** (one choice, threads the whole demo):
+
+   ```bash
+   source .env
+   export DEMO_LABEL="experiment=round1"   # any k=v you like
+   ```
+
+2. **V0 skills everywhere** — files, registry latest revision, and the
+   live agents (this restarts policy + supervisor):
+
+   ```bash
+   bash scripts/demo/skill_evolution/rollback_demo.sh
+   ```
+
+   Fetch the skill the agents now serve straight from the Skill
+   Registry and display it:
+
+   ```bash
+   uv run python eval/skill_evolution/registry_sync.py verify-read --agent policy_agent
+   ```
+   Expected output:
+
+   ```text
+   OK: GetSkill(ks-policy-agent) revision=<id> SKILL.md=~800 chars
+   --- SKILL.md head ---
+   ...
+   metadata:
+     version: "0"
+   ```
+
+   `version: "1"` here means an evolved revision is still newest —
+   re-run the rollback.
+
+
+3.  **Verify the starting point:**
+
+Check what is in BigQuery for the provided label. The label is new,
+so its slice must be empty — 0 sessions is the clean starting point,
+no matter what else the table holds:
+
+```bash
+EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh
+```
+
+Expected output:
+```text
++----------+--------+----------+--------+
+| sessions | events | earliest | latest |
++----------+--------+----------+--------+
+|        0 |      0 |     NULL |   NULL |
++----------+--------+----------+--------+
+```
+
+Ping the H&R Agent directly via the HTTP end point:
+
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+```
+
+Expect V0 defect behavior: a deflection ("contact HR"). A grounded
+$75/day answer means an evolved revision is live — re-run the
+rollback.
+
+
+**Reset the slice.** To delete everything recorded under the current
+label — its BigQuery events plus `run_labels` rows, nothing else:
+
+```bash
+bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_LABEL
+```
+
+### Step 2 — Generate labeled traffic
+
+Send labeled conversations (amount controlled by `limit` argument) to the deployed V0 supervisor — the
+same endpoint real users hit. Their failures are the raw material
+the evolution job learns from in Step 3:
+
+```bash
+bash scripts/demo/generate_traffic.sh \
+  --from-file eval/data/questions/two_defect_evolve.json \
+  --limit 8 --label $DEMO_LABEL --concurrency 5
+```
+- Targets the deployed Agent Engine supervisor by default; add
+  `--local` to run the identical demo on the in-process local runner.
+- `--from-file` — the set of
+  [`55 questions`](eval/data/questions/two_defect_evolve.json) to read from.
+- `--limit 8` — run only the first 8 questions. One question = one
+  conversation = one BigQuery session. Omitted, all 55 run.
+- `--label $DEMO_LABEL` — stamps every conversation to create a
+  labeled slice: deployed runs record it in the `run_labels` side
+  table, local runs carry it inside each trace's `custom_tags`;
+  every selector matches both.
+
+While the run streams you'll see each simulated user turn logged
+with a strategy tag, e.g. `Simulator [CORRECTION]: Actually, my
+onboarding packet says...`:
+
+- The tags — `FOLLOWUP` (next question), `SPECIFICS` (press for
+  exact numbers), `VERIFY` (ask to check the policy), `CORRECTION`
+  (push back with a golden fact), `END` (done) — are the simulator's
+  own per-turn decisions; `END` is what closes a conversation.
+- Because the simulator must decide its strategy anyway, the tag is
+  ground truth and costs nothing; the `correction_rate` /
+  `verify_rate` printed at the end of the run come straight from it.
+- The quality report can also tag turns with an LLM pass
+  (`--tag-turns`). That is inference — one judge call per turn, and
+  it can misread a polite correction — but it works on organic
+  traffic that arrives untagged. Rule of thumb: generated traffic
+  keeps its generator tags; real user traffic gets report-side
+  tagging; when comparing the two on one dashboard, tag both with
+  the report path so the bias is uniform.
+
+Expected in the log — the label confirmed at start, the side-table
+write at the end:
+
+```text
+=== Batch Traffic (remote (deployed)) ===
+  Questions:   eval/data/questions/two_defect_evolve.json (limit: 8)
+  Concurrency: 5
+  Max turns:   4
+  Labels:      experiment=round1
+  Output:      eval/runs/2026-07-20_205629/traffic.json
+...
+
+============================================================
+Q: How often can I work from home each week?
+   Flow: FOLLOWUP → CORRECTION → END
+   Turns: 4, Tools: 1, Corrections: 1, Verifications: 0
+   👤: How often can I work from home each week?
+   🤖: You can work remotely up to 3 days per week with manager approval.
+   👤 [FOLLOWUP]: That's clear, thank you! What are the core hours I need to be available when working remotely?
+   🤖: I do not have information about core hours. Please contact HR for details on this.
+   👤 [CORRECTION]: I know that core hours are 10am-3pm. Can you confirm this information?
+   🤖: I cannot confirm this information. As I mentioned, I do not have information about core hours. Please contact HR for details on this.
+   👤 [END]: Thanks, that helps!
+
+============================================================
+  MULTI-TURN CONVERSATION RESULTS
+============================================================
+  Conversations:     8
+  Duration:          107.6s
+  Avg user turns:    2.8
+  Avg tool calls:    0.5
+  Corrections:       2 (25.0% of conversations)
+  Verifications:     2 (25.0% of conversations)
+  Errors:            0
+============================================================
+20:58:28 [INFO] Recorded labels for 8 deployed sessions in skill-evolution-lab.agent_logs.run_labels: {'run_id': '20260720-205631', 'traffic_source': 'generator', 'experiment': 'round1'}
+20:58:28 [INFO] Results saved to eval/runs/2026-07-20_205629/traffic.json
+```
+
+To retrieve the new traces:
+```bash
+bash scripts/test/show_traces.sh                      
+EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
+  bash scripts/test/show_traces.sh         
+```
+
+
+### Step 3 — Run the evolution job
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,$DEMO_LABEL,--mode,policy_agent,--rounds,1,--candidates,2,--quick"
+```
+
+- `--full-loop` — the whole pipeline in one execution: fetch traces,
+  judge, analysts, candidates, registry push + PR.
+- `--trace-labels $DEMO_LABEL` — binding: evolve ONLY on your labeled
+  slice; the selector lands in `trace_selector.json` and the PR body.
+- `--mode policy_agent` — evolve just this agent, and skip the ~5-min
+  bottleneck classification (you already named the target).
+- `--rounds 1` — one evolution round, no agent-decided round 2.
+- `--candidates 2` — two competing skills, best one wins. Each extra
+  candidate costs a full validation replay (several minutes); 2 is
+  the lightweight demo setting, 3+ buys better odds.
+- `--quick` — 25-question validation set and a proportionate failure
+  threshold; conversation depth (4 turns) and models stay
+  production-grade.
+- `--wait` — stream until the job finishes; drop it to run async.
+
+Drop all args for the full agent-decided run (~3 h — what the weekly
+tick and the issue-threshold dispatcher execute; cadence is set via
+`EVOLUTION_SCHEDULE`).
+
+Inside one run:
+
+| Stage | What happens |
+|-------|--------------|
+| Pre-flight | Builds a quality report from real BigQuery traces (`QUALITY_SOURCE=bigquery`); falls back to generated traffic below `MIN_SESSIONS` |
+| Gate | Proceeds only when there are enough failures to learn from |
+| Bottleneck | Classifies each failure by source agent and picks which skill(s) to evolve |
+| Evolution | Error analysts study the failures, propose patches, and best-of-N candidate skills are scored on the evolve set |
+| Publish | The winning skills are pushed to the Skill Registry as new revisions |
+| Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge |
+| PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) |
+
+### Step 4 — Review the PR
+
+The PR body carries the baseline quality numbers; the diff is the
+evolved skill plus any regression cases extracted from failures this
+skill resolved (they parametrize straight into the gate tests, so the
+PR's own CI run already exercises them). CI runs the Eval & Load Test Gate on it, and the
+gate is version-aware: skills at version 0 are held to baseline
+expectations, while an evolved skill (version >= 1) must pass the full
+routing, fan-out, and quality assertions.
+
+The gate has teeth. In live runs, evolved supervisor skills repeatedly
+scored 78-86% on the evolve set by copying observed facts into their
+own summary and answering directly -- which broke the routing contract,
+so the gate refused them. A refused candidate stays in the registry
+history and in the PR record; the next evolution round learns from a
+wider window.
+
+**What a refusal looks like on GitHub.** The Actions tab shows a red
+"Eval & Load Test Gate" run on the PR's `skill-evolution/*` branch, and
+branch protection blocks the merge. That red run is the point: it is
+the audit record of why a skill was denied deployment. Close the PR to
+retire it (the red run stays in history), or fix and push to the PR
+branch to re-adjudicate. Red on main, by contrast, is always a real
+problem -- with one caveat: the gate shares the project's model quota
+with deploys and evolution jobs, so a gate run that overlaps one can
+fail on RESOURCE_EXHAUSTED; re-run it once the project is quiet.
+
+**Two layers keep refused-class skills in check:**
+
+- **In-run pre-check** -- when the evolution job scores a supervisor
+  candidate, it runs the same routing/fan-out asserts the gate will run
+  on the PR (`score_candidate` -> `_golden_gate_check`). A candidate
+  that fails has its score zeroed, so best-of-N selection drops it
+  before a PR ever opens.
+- **CI gate on the PR** -- the independent adjudication, version-aware:
+  evolved skills (version >= 1) face the full hard assertions.
+
+**Scoping a run is binding.** `--mode <agent>`, `--rounds N`, and
+`--candidates N` are enforced at the tool layer (env vars
+`EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
+`EVOLUTION_CANDIDATES`), so the orchestrating agent can neither widen
+the target set, add rounds, nor grow the candidate pool beyond what
+you asked for.
+
+### Choosing which traces to evolve on (labels)
+
+Every BigQuery event carries `custom_tags` — but WHO stamps them
+depends on who logs the event, because plugin tags are fixed at agent
+startup:
+
+- **Deployed traffic** (through Agent Engine) is logged by the
+  *agents'* plugins: `agent_version` (skill frontmatter) +
+  `sw_version` (git sha) + whatever `TRACE_LABELS` the deploy set.
+  Per-run labels cannot be attached from the outside; slice deployed
+  traffic by version + time window (or redeploy with a label).
+- **Local-runner traffic** (`--local`, also used by candidate scoring)
+  is logged by the *generator's* plugin, which adds
+  `traffic_source=generator` and a per-invocation `run_id`
+  (verified live: seed -> `run_id` queryable in BigQuery ->
+  `--trace-labels run_id=...` selects exactly that slice). Add your
+  own with `TRACE_LABELS="k=v,k2=v2"`.
+
+The evolution job selects its input slice with the same vocabulary:
+
+```bash
+# Re-run the scheduled job on demand (default selector: current version)
+gcloud scheduler jobs run skill-evolution-weekly --location $REGION
+
+# Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
+# (the run prints its run_id label)
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
+```
+
+**Verify before you evolve** — preview exactly what the pre-flight
+will fetch (same env vars the job reads), or see the label
+distribution of everything in the table:
+
+```bash
+bash scripts/test/show_traces.sh                # label distribution
+EVOLUTION_TRACE_LABELS=run_id=<id> EVAL_TIME_PERIOD=24h \
+  bash scripts/test/show_traces.sh   # the exact slice, with sample sessions
+```
+
+The selector (window, version, labels, app) is written to the run
+directory and printed in the PR body, so every evolved skill records
+exactly which traces taught it. This replaces per-round tables: one
+table, label-sliced, and longitudinal quality-by-version queries stay
+intact.
+
+### Step 5 — Merge to activate
+
+```bash
+gh pr merge <PR_NUMBER> --merge
+
+# 1. CI ran and is green
+gh run list --workflow "Deploy to GCP" --limit 1
+# 2. Registry sync reconciled the merged skill (SKIP = job already pushed it)
+gh run view <run-id> --log | grep -E "SKIP|UPDATE|CREATE"
+# 3. Agents serve the merged revision
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+# 4. A question V0 deflected now gets a grounded answer
+bash scripts/test/smoke_test_deployed.sh
+```
+
+Merging triggers `deploy.yml`: it re-seeds the registry from the merged
+`SKILL.md` (normally a SKIP, because the job already pushed that exact
+revision -- the SKIP is the git-registry reconciliation proof), then
+redeploys the agents, which fetch the merged revision at startup.
+
+### Step 6 — Verify the fix
+
+The question that deflected in Step 1 now gets the grounded answer:
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+# Step 1 (V0): "...please contact HR"
+# Now (v1):    "$75/day during business travel..."
+```
+
+Also confirm the agents fetched the merged revision:
+
+```bash
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+```
+
+### Step 7 — Roll back
+
+```bash
+bash scripts/demo/skill_evolution/rollback_demo.sh
+```
+
+Resets the `SKILL.md` files to V0, republishes V0 to the Skill Registry
+as the newest revision (the registry is append-only, so the evolved
+revisions stay in history), restarts the policy agent and supervisor so
+they serve V0 immediately, and prints the verification. Flags:
+`--baseline stub|two-defect` (default `two-defect`) and
+`--skip-redeploy` (agents pick up V0 on their next restart instead).
+
+## Alternative: Local-Only Demo (no deployment)
+
+Run the full skill evolution pipeline on your machine. No GCP
+deployment needed -- only Vertex AI API access for Gemini models.
+
+One-time setup lives in [Prerequisites](#step-0--setup--prerequisites).
+
+The run profiles and commands live in
+[The one-command run](#the-one-command-run); everything below is
+about what a local run produces and how to work with it.
+
+### What to expect
+
+| Version | Meaningful Rate | What happened |
+|---------|----------------|---------------|
+| V0      | ~54-60%        | Baseline: minimal skill, agent redirects to HR for most questions |
+| V1      | ~80-97%        | Evolution adds keyword mappings, anti-hallucination rules, scope boundaries |
+| V2      | ~95-98%        | Refinement: edge cases, format improvements |
+
+V0 -> V1 is the key jump. The evolved skill gains structured sections
+(Tool Usage, Anti-Patterns, Out-of-Scope, Keyword Mappings) that the
+V0 baseline lacks entirely.
+
+**Reusing the V0 baseline.** The demo's first phase measures how bad
+V0 is: send traffic at the V0 skill, judge every conversation,
+produce the "before" numbers. That result barely changes between
+runs — V0 fails the same way every time — so on repeat runs you can
+skip re-measuring it. The startup banner shows which mode you are in
+(`Reuse V0: false` = fresh baseline, the default; `true` = borrowed):
+
+```bash
+bash scripts/demo/skill_evolution/run_full.sh --reuse-v0
+```
+
+`--reuse-v0` takes the V0 traffic and quality report from a previous
+run (`--resume <run-dir>` picks which; without it, the pre-built
+reference baseline) and spends the saved ~20 minutes on the part
+that changes: evolution and the V1 proof. First run: leave the
+default, so before and after come from the same session and model.
+Iterating on evolution: add the flag. One label caveat: borrowed V0
+traffic keeps its original run's `demo_run` label — only the newly
+generated conversations carry this run's label.
+
+### Reading the output
+
+Every run writes to `eval/runs/<timestamp>_demo_<mode>/`. Start with
+`SUMMARY.md` — the run's slice label, whether anything was published
+(local runs: no), a quality table for every version, and which
+version the PR preview carries. From there:
+
+- `run.log` — everything the run printed, including the slice label
+- `v0_quality_report.md` — the judged baseline, failure by failure;
+  these failures are the evolution's input
+- `_score_candidate_N_report.json` — each candidate's replay score;
+  the best one becomes the next version
+- `vN_*_skill.md` — the evolved skill text per version. Read these:
+  the diff against V0 IS the learning, in plain markdown
+- `pr_preview.md` — the PR as a local artifact: metrics table,
+  summary of changes, diff, and the two commands that publish it
+- `TRIAGE.md` — failures split into what evolution fixed vs what it
+  cannot fix (tool bugs -> ENG, missing facts -> KNOWLEDGE)
+
+The live `SKILL.md` files are restored to V0 when the run ends; the
+run dir keeps every evolved version. A later round can score WORSE
+than an earlier one (the agent explores) — the preview always carries
+the best-measured version, and `SUMMARY.md` shows the full curve.
+
+### Resetting between runs
+
+The run already restores the local `SKILL.md` files to V0 when it
+ends. For a guaranteed-clean slate — files, Skill Registry newest
+revision, and the live agents all back to V0 — run the same rollback
+the deployed demo uses:
+
+```bash
+bash scripts/demo/skill_evolution/rollback_demo.sh
+```
+
+Optionally delete a finished run's BigQuery slice (label printed in
+the run's `SUMMARY.md`):
+
+```bash
+bash scripts/demo/skill_evolution/cleanup_label.sh demo_run=<run-folder>
+```
+
+### Try it interactively
+
+Start the agents locally and chat with the supervisor through the
+ADK web UI:
+
+```bash
+bash scripts/local/local_start.sh
+```
+
+This launches:
+- **policy_agent** on `http://localhost:8080` (A2A server)
+- **hr_calculator** on `http://localhost:8081` (A2A server)
+- **knowledge_supervisor** on `http://localhost:8000` (ADK web UI)
+
+Open `http://localhost:8000` and ask questions like "What is our PTO
+policy?" or "How many sick days do I get per year?"
+
+Stop with `bash scripts/local/local_start.sh stop`.
+
+### Manual step-by-step
+
+Each stage of the local pipeline, run individually. Everything
+writes into one run folder:
+
+```bash
+source .env
+RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution" && mkdir -p "$RUN_DIR"
+```
+
+**1. Start from the V0 baseline skill** — the deliberately minimal
+skill is the permanent backup next to the live one:
+
+```bash
+cp agents/enterprise/policy_agent/skill/SKILL.v0.md \
+   agents/enterprise/policy_agent/skill/SKILL.md
+```
+
+**2. Generate adversarial traffic** — the simulated user asks the
+questions and, knowing the golden facts, pushes back on wrong answers
+(multi-turn):
+
+```bash
+bash scripts/demo/generate_traffic.sh --local \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
+```
+
+**3. Judge every conversation** — golden-matched ground truth (see
+"The single input" above); output partitions sessions into successes
+and failures:
+
+```bash
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v0_traffic.json" \
+    -o "$RUN_DIR/v0_quality_report.json" --report
+```
+
+The printed summary shows `meaningful_rate`, `unhelpful_rate`, and
+the failure count.
+
+**4 + 5. Analysts, patches, consolidation, best-of-N** — one command
+runs the whole evolution stage: an analyst per failure (each
+investigates with tool access), patch scoring, consolidation into
+candidate `SKILL.md` documents, and empirical scoring that keeps the
+best candidate:
+
+```bash
+uv run python agents/workflow/skill_evolution_agent/main.py \
+    --report "$RUN_DIR/v0_quality_report.json"
+```
+
+Artifacts land in `$RUN_DIR/*_candidates/`; the winning skill is
+deployed to `agents/enterprise/policy_agent/skill/SKILL.md`.
+
+**6. Re-score and compare** — fresh traffic against the evolved
+skill, then the before/after table:
+
+```bash
+bash scripts/demo/generate_traffic.sh --local \
+    --from-file eval/data/questions/demo_quick.json \
+    -o "$RUN_DIR/v1_traffic.json" --concurrency 10
+bash scripts/demo/skill_evolution/score.sh \
+    -i "$RUN_DIR/v1_traffic.json" \
+    -o "$RUN_DIR/v1_quality_report.json" --report
+uv run python eval/scoring/score_conversations.py --compare \
+    "$RUN_DIR/v0_quality_report.json:V0" \
+    "$RUN_DIR/v1_quality_report.json:V1"
+```
+
+Repeat the traffic->score->evolve stages for a V2 round (the gate
+keeps V2 only when it beats V1). For a narrated walkthrough with
+pauses, see [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
 
 ## Architecture
 
@@ -116,6 +1126,13 @@ revision, and **GitHub** holds the review gate between the two.
             |  lookup tools  |  |   date/PTO math) |
             +--------+-------+  +------------------+
                      |
+            +--------+---------------+
+            |  Benefits Agent        |   skill-only today:
+            |  SKILL.md (in-process  |   in-process locally,
+            |  locally; Cloud Run    |   Cloud Run service
+            |  service = backlog)    |   pending
+            +--------+---------------+
+                     |
                      v
         +---------------------------+
         |       Skill Registry      |   Gemini Enterprise Agent Platform
@@ -142,6 +1159,52 @@ revision, and **GitHub** holds the review gate between the two.
   to the `agent_events` table, tagged with the skill version from the
   SKILL.md frontmatter (`custom_tags.agent_version`).
 
+### How a question flows (Agent Engine, AgentTool, A2A)
+
+Three pieces of vocabulary, then the lifecycle:
+
+- **Vertex AI Agent Engine** is the managed runtime hosting the root
+  agent: it owns sessions (multi-turn memory), scaling, and the
+  `stream_query` API that clients call. The supervisor lives here so
+  conversations survive across turns without any server of our own.
+- **A2A (Agent2Agent protocol)** is the open HTTP protocol agents use
+  to call each other. Each specialist is an independent Cloud Run
+  service exposing an A2A endpoint with an agent card describing what
+  it can do — the supervisor talks to specialists the same way any
+  external agent could.
+- **AgentTool** is the ADK wrapper that presents a whole remote agent
+  to the supervisor's LLM as a callable tool. Routing therefore IS
+  tool-calling: the model picks specialists the way it picks any tool,
+  which lets it call several in a single turn.
+
+Lifecycle of one compound question ("Compare my meal limit with the
+HSA contribution"):
+
+1. The client calls the supervisor's Agent Engine endpoint
+   (`stream_query`) inside a session.
+2. `knowledge_supervisor`'s LLM reads its `SKILL.md` (fetched from the
+   Skill Registry at startup) and plans: this needs `policy_agent`
+   (meal limit) AND `benefits_agent` (HSA).
+3. It emits two AgentTool calls. Each becomes an A2A HTTP request to
+   that specialist's Cloud Run service.
+4. Each specialist is a full ADK agent of its own: it loads its own
+   `SKILL.md`, runs its own LLM turn, calls its own tools
+   (`lookup_company_policy`, calculators), and returns its answer over
+   A2A.
+5. The supervisor synthesizes the specialist answers into one response
+   and streams it back.
+6. Every hop — supervisor turns, tool calls, specialist sessions — is
+   logged to BigQuery by the analytics plugins, version- and
+   label-tagged. This trace is what the quality and evolution agents
+   read.
+
+Why this topology: specialists deploy, scale, and **evolve
+independently** (each has its own SKILL.md and registry entry);
+failures surface at an ownership boundary (the bottleneck stage
+attributes each failure to supervisor routing vs a specialist's
+knowledge); and the supervisor stays thin — a router with conventions
+rather than an agent that knows everything.
+
 ### The evolution loop (end to end)
 
 ```text
@@ -149,7 +1212,7 @@ revision, and **GitHub** holds the review gate between the two.
  users / simulator --> supervisor --> BigQuery agent_events
                                       (tagged agent_version)
                                               |
-                               (3) Cloud Scheduler (weekly)
+                               (3) trigger: on-demand | issues | schedule
                                               v
                                +--------------------------+
                                |   skill-evolution-agent  |  Cloud Run Job
@@ -220,387 +1283,260 @@ evolved revisions stay in the append-only history.
 | policy_agent, hr_calculator | Cloud Run (A2A services) | supervisor fan-out |
 | traffic_generator | local CLI or Cloud Run Job | manual / demo scripts |
 | quality_agent | Cloud Run Job | Cloud Scheduler (daily) |
-| skill_evolution_agent | Cloud Run Job | Cloud Scheduler (weekly), quality issues, or manual |
+| skill_evolution_agent | Cloud Run Job | on-demand (`gcloud run jobs execute`), quality-issue threshold, or scheduled tick (default: weekly) |
 | Eval & Load Test Gate (`eval.yml`) | GitHub Actions | every PR and push to main |
 | Deploy to GCP (`deploy.yml`) | GitHub Actions (WIF) | merge to main |
 
-## Bootstrap From Zero
+### Components in detail
 
-Starting with an empty GCP project and an empty GitHub repo?
-**[docs/BOOTSTRAP.md](docs/BOOTSTRAP.md)** is the complete tested path:
-the few manual prerequisites (project, billing, PAT, auth), then every
-remaining step scripted — GCP infrastructure, GitHub CI wiring, deploy,
-and the e2e evolution loop — with a verification after each step.
+**Enterprise agents** (`agents/enterprise/`) — serve end users:
 
-## Run the Demo Locally
+- **knowledge_supervisor** — the root agent on Vertex AI Agent Engine.
+  Receives every user question, fans out to specialists as `AgentTool`
+  calls, and synthesizes one answer. Its thin `SKILL.md` holds routing
+  conventions. The BigQuery Analytics plugin rides here, logging every
+  event. Key files: `app/agent.py`, `app/skill/SKILL.md`.
+- **policy_agent** — company-policy specialist on Cloud Run behind an
+  A2A endpoint. Answers PTO, sick leave, remote work, expenses, and
+  holiday questions with the `lookup_company_policy` tool over the
+  policy corpus. Its `SKILL.md` is the primary evolution target — the
+  V0 baseline deliberately blocks the tool (baked facts + defer-to-HR)
+  and parrots corrections. Key files: `agent.py`, `tools.py`,
+  `skill_loader.py`, `skill/SKILL.md`.
+- **hr_calculator** — deterministic math specialist on Cloud Run:
+  PTO balances, working days for date ranges, disability pay. Pure
+  tools, no skill to evolve. Key file: `agent.py`.
+- **benefits_agent** — benefits specialist defined by its skill
+  (`skill/SKILL.md`). Runs in-process in the local topology and is
+  seeded into the Skill Registry; joins the deployed topology when a
+  service for it exists.
 
-Run the full skill evolution pipeline on your machine. No GCP
-deployment needed -- only Vertex AI API access for Gemini models.
+**Workflow agents** (`agents/workflow/`) — test, monitor, and evolve
+the stack:
 
-### Prerequisites
+- **traffic_generator** — produces synthetic traffic: single-turn
+  question sets, scripted multi-turn corrections (the user pushes back
+  with a wrong figure), and a Golden-Q&A-aware adversarial user
+  simulator. Targets the local supervisor or the deployed Agent Engine.
+  Key files: `main.py`, `user_simulator.py`.
+- **quality_agent** — the daily sentinel (Cloud Run Job + Scheduler).
+  Pulls recent BigQuery sessions filtered by `agent_version`, scores
+  them with the LLM judge against Golden Q&A, and files GitHub issues
+  for failures. Key files: `main.py`, `tools.py`, `quality_report.py`.
+- **skill_evolution_agent** — the healer (Cloud Run Job; triggered
+  on demand, by quality-issue threshold, or by its scheduled tick —
+  weekly by default). One run: quality report from BigQuery → failure-count
+  gate → bottleneck attribution (which agent caused each failure) →
+  agentic analysts investigate each failure with tool access → patch
+  scoring and consolidation → best-of-N candidate skills scored on the
+  evolve set → winners pushed to the Skill Registry → PR opened. Key
+  files: `evolve.py` (core pipeline), `coevolve.py` (multi-agent
+  orchestration), `bottleneck.py`, `agentic_analyst.py`,
+  `patch_scoring.py`, `tools.py` (registry push + PR), `main.py` (CLI).
 
-- A Google Cloud project with Vertex AI API enabled
-- `gcloud` CLI installed and authenticated:
-  ```bash
-  gcloud auth login
-  gcloud auth application-default login
-  ```
-- `uv` installed ([Python package manager](https://docs.astral.sh/uv/))
+**Supporting pieces:**
 
-### Step 1: Configure
+- **`skill_loader.py`** — loads `SKILL.md` from the Skill Registry
+  (newest revision) or the packaged file; exposes the frontmatter
+  version that tags BigQuery events and drives the version-aware gate.
+- **`eval/skill_evolution/registry_sync.py`** — Skill Registry CLI:
+  `seed` (idempotent V0 publish), `push`, `revisions`, `verify-read`.
+- **`eval/scoring/`** — `score_conversations.py` (SDK scorer: turn
+  tagging, golden matching, quality report), `llm_judge.py` (the gate
+  and load-test judge), `triage_report.py` (failure taxonomy + owner
+  routing), `extract_ground_truth.py`.
+- **`eval/tests/`** — the CI gate: `test_eval.py` (routing, compound
+  fan-out, out-of-scope) and `test_load.py` (fresh-traffic quality,
+  error rate, latency budgets), both version-aware via
+  `skill_is_baseline()`.
 
-```bash
-cp .env.example .env
-```
+### The full cycle, actor by actor
 
-Edit `.env` and set `PROJECT_ID` to your GCP project ID. The rest of
-the defaults work out of the box.
+Every stage of the loop, who runs it, and how to watch it live:
 
-### Step 2: Set up environment
+| Stage | Actor (code) | Trigger | Reads | Writes | Watch it |
+|---|---|---|---|---|---|
+| Serve | `knowledge_supervisor` (Agent Engine) + `policy_agent`/`hr_calculator` (Cloud Run, A2A) | user / API call | Skill Registry (SKILL.md at startup), tools | the answer | `bash scripts/test/smoke_test_deployed.sh` |
+| Observe | BigQuery Analytics plugins (in each agent) | every event | — | `agent_logs.agent_events`, tagged version + labels | `bash scripts/test/show_traces.sh` (label distribution / selector preview) |
+| Detect | `quality_agent` (Cloud Run Job) | daily 08:00 UTC scheduler, or `gcloud run jobs execute quality-agent` | BQ window, golden eval spec | quality report (GCS) + labeled GitHub issues | `gh issue list`; job logs |
+| Learn | `skill_evolution_agent` (Cloud Run Job) | on demand / issue threshold / weekly tick | BQ traces (selector), golden spec | evolved SKILL.md candidates, scores, regression cases | the 10-step table in [Demo Variants](#demo-variants--what-runs-what-is-cut-and-why) |
+| Propose | same job, final stage | end of a successful run | run artifacts | Skill Registry revision + the PR (skill + eval cases + selector) | `gh pr list` |
+| Adjudicate | Eval & Load Test Gate (GitHub Actions) | the PR | repo skills at PR state | green/red checks; branch protection blocks red | `gh pr checks <n>` |
+| Activate | Deploy to GCP workflow (GitHub Actions, WIF) | PR merge | merged repo | registry sync + redeploy; agents fetch the new revision | `gcloud logging read 'textPayload:"Loaded skill from registry"'` |
+| Roll back | `rollback_demo.sh` | you | SKILL.v0 files | V0 as newest registry revision; agents restarted | script prints verification |
 
-```bash
-bash scripts/local/local_setup.sh
-```
+### The one manual input: Golden Q&A
 
-Syncs Python dependencies with `uv`, verifies GCP auth, and tests
-that all agent modules import correctly.
+Golden Q&A (`eval/data/golden_evals.json`) is a list of curated
+entries: a question, its `expected_answer`, and optionally
+`expected_behavior: decline` for topics the agent must refuse.
 
-### Step 3: Run the demo
+**How it is used — similarity matching, exactly:** when the judge
+scores a conversation, every session question and every golden
+question is embedded, and each session is matched to its
+nearest golden entry by cosine similarity (threshold 0.92 — high on
+purpose, so only true paraphrases match: "How many vacation days do I
+get?" matches the PTO entry; a novel question matches nothing). Three
+outcomes:
 
-```bash
-# Quick run: 22 questions, ~15 minutes
-bash scripts/demo/skill_evolution/run_demo.sh --quick
+1. **Matched, in scope** — the golden `expected_answer` is injected
+   into the judge's prompt, and the response is graded against that
+   ground truth. This is what makes correctness scores trustworthy:
+   the judge compares against the known-right answer instead of its
+   own opinion.
+2. **Matched, decline entry** — the judge is told a polite refusal is
+   the correct outcome, so out-of-scope questions score as `declined`
+   when handled right rather than being punished as unhelpful.
+3. **No match (the question is absent from the list)** — the judge
+   still scores the session, but as an ungrounded LLM estimate, and
+   the report says so explicitly ("LLM estimates WITHOUT ground
+   truth"). These sessions also feed the `new-topic` flow: the quality
+   agent surfaces questions with no golden coverage and no history as
+   issues for a human decision — add a golden entry (and the
+   capability) or mark the topic out-of-scope.
 
-# Full run: 205 questions, ~1 hour
-bash scripts/demo/skill_evolution/run_demo.sh --full
-```
+The list grows two ways: humans curate entries, and each evolution
+cycle extracts resolved failures into new entries automatically — so
+coverage tracks what users actually ask.
 
-The demo script handles everything: restores the V0 baseline skill,
-generates traffic, scores conversations, evolves the skill (V0 -> V1
--> V2), and produces a comparison report.
+Golden Q&A feeds three consumers:
+- **The user simulator** mirrors these facts to adversarially
+  stress-test the agent (it knows the right answer, so it pushes back
+  on wrong ones)
+- **The LLM Judge** grades against matched entries as described above
+- **The evolution engine** works on the pass/fail labels the judge
+  produces
 
-All artifacts are saved to `eval/runs/{timestamp}_demo_{mode}/`.
+## Demo Variants — What Runs, What Is Cut, and Why
 
-### What to expect
+### The four ways to run it
 
-| Version | Meaningful Rate | What happened |
-|---------|----------------|---------------|
-| V0      | ~54-60%        | Baseline: minimal skill, agent redirects to HR for most questions |
-| V1      | ~80-97%        | Evolution adds keyword mappings, anti-hallucination rules, scope boundaries |
-| V2      | ~95-98%        | Refinement: edge cases, format improvements |
+| Variant | Command | Time | Use when |
+|---|---|---|---|
+| Local quick | `bash scripts/demo/skill_evolution/run_lite.sh` | ~17 min | First contact; no deployment (lite profile; run_standard.sh for steadier numbers) |
+| Local full | `bash scripts/demo/skill_evolution/run_full.sh` | ~1-2 h | Full local evaluation (55 questions + held-out split) |
+| GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,2,--quick"` | ~30-45 min | Live demo of the deployed loop, warm BigQuery window |
+| GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~5-3 h | Production cadence: agent-decided scope, full validation |
 
-V0 -> V1 is the key jump. The evolved skill gains structured sections
-(Tool Usage, Anti-Patterns, Out-of-Scope, Keyword Mappings) that the
-V0 baseline lacks entirely.
+### Every step of the GCP demo run
 
-Use `--reuse-v0` to skip V0 traffic generation on subsequent runs
-(saves ~20 minutes on full runs):
+Measured on project `skill-evolution-lab`; "full run" column shows the
+same step at production settings for contrast.
 
-```bash
-bash scripts/demo/skill_evolution/run_demo.sh --full --reuse-v0
-```
+| # | Step | What happens | Input | Output (artifact) | Demo time | Full time | Verify |
+|---|---|---|---|---|---|---|---|
+| 1 | Container start | Cloud Run provisions the job image | — | execution id | ~2 min | ~2 min | `gcloud run jobs executions list --job=skill-evolution-agent` |
+| 2 | BQ pre-flight | LLM-judges recent root-agent sessions from `agent_events` (app/version/label-filtered) | BigQuery window (`EVAL_TIME_PERIOD`, selector) | `v0_quality_report.json` + `trace_selector.json` in the run dir | ~2.5 min | ~3-15 min | BEFORE the run: `bash scripts/test/show_traces.sh` previews the exact slice; during: job log `Pre-flight quality report from BigQuery: N sessions` |
+| 3 | Evolution gate | Proceed only if failures >= threshold | the report | go / no-go log line | seconds | seconds | log: `should_evolve: True, failures: N` |
+| 4 | Bottleneck attribution | Classifies each failure to the responsible agent | failures | recommendation | **skipped** (target named on the CLI — classifying would re-derive the answer) | ~5 min | log: `Skipped classification: EVOLUTION_TARGET_AGENTS=...` |
+| 5 | Analyst fleet | One agent per failure investigates the trace (tool access) and proposes a patch | failure trajectories | patch list (`3*_...` artifacts) | ~1 min | ~6 min | log: `[k/N] [error] ... -> patch` |
+| 6 | Consolidation | Merges patches into N candidate `SKILL.md` docs (best-of-N) | patches | `*_candidates/candidate_*.md` | ~1 min | ~7 min | log: `Best-of-N complete` |
+| 7 | Candidate validation | Each candidate is deployed to a local supervisor and scored on replayed traffic | candidates + question set | `_score_candidate_*_report.json` per candidate | ~2 min x 3 | ~12 min x 5 | log: `Candidate k scored X% meaningful` |
+| 8 | Regression extraction | Failures the winner RESOLVED become new gate cases | baseline + winner reports | `regression_cases.json` + updated `eval/data/*.json` | seconds | seconds | log: `Extracted N regression case(s)` |
+| 9 | Registry publish | Winning skill becomes a new Skill Registry revision | winning `SKILL.md` | revision id | ~1 min | ~1 min | `registry_sync.py revisions --agent policy_agent` |
+| 10 | Pull request | Token-clone, branch, commit skill + eval files, `gh pr create` | run artifacts | the PR | ~2 min | ~2 min | `gh pr list` — title carries baseline% -> evolved% |
 
-### Try it interactively
+### What `--quick` cuts — and what it never touches
 
-Start the agents locally and chat with the supervisor through the
-ADK web UI:
+| Dial | Full | Quick | Why it is safe to cut | What it costs |
+|---|---|---|---|---|
+| Validation question set | 55 questions | 25 (2 per category, all 13 categories kept) | Coverage per category is preserved | Coarser scores: each question is worth 4pp, so two close candidates can swap ranks |
+| Turns per validation conversation | up to 4 (simulated user pushes back) | up to 4 — not cut | Full conversation depth is kept: deflection (turn 1), pushback/parroting (turn 2), drift (turns 3-4) all measured | Quick runs take longer than a 1-turn profile would (~2-3x per candidate) |
+| Validation supervisor model | the serving model (gemini-3.1-flash-lite) | same — not cut | Ranking measures exactly what production runs | — |
+| Bottleneck classification | runs (~5 min) | skipped when `--mode` names the target | You already gave the answer on the command line | None for a scoped run; scheduled runs (no `--mode`) still classify |
+| Rounds / candidates | agent-decided (up to 5 x 5) | bound to your `--rounds`/`--candidates` | Demo needs a bounded runtime | Fewer shots at a better skill per run |
 
-```bash
-bash scripts/local/local_start.sh
-```
+**Never cut, in any variant:** the analyst fleet reads every real
+failure from BigQuery (nothing sampled); the judge's scoring
+dimensions and golden matching; the CI gate on the PR (full golden
+evals + load test); regression extraction; the registry+PR flow; and
+the scheduled production run, which uses full settings by default.
 
-This launches:
-- **policy_agent** on `http://localhost:8080` (A2A server)
-- **hr_calculator** on `http://localhost:8081` (A2A server)
-- **knowledge_supervisor** on `http://localhost:8000` (ADK web UI)
+## Quality Monitoring & Automated Evolution
 
-Open `http://localhost:8000` and ask questions like "What is our PTO
-policy?" or "How many sick days do I get per year?"
+After deployment, a closed-loop quality pipeline monitors agent
+performance and evolves skills automatically from production data.
+Two agents divide the work: a **daily sentinel** that monitors, and a
+**healer** that evolves — on demand, on an issue threshold, or on
+its scheduled tick.
 
-Stop with `bash scripts/local/local_start.sh stop`.
+### Quality Agent -- Daily Sentinel
 
-### Manual step-by-step
-
-For an interactive walkthrough of each pipeline stage, see:
-- [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md) -- step-by-step
-  with `--step v0`, `--step v1`, `--step v2`
-- [Quick Evolution Runbook](docs/skill-evolution/QUICK_EVOLUTION_RUNBOOK.md)
-  -- manual commands for iteration and debugging
-
-## Deploy to GCP
-
-Full deployment to Cloud Run + Agent Engine. Takes ~25 minutes on
-first deploy, faster on subsequent runs.
-
-### Step 1: GCP infrastructure
-
-```bash
-source .env
-gcloud config set project $PROJECT_ID
-bash scripts/setup/setup_gcp.sh
-```
-
-Enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
-creates the BigQuery dataset for Agent Analytics, seeds the Skill
-Registry with the V0 skills, and grants IAM permissions.
-
-### Step 2: Deploy
-
-```bash
-bash scripts/deploy/deploy_gcp.sh
-```
-
-Deploys all components in order:
-
-| Step | Component | Time |
-|------|-----------|------|
-| 1 | policy_agent (Cloud Run) | ~3.5 min |
-| 2 | hr_calculator (Cloud Run) | ~3 min |
-| 3 | knowledge_supervisor (Agent Engine) | ~15 min |
-| 4 | traffic_generator (Cloud Run Job) | ~2.5 min |
-| 5 | quality_agent (Cloud Run Job + Scheduler) | ~3 min |
-| 6 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
-| | **Total** | **~30 min** |
-
-You can also deploy individually:
-```bash
-(cd agents/enterprise/policy_agent && ./deploy.sh)
-(cd agents/enterprise/hr_calculator && ./deploy.sh)
-(cd agents/enterprise/knowledge_supervisor && ./deploy.sh)
-```
-
-> **First deploy note:** On a fresh project, the first Agent Engine
-> deploy may fail with "failed to start and cannot serve traffic."
-> This is a known race condition -- re-run `deploy_gcp.sh` and it
-> will succeed.
-
-### Step 3: Smoke test
-
-```bash
-bash scripts/test/smoke_test_deployed.sh
-bash scripts/test/smoke_test_deployed.sh -q "How many PTO days do I have left?"
-
-# Per-agent tests
-bash agents/enterprise/policy_agent/send_query.sh -q "How many sick days do I get?"
-bash agents/enterprise/hr_calculator/send_query.sh -q "How many PTO days do I have left?"
-```
-
-### Step 4: Connect Gemini Enterprise (optional)
-
-Gemini Enterprise provides a chat UI that connects directly to the
-deployed Agent Engine -- no custom frontend needed.
-
-a. Go to [Gemini Enterprise](https://console.cloud.google.com/gemini-enterprise)
-   in the GCP Console
-b. Create a new **Gemini Enterprise app** (requires a Gemini Enterprise
-   license -- a trial works)
-c. Navigate to **Agents** > **Add Agent** > **Custom agent via Agent Engine**
-d. Paste the Agent Engine ID from the deploy output:
-   ```bash
-   bash scripts/test/smoke_test_deployed.sh -q "test"  # prints the reasoning engine path
-   ```
-e. Open the app's web URL and select **HR Policy Assistant** from
-   the agent picker
-
-## Set Up the GitHub Repo
-
-The production loop treats GitHub as part of the runtime: CI gates
-every skill change, merges trigger deployment, and the evolution job
-opens PRs with a bot credential. One script plus two manual steps wire
-all of it.
-
-### Step 1: Repo and prerequisites
-
-- Fork or create the repo and clone it
-- `cp .env.example .env` and set `PROJECT_ID`
-- Authenticate the GitHub CLI: `gh auth login`
-
-### Step 2: Run the setup script
+Runs daily via Cloud Scheduler. Queries BigQuery for recent root-agent
+sessions (app-, version-, and label-filtered), scores each with the
+LLM judge using the golden eval spec for scope and ground-truth
+context (full per-answer grading on the BQ path arrives with SDK
+issue #358), and creates labeled GitHub issues for failures
+(`--repo` from `GITHUB_REPO`, so it works from the container).
 
 ```bash
-bash scripts/setup/setup_github.sh
+# Deploy
+bash agents/workflow/quality_agent/deploy.sh
+
+# Run manually
+gcloud run jobs execute quality-agent --project=$PROJECT_ID --region=$REGION
+
+# Test locally (dry-run writes issues as .md files, no GitHub)
+./agents/workflow/quality_agent/run_local.sh --dry-run --period 1d
 ```
 
-The script detects the repo from your git remote and configures, in
-order:
+The Quality Agent detects three types of production failures:
 
-| Step | What it does |
-|------|--------------|
-| Labels | Issue labels the quality agent uses (`quality`, `routing`, `hallucination`, `prompt-gap`, `tool-error`) |
-| Workload Identity Federation | Creates the `github-actions` pool and OIDC provider in your GCP project, scoped to your GitHub org/user, so Actions authenticate to GCP with zero stored keys |
-| CI service account | Creates `github-actions-fixer@<project>` with the roles the workflows need (Vertex AI, BigQuery, Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Scheduler, Logging), and binds it to this repo via WIF |
-| Repo variables | Sets the Actions variables the workflows read: `PROJECT_ID`, `REGION`, `DATASET_ID`, `TABLE_ID`, `DATASET_LOCATION`, `TEST_DATASET_ID`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT` |
+| Type | How detected | Action |
+|------|-------------|--------|
+| **Regression** -- questions that used to work now fail | CA Data Agent finds similar past sessions that were meaningful | `[URGENT]` label for immediate attention |
+| **Persistent gap** -- known topics handled poorly | LLM Judge with Golden Q&A ground truth scores unhelpful/partial | Issues accumulate --> Skill Evolution Agent |
+| **New topic** -- users asking about unanticipated things | CA Data Agent finds no historical sessions + no Golden Q&A match | `new-topic` --> human decision |
 
-The script is idempotent -- re-run it after changing `.env` or moving
-projects.
+New-topic issues require a human decision: add the capability (create
+Golden Q&A entries, add tool/data support, re-run evolution) or mark
+out-of-scope (add to `agent_context.json` scope_decisions).
 
-### Step 3: Store the bot credential
+### Skill Evolution Agent -- Weekly Healer
 
-The evolution job runs in a container without your git identity. It
-clones the repo and opens PRs with a GitHub token read from Secret
-Manager as `GH_TOKEN`:
+Fires weekly from Cloud Scheduler, and each new quality issue also
+triggers a threshold check via
+`.github/workflows/skill_evolution_on_issue.yml`. When enough issues
+have accumulated (default: 10), it queries BigQuery directly for
+sessions tagged with the current `agent_version` -- always fresh data,
+no intermediate downloads.
 
 ```bash
-# A classic PAT with `repo` scope (or a fine-grained token with
-# contents + pull-requests read/write on this repo)
-gcloud services enable secretmanager.googleapis.com --project=$PROJECT_ID
-printf '%s' "<YOUR_PAT>" | gcloud secrets create github-pat \
-  --project=$PROJECT_ID --data-file=-
+# Deploy
+bash agents/workflow/skill_evolution_agent/deploy.sh
+
+# Run batch evolution manually
+gcloud run jobs execute skill-evolution-agent --project=$PROJECT_ID --region=$REGION
+
+# Run locally
+uv run python agents/workflow/skill_evolution_agent/main.py --batch
 ```
 
-`skill_evolution_agent/deploy.sh` mounts it as
-`GH_TOKEN=github-pat:latest`. For a nicer bot identity on issues and
-PRs (actions attributed to an app instead of your user), set up a
-GitHub App per [`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md).
+The pipeline: query BQ by version --> score with LLM judge -->
+parallel analyst fleet --> consolidate patches --> evolved SKILL.md -->
+registry revision + PR with before/after quality table.
 
-### Step 4: Protect main
+### Version-Aware Filtering
 
-Require the eval gate before merges:
+Every BQ event carries the agent's skill version (read from SKILL.md
+frontmatter). The quality agent filters sessions by version so it only
+analyzes traffic from the currently deployed skill -- preventing
+cross-version data contamination after an evolution.
 
-```bash
-gh api -X PUT "repos/{owner}/{repo}/branches/main/protection" --input - <<'EOF'
-{
-  "required_status_checks": {
-    "strict": false,
-    "contexts": ["Golden Eval", "Load Test"]
-  },
-  "enforce_admins": false,
-  "required_pull_request_reviews": null,
-  "restrictions": null
-}
-EOF
-```
+### Why Separate Monitoring and Healing?
 
-### Step 5: Verify
+| | Quality Agent (sentinel) | Skill Evolution Agent (healer) |
+|---|---|---|
+| **Frequency** | Daily | Weekly (or threshold-triggered) |
+| **Cost** | Low (LLM judge on ~50 sessions) | High (100 analysts + consolidation) |
+| **Output** | GitHub issues (observation) | GitHub PR (action) |
+| **Failure mode** | Missed problem (retry tomorrow) | Bad evolution (gate refuses, or revert PR) |
 
-```bash
-gh variable list          # the 8 variables from step 2
-gh secret list            # empty is fine -- CI uses WIF, the job uses Secret Manager
-```
+Configuration in `eval/data/quality_config.json`:
+- `evolution.min_open_issues`: how many quality issues before batch
+  evolution triggers (default: 10)
 
-Open any PR: the **Eval & Load Test Gate** should start automatically,
-and after `scripts/setup/setup_gcp.sh` + a deploy, merging to main
-triggers **Deploy to GCP**.
-
-## Run the Production Loop Demo
-
-The production loop is the deployed version of skill evolution
-(see [the evolution loop](#the-evolution-loop-end-to-end) for the full
-flow): real traffic lands in BigQuery, a scheduled job evolves the
-skills, the result arrives as a pull request, and merging the PR
-activates the new skill on the live agents. The Skill Registry is the
-source of truth -- agents fetch the latest skill revision at startup,
-and every change flows through git review before it reaches them.
-
-Prerequisites: a deployed stack (previous section), `.env` sourced, and
-`gh` authenticated against your fork.
-
-### Step 1: Seed the V0 baseline
-
-```bash
-source .env
-python eval/skill_evolution/registry_sync.py seed
-python eval/skill_evolution/registry_sync.py revisions --agent policy_agent
-```
-
-Publishes each agent's `SKILL.md` to the Agent Platform Skill Registry
-(`setup_gcp.sh` also runs this). The seed is idempotent: an unchanged
-skill is skipped. The policy agent's V0 is deliberately flawed -- baked
-policy facts plus "defer to HR for anything else" block the lookup tool
-the agent already has, and "accept the user's figure" produces real
-parroting on corrections. Those defects are the raw material the loop
-will observe and repair.
-
-At startup each agent logs its skill source, which is the proof the
-registry is live:
-
-```bash
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=1h --limit=4
-```
-
-### Step 2: Generate real traffic
-
-```bash
-python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_evolve.json
-python -m agents.workflow.traffic_generator.main \
-  --from-file eval/data/questions/two_defect_corrections.json --multi-turn
-```
-
-Drives questions through the deployed Agent Engine supervisor (omit
-`--local` for the deployed path). Every turn is logged to the BigQuery
-`agent_events` table by the Agent Analytics plugin, tagged with the
-skill version from the frontmatter (`custom_tags.agent_version`). The
-corrections file runs multi-turn: the user pushes back with a wrong
-figure, which is how parroting becomes observable in the traces.
-
-### Step 3: Run the evolution job
-
-```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait
-```
-
-The job also fires weekly from Cloud Scheduler (Mondays 09:00 UTC;
-override the cadence at deploy time with
-`EVOLUTION_SCHEDULE="*/30 * * * *"`). Inside one run:
-
-| Stage | What happens |
-|-------|--------------|
-| Pre-flight | Builds a quality report from real BigQuery traces (`QUALITY_SOURCE=bigquery`); falls back to generated traffic below `MIN_SESSIONS` |
-| Gate | Proceeds only when there are enough failures to learn from |
-| Bottleneck | Classifies each failure by source agent and picks which skill(s) to evolve |
-| Evolution | Error analysts study the failures, propose patches, and best-of-N candidate skills are scored on the evolve set |
-| Publish | The winning skills are pushed to the Skill Registry as new revisions |
-| PR | A pull request with the evolved `SKILL.md` opens on the repo (token-cloned inside the job container) |
-
-### Step 4: Review the PR
-
-The PR body carries the baseline quality numbers; the diff is the
-evolved skill itself. CI runs the Eval & Load Test Gate on it, and the
-gate is version-aware: skills at version 0 are held to baseline
-expectations, while an evolved skill (version >= 1) must pass the full
-routing, fan-out, and quality assertions.
-
-The gate has teeth. In one live run the evolved supervisor skill scored
-80% on the evolve set by copying observed facts into its own summary
-and answering directly -- which broke the routing contract, so the gate
-refused it. A refused candidate stays in the registry history and in
-the PR record; the next evolution round learns from a wider window.
-
-### Step 5: Merge to activate
-
-```bash
-gh pr merge <PR_NUMBER> --merge
-
-# 1. CI ran and is green
-gh run list --workflow "Deploy to GCP" --limit 1
-# 2. Registry sync reconciled the merged skill (SKIP = job already pushed it)
-gh run view <run-id> --log | grep -E "SKIP|UPDATE|CREATE"
-# 3. Agents serve the merged revision
-gcloud logging read 'textPayload:"Loaded skill from registry"' \
-  --project=$PROJECT_ID --freshness=15m --limit=4
-# 4. A question V0 deflected now gets a grounded answer
-bash scripts/test/smoke_test_deployed.sh
-```
-
-Merging triggers `deploy.yml`: it re-seeds the registry from the merged
-`SKILL.md` (normally a SKIP, because the job already pushed that exact
-revision -- the SKIP is the git-registry reconciliation proof), then
-redeploys the agents, which fetch the merged revision at startup.
-
-### Step 6: Roll back with one command
-
-```bash
-bash scripts/demo/skill_evolution/rollback_demo.sh
-```
-
-Resets the `SKILL.md` files to V0, republishes V0 to the Skill Registry
-as the newest revision (the registry is append-only, so the evolved
-revisions stay in history), restarts the policy agent and supervisor so
-they serve V0 immediately, and prints the verification. Flags:
-`--baseline stub|two-defect` (default `two-defect`) and
-`--skip-redeploy` (agents pick up V0 on their next restart instead).
+See [`docs/DESIGN.md`](docs/DESIGN.md) for the full architecture.
 
 ## Plug In Your Own Agent
 
@@ -704,122 +1640,17 @@ LLM judge. Re-run whenever your golden evals change.
 ### Step 5: Run evolution
 
 ```bash
-bash scripts/demo/skill_evolution/run_demo.sh --quick
+bash scripts/demo/skill_evolution/run_lite.sh
 ```
 
-Or run each step manually:
-
-```bash
-RUN_DIR="eval/runs/$(date +%Y-%m-%d_%H%M%S)_evolution"
-mkdir -p "$RUN_DIR"
-
-# Generate traffic against your agent
-uv run python agents/workflow/traffic_generator/main.py \
-    --local --local-agents --multi-turn \
-    --from-file eval/data/questions/demo_quick.json \
-    -o "$RUN_DIR/v0_traffic.json" --concurrency 10
-
-# Score conversations
-bash scripts/demo/skill_evolution/score.sh \
-    -i "$RUN_DIR/v0_traffic.json" \
-    -o "$RUN_DIR/v0_quality_report.json" --report
-
-# Evolve via ADK agent (auto-selects candidates based on quality)
-uv run python agents/workflow/skill_evolution_agent/main.py \
-    --report "$RUN_DIR/v0_quality_report.json"
-
-# Compare
-python eval/scoring/score_conversations.py --compare \
-    "$RUN_DIR/v0_quality_report.json:V0" \
-    "$RUN_DIR/v1_quality_report.json:V1"
-```
+Or run the six bootstrap stages one at a time against your agent —
+the exact commands are in
+[Alternative: Local-Only Demo -> Manual step-by-step](#alternative-local-only-demo-no-deployment);
+swap the questions file for yours.
 
 For full input schemas and pipeline details, see
 [Inputs, Setup, and Pipeline](docs/skill-evolution/ALGORITHM.md#inputs-setup-and-pipeline)
 in the algorithm reference.
-
-## Quality Monitoring & Automated Evolution
-
-After deployment, a closed-loop quality pipeline monitors agent
-performance and evolves skills automatically from production data.
-Two agents divide the work: a **daily sentinel** that monitors, and a
-**weekly healer** that evolves.
-
-### Quality Agent -- Daily Sentinel
-
-Runs daily via Cloud Scheduler. Queries BigQuery for recent sessions
-(filtered by `agent_version` from SKILL.md frontmatter), scores each
-with an LLM judge against Golden Q&A ground truth, and creates GitHub
-issues for failures.
-
-```bash
-# Deploy
-bash agents/workflow/quality_agent/deploy.sh
-
-# Run manually
-gcloud run jobs execute quality-agent --project=$PROJECT_ID --region=$REGION
-
-# Test locally (dry-run writes issues as .md files, no GitHub)
-./agents/workflow/quality_agent/run_local.sh --dry-run --period 1d
-```
-
-The Quality Agent detects three types of production failures:
-
-| Type | How detected | Action |
-|------|-------------|--------|
-| **Regression** -- questions that used to work now fail | CA Data Agent finds similar past sessions that were meaningful | `[URGENT]` label for immediate attention |
-| **Persistent gap** -- known topics handled poorly | LLM Judge with Golden Q&A ground truth scores unhelpful/partial | Issues accumulate --> Skill Evolution Agent |
-| **New topic** -- users asking about unanticipated things | CA Data Agent finds no historical sessions + no Golden Q&A match | `new-topic` --> human decision |
-
-New-topic issues require a human decision: add the capability (create
-Golden Q&A entries, add tool/data support, re-run evolution) or mark
-out-of-scope (add to `agent_context.json` scope_decisions).
-
-### Skill Evolution Agent -- Weekly Healer
-
-Fires weekly from Cloud Scheduler, and each new quality issue also
-triggers a threshold check via
-`.github/workflows/skill_evolution_on_issue.yml`. When enough issues
-have accumulated (default: 10), it queries BigQuery directly for
-sessions tagged with the current `agent_version` -- always fresh data,
-no intermediate downloads.
-
-```bash
-# Deploy
-bash agents/workflow/skill_evolution_agent/deploy.sh
-
-# Run batch evolution manually
-gcloud run jobs execute skill-evolution-agent --project=$PROJECT_ID --region=$REGION
-
-# Run locally
-uv run python agents/workflow/skill_evolution_agent/main.py --batch
-```
-
-The pipeline: query BQ by version --> score with LLM judge -->
-parallel analyst fleet --> consolidate patches --> evolved SKILL.md -->
-registry revision + PR with before/after quality table.
-
-### Version-Aware Filtering
-
-Every BQ event carries the agent's skill version (read from SKILL.md
-frontmatter). The quality agent filters sessions by version so it only
-analyzes traffic from the currently deployed skill -- preventing
-cross-version data contamination after an evolution.
-
-### Why Separate Monitoring and Healing?
-
-| | Quality Agent (sentinel) | Skill Evolution Agent (healer) |
-|---|---|---|
-| **Frequency** | Daily | Weekly (or threshold-triggered) |
-| **Cost** | Low (LLM judge on ~50 sessions) | High (100 analysts + consolidation) |
-| **Output** | GitHub issues (observation) | GitHub PR (action) |
-| **Failure mode** | Missed problem (retry tomorrow) | Bad evolution (gate refuses, or revert PR) |
-
-Configuration in `eval/data/quality_config.json`:
-- `evolution.min_open_issues`: how many quality issues before batch
-  evolution triggers (default: 10)
-
-See [`docs/DESIGN.md`](docs/DESIGN.md) for the full architecture.
 
 ## CI/CD and GitHub Integration
 
@@ -839,13 +1670,44 @@ deployed stack consistent:
   registry already carries that exact revision), then rebuilds and
   redeploys all components.
 - **Evolution on issue** (`.github/workflows/skill_evolution_on_issue.yml`)
-  -- each new quality issue triggers a threshold check that can start
-  a batch evolution run.
+  -- each new quality issue triggers a dispatcher: the runner counts
+  open `quality` issues against `EVOLUTION_MIN_OPEN_ISSUES` (repo var,
+  default 10) and at the threshold dispatches the skill-evolution-agent
+  Cloud Run job (async, via WIF), commenting the issue either way.
+  Proven live 2026-07-17: the daily quality agent filed issues at
+  08:00, the 10-issue threshold tripped, and the dispatcher started a
+  full evolution run with no human in the loop.
 
 Setup guides: [`docs/CI_CD_GITHUB.md`](docs/CI_CD_GITHUB.md) (Workload
 Identity Federation, repo variables, branch protection) and
 [`docs/GITHUB_APP_SETUP.md`](docs/GITHUB_APP_SETUP.md) (the bot
 identity used for issues and PRs).
+
+## Troubleshooting
+
+- **WIF provider NOT_FOUND right after creation** — propagation race;
+  `setup_github.sh` retries automatically; re-run if it exhausts
+  retries (idempotent).
+- **First Agent Engine deploy fails ("failed to start and cannot
+  serve traffic")** — known race on fresh projects; re-run
+  `deploy_gcp.sh`.
+- **Registry seed fails with 403** — check ADC
+  (`gcloud auth application-default login`) and that
+  `aiplatform.googleapis.com` is enabled (3.1 does this).
+- **Gate red with RESOURCE_EXHAUSTED** — fresh-project Vertex quota;
+  rerun, request a `gemini-2.5-flash` bump, and avoid pushing while a
+  deploy/rollback/evolution run competes for the same quota.
+- **Traffic fails with "Quota exceeded ... Query Reasoning Engine
+  requests"** — fresh projects allow 90 Agent Engine requests/min
+  (sessions + streams share it). The generator backs off; keep
+  `--concurrency 2` for deployed seeding, or request an increase on
+  `QueryReasoningEngineRequestsPerMinutePerProjectPerRegion`.
+- **Evolution job killed at its task timeout** — a full 3-skill
+  best-of-5 run needs ~3h; the deploy sets 4h. Prefer the scoped demo
+  profile for anything interactive.
+- **Evolution job can't open a PR** — the `github-pat` secret is
+  missing or expired; see the rotation recipe in
+  [docs/GITHUB_APP_SETUP.md](docs/GITHUB_APP_SETUP.md).
 
 ## Project Structure
 
@@ -890,6 +1752,7 @@ scripts/
   local/local_start.sh       Start all agents locally
   demo/skill_evolution/
     run_demo.sh              Full local E2E pipeline (--full/--quick/--reuse-v0)
+    run_lite.sh / run_standard.sh / run_full.sh   Profile wrappers (see Local-Only Demo)
     rollback_demo.sh         One-command rollback to V0 (registry + redeploy)
     score.sh                 Score conversations with golden eval matching
   test/smoke_test_deployed.sh  End-to-end smoke test of the deployed stack
@@ -916,6 +1779,13 @@ docs/
   GITHUB_APP_SETUP.md        GitHub bot identity setup
   DESIGN.md                  Quality loop design
 ```
+
+## Backlog
+
+Measured issues and planned work live in
+[docs/BACKLOG.md](docs/BACKLOG.md) — currently headlined by the demo
+latency plan (73 min measured -> ~10 min target, with the per-phase
+numbers and fixes).
 
 ## Next Directions
 

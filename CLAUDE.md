@@ -112,7 +112,7 @@ ground truth, turn tagging, trajectory sampling, and quality scoring in a single
 ## Key Paths
 
 - Agent code: `agents/enterprise/` (policy_agent, knowledge_supervisor, hr_calculator)
-- Workflow agents: `agents/workflow/` (skill_evolution_agent, remediation_agent, quality_agent, traffic_generator)
+- Workflow agents: `agents/workflow/` (skill_evolution_agent, quality_agent, traffic_generator)
 - Eval data & results: `eval/`
 - Blog & docs: `docs/skill-evolution/`
 - Skills (V0 baseline): `agents/enterprise/*/skill/SKILL.md`

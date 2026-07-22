@@ -55,13 +55,19 @@
       "id": "compound_meal_hsa",
       "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "compound_bereavement_parental",
       "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "oos_severance",
@@ -74,6 +80,246 @@
       "question": "Can I get a standing desk for my home office?",
       "category": "out_of_scope",
       "expected_behavior": "decline_gracefully"
+    },
+    {
+      "id": "regression_conv_455dff9",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_455dff94",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to provide a substantive answer to an in-scope question."
+    },
+    {
+      "id": "regression_conv_7007b69",
+      "question": "Which health plan types can I choose from?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_7007b69c",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have the information and deflects to HR, even after being prompted to check policy documentation. It also incorrectly states that 'health plan types' is not a supported benefit."
+    },
+    {
+      "id": "regression_conv_80c6851",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_80c6851f",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent initially provided a calculation but then retracted it and stated it could not help, directing the user to HR."
+    },
+    {
+      "id": "regression_conv_575cc4e",
+      "question": "How many counseling visits does the EAP cover?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_575cc4ed",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not answer the question and directed the user to HR, despite EAP being within the agent's scope and the policy_agent tool being available for such queries."
+    },
+    {
+      "id": "regression_conv_e5833a3",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_e5833a3d",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to provide the per-diem amount."
+    },
+    {
+      "id": "regression_conv_e7b7aa9",
+      "question": "Is a receipt needed for a $40 purchase?",
+      "category": "expenses",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_e7b7aa9c",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent incorrectly stated that a receipt is not needed for a $40 purchase, when the policy requires one for purchases over $25."
+    },
+    {
+      "id": "regression_conv_e1678fe",
+      "question": "How many company-paid holidays are there?",
+      "category": "holidays",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_e1678fe9",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it did not have information and directed the user to HR, failing to answer the question even after the user provided context and asked for verification against policy."
+    },
+    {
+      "id": "regression_conv_d65d2ed",
+      "question": "What portion of my pay does short-term disability replace?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_d65d2edd",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it could not answer the question and directed the user to HR, even after being asked to check the policy. This is unhelpful as it fails to provide any information."
+    },
+    {
+      "id": "regression_conv_7766373",
+      "question": "What's the maximum duration of short-term disability?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_77663733",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to use its tools to find the answer."
+    },
+    {
+      "id": "regression_conv_e092a1c",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_e092a1c8",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it did not have the information and directed the user to HR, failing to provide any substantive answer."
+    },
+    {
+      "id": "regression_conv_073ab62",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_073ab62c",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it could not answer the question and directed the user to HR, even after being prompted to check the policy. This is unhelpful as the question is within the agent's scope and a policy lookup tool should have been used."
+    },
+    {
+      "id": "regression_conv_0daa8fe",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_0daa8fec",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent initially stated it could not help and deflected to HR, which was incorrect as the question was within scope and calculable by the hr_calculator tool. The subsequent response was a generic apology."
+    },
+    {
+      "id": "regression_conv_bdcef4b",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_bdcef4b7",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it did not have the information and directed the user to HR, failing to provide any substantive answer to an in-scope question."
+    },
+    {
+      "id": "regression_conv_7726069",
+      "question": "How many vacation days do I get a year?",
+      "category": "pto",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_77260699",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent's final response acknowledged the user's correction but did not independently verify it by re-querying a tool or citing a new source, thus the user performed the agent's work."
+    },
+    {
+      "id": "regression_conv_15a3511",
+      "question": "What portion of my pay does short-term disability replace?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_15a3511e",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to provide the answer to an in-scope question."
+    },
+    {
+      "id": "regression_conv_5136e38",
+      "question": "How much will the company reimburse for tuition each year?",
+      "category": "expenses",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_5136e386",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user to HR, failing to provide the policy details available through the policy_agent."
+    },
+    {
+      "id": "regression_conv_384da7a",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_384da7a7",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it did not have the information and directed the user to HR, failing to provide any substantive answer even after being prompted to check the policy."
+    },
+    {
+      "id": "regression_conv_8571025",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_85710254",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not calculate the payout and directed the user to HR, instead of using the hr_calculator tool which is designed for this purpose."
+    },
+    {
+      "id": "regression_conv_28dd2eb",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_28dd2eb1",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, failing to provide the requested per-diem amount."
+    },
+    {
+      "id": "regression_conv_b4bbcd0",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_b4bbcd0d",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it could not give a definitive answer and punted the question to the manager, rather than using its tools to find the policy."
+    },
+    {
+      "id": "regression_conv_be6e33f",
+      "question": "How many company-paid holidays are there?",
+      "category": "holidays",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_be6e33fb",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it did not have information and directed the user to HR, failing to answer the question even after multiple user prompts and clarifications."
+    },
+    {
+      "id": "regression_conv_4ec4e01",
+      "question": "How often can I work from home each week?",
+      "category": "remote_work",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_4ec4e01b",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it did not have information about core hours and directed the user to HR, even after the user provided the correct information. This indicates a failure to utilize available knowledge or tools to confirm the user's statement."
+    },
+    {
+      "id": "regression_conv_70d68f1",
+      "question": "What portion of my pay does short-term disability replace?",
+      "category": "general",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_70d68f13",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it could not answer questions about benefits, even after the user clarified it was a policy inquiry. This is unhelpful as the agent has a policy_agent tool that could have answered the question."
+    },
+    {
+      "id": "regression_conv_ac33fd0",
+      "question": "How much will the company reimburse for tuition each year?",
+      "category": "expenses",
+      "expected_agent": "unknown",
+      "source": "skill_evolution",
+      "source_session_id": "conv_ac33fd02",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent initially stated it did not have the information and then encountered a tool error, failing to provide any useful answer."
     }
   ]
 }

@@ -1,5 +1,13 @@
 # CI/CD and GitHub Integration
 
+> **Scope note:** Sections about the fast prompt-only deploy
+> (deploy_prompts.yml) and Vertex AI Prompt Manager describe the
+> reactive loop and do NOT apply to this repo -- skills here flow
+> through the Skill Registry via deploy.yml. The WIF, variables, and
+> gate sections apply as written; scripts/setup/setup_github.sh
+> automates them.
+
+
 > **Status:** This integration is planned for a future phase. The current
 > focus is on the [Skill Evolution pipeline](skill-evolution/ALGORITHM.md).
 > The content below documents the reactive loop's CI/CD setup for
