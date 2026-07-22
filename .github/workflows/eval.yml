@@ -22,6 +22,16 @@
 
 name: Eval & Load Test Gate
 
+# The failure email's subject quotes the RUN name. On evolution
+# candidate branches a red run means the gate REFUSED the candidate —
+# working as designed — so the run name says exactly that instead of
+# sounding like an outage. Everywhere else the run keeps its normal
+# title (PR title / commit message).
+run-name: >-
+  ${{ startsWith(github.head_ref || github.ref_name, 'skill-evolution/')
+      && 'Candidate review: FAIL = candidate REFUSED by the quality gate (expected — not an outage)'
+      || (github.event.pull_request.title || github.event.head_commit.message) }}
+
 on:
   push:
     branches: [main]
@@ -86,6 +96,20 @@ jobs:
             --reruns 2 --reruns-delay 30 --only-rerun "RESOURCE_EXHAUSTED" \
             2>&1 | tee eval_results.txt
           exit ${PIPESTATUS[0]}
+
+      - name: Explain the refusal (evolution candidate PRs)
+        if: failure() && startsWith(github.head_ref, 'skill-evolution/')
+        run: |
+          {
+            echo "## Candidate REFUSED — the gate is doing its job"
+            echo ""
+            echo "The evolved skill proposed on this PR did not pass the"
+            echo "golden bar. Nothing is broken and no action is required:"
+            echo "the gate reviewed the candidate and refused it, which is"
+            echo "the safety this pipeline exists to provide. Close the PR,"
+            echo "or wait for a future evolution run to propose a better"
+            echo "candidate."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload eval results
         if: always()

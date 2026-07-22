@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Skill Evolution Agent — triggered when Quality Agent creates a quality issue.
-# The agent reads the issue, runs traffic + scoring against the deployed agent,
-# evolves the SKILL.md, and opens a PR with "Fixes #N" to auto-close the issue.
+# Skill Evolution dispatcher — triggered when the Quality Agent files a
+# quality issue. The runner counts open quality issues; at the threshold
+# (EVOLUTION_MIN_OPEN_ISSUES repo var, default 10) it dispatches the
+# skill-evolution-agent Cloud Run job, which runs the full pipeline and
+# opens the PR.
 #
 # Auth:
 #   GCP  — Workload Identity Federation (no service account keys)
@@ -26,9 +28,10 @@ on:
   issues:
     types: [opened, labeled]
 
-# Only one evolution run per issue at a time
+# One dispatcher at a time, globally — a batch of freshly filed issues
+# queues here instead of racing N dispatchers side by side.
 concurrency:
-  group: evolution-issue-${{ github.event.issue.number }}
+  group: evolution-dispatch
   cancel-in-progress: false
 
 env:
@@ -51,44 +54,50 @@ jobs:
       id-token: write   # for Workload Identity Federation
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: |
-          pip install -r agents/workflow/skill_evolution_agent/requirements.txt
-          pip install python-dotenv
-
-      - name: Install Antigravity CLI
-        run: |
-          curl -fsSL https://antigravity.google/cli/install.sh | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
-      - name: Run Skill Evolution Agent (batch mode)
+      # The runner only counts issues and dispatches; the evolution
+      # pipeline runs in the Cloud Run job (the runner has no agent
+      # environment — running the pipeline here fails on imports and
+      # would hit the 6h runner limit anyway).
+      - name: Check threshold and dispatch the evolution job
         env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          GITHUB_BASE_BRANCH: ${{ github.event.repository.default_branch }}
-          GCS_UPLOAD: "true"
-          GCS_BUCKET: ${{ vars.PROJECT_ID }}-skill-evolution
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          MIN_OPEN_ISSUES: ${{ vars.EVOLUTION_MIN_OPEN_ISSUES || 10 }}
         run: |
-          python agents/workflow/skill_evolution_agent/main.py --batch
+          OPEN=$(gh issue list --label quality --state open --limit 100 --json number --jq 'length')
+          echo "Open quality issues: ${OPEN} (threshold: ${MIN_OPEN_ISSUES})"
+          if [ "${OPEN}" -lt "${MIN_OPEN_ISSUES}" ]; then
+            echo "Below threshold — accumulating. No evolution run dispatched."
+            exit 0
+          fi
+          # In-flight guard: one evolution run at a time. Without this,
+          # every issue in a morning batch dispatches its own multi-hour
+          # execution (they'd all see the same >=threshold count).
+          RUNNING=$(gcloud run jobs executions list --job=skill-evolution-agent \
+            --project="${PROJECT_ID}" --region="${REGION}" --limit=10 \
+            --format="value(metadata.name,status.completionTime)" \
+            | awk -F'\t' '$2=="" {c++} END {print c+0}')
+          if [ "${RUNNING}" -gt 0 ]; then
+            echo "An evolution execution is already running (${RUNNING} in flight) — skipping dispatch."
+            exit 0
+          fi
+          echo "Threshold met — dispatching skill-evolution-agent job (async)."
+          gcloud run jobs execute skill-evolution-agent \
+            --project="${PROJECT_ID}" --region="${REGION}"
+          gh issue comment "${{ github.event.issue.number }}" \
+            --body "Quality-issue threshold met (${OPEN} open >= ${MIN_OPEN_ISSUES}): dispatched the skill-evolution-agent Cloud Run job. Watch: \`gcloud run jobs executions list --job=skill-evolution-agent --region=${REGION}\`"
 
       - name: Post failure comment
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh issue comment "${{ github.event.issue.number }}" \
-            --body "Skill Evolution Agent run failed. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+            --body "Evolution dispatch failed. See [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
