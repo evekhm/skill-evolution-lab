@@ -673,6 +673,17 @@ fi
 # Held-out evolve/test split (Trace2Skill §2.1): patches + candidate scoring
 # use D_evolve; V0/V1 are reported on the disjoint D_test. Full mode only.
 TESTSET=""
+# Quick profiles measure the final V0-vs-winner gain on a DISJOINT
+# held-out subset (same categories, unseen phrasings) so every profile
+# reports generalization, the same kind of number as full. Candidate
+# selection still happens on the evolve set.
+if [ "$MODE" = "quick" ]; then
+    case "$QUESTIONS_FILE" in
+        *two_defect_lite*)  TESTSET="$EVAL_DIR/data/questions/two_defect_test_lite.json" ;;
+        *)                  TESTSET="$EVAL_DIR/data/questions/two_defect_test_quick.json" ;;
+    esac
+    echo "  [config] Held-out test set: $(basename "$TESTSET")"
+fi
 if $HELDOUT && [ "$MODE" = "full" ] && ! $REUSE_V0; then
     banner "HELD-OUT SPLIT (evolve/test)"
     uv run python "$EVAL_DIR/data/questions/split_questions.py" "$QUESTIONS_FILE" \
@@ -891,6 +902,17 @@ step_close
         [ "$v" = "v0" ] && continue
         row "$v" "$f"
     done
+    if [ -f "$RUN_DIR/v0_test_report.json" ] && [ -f "$RUN_DIR/v1_test_report.json" ]; then
+        gt0=$(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "?"' "$RUN_DIR/v0_test_report.json")
+        gt1=$(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "?"' "$RUN_DIR/v1_test_report.json")
+        d=$(awk "BEGIN{printf \"%+.1f\", $gt1-$gt0}" 2>/dev/null || echo "?")
+        echo ""
+        echo "## HELD-OUT RESULT (the headline: unseen questions)"
+        echo ""
+        echo "| | V0 | Winner | Gain |"
+        echo "|---|---|---|---|"
+        echo "| Ground-truth rate | ${gt0}% | ${gt1}% | ${d}pp |"
+    fi
     [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
     _thr=$(awk "BEGIN{printf \"%.0f\", ${QUALITY_THRESHOLD:-0.95}*100}")
     if [ -n "$BEST_V" ] && awk "BEGIN{exit !($BEST_RATE >= $_thr)}"; then
