@@ -132,7 +132,9 @@ EVOLVED_SIZE=$(wc -c < "$EVOLVED_SKILL")
 extract_rate() {
     local report="$1" field="$2"
     if [ -n "$report" ] && [ -f "$report" ]; then
-        jq -r ".summary.${field} // empty | . * 10 | round | . / 10 | tostring" \
+        # Prefer the golden ground-truth rate; the ungrounded judge rate
+        # is the fallback for reports without golden matching.
+        jq -r "(.summary.golden_eval_summary.matched_${field} // .summary.${field}) // empty | . * 10 | round | . / 10 | tostring" \
             "$report" 2>/dev/null || true
     fi
 }
