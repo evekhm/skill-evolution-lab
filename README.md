@@ -506,17 +506,31 @@ winner goes live:
 Independent of where it runs, pick one of three PROFILES — how much
 time you have vs what the numbers must prove:
 
-| | Lite | Standard | Full |
-|---|---|---|---|
-| Run deployed (default) | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
-| Run local (sandbox) | `run_lite.sh --local` | `run_standard.sh --local` | `run_full.sh --local` |
+| | Lite                                                                                                                                                     | Standard                                                                                                              | Full                                                                                               |
+|---|----------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| Run deployed (default) | `run_lite.sh`                                                                                                                                            | `run_standard.sh`                                                                                                     | `run_full.sh`                                                                                      |
+| Run local (sandbox) | `run_lite.sh --local`                                                                                                                                    | `run_standard.sh --local`                                                                                             | `run_full.sh --local`                                                                              |
 | Caveats | chunky rates (each question is worth ~7.7 percentage points of the score; close candidates can swap ranks) — directional, for first contact and iteration | steadier rates (~4 percentage points per question), better ranking; still no held-out set — for comparing skill ideas | winner re-scored on unseen questions, no overfitting asterisk — when the number is the deliverable |
-| Wall time (measured locally) | **~17 min** | ~30-40 min | ~1-2 h |
-| Questions | 13 (1 per category) | 25 (2 per category) | 55 + held-out test split |
-| Candidates | 2 | 3 | agent-decided (up to 5) |
-| Rounds | 1 | 1 | agent-decided |
-| Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (all bottlenecked agents) |
-| Final numbers from | validation set itself | validation set itself | DISJOINT held-out test set |
+| Wall time (measured locally) | ~20 min                                                                                                                                               | ~45 min                                                                                                               | ~2-3 h                                                                                             |
+| Questions | 13 (1 per category)                                                                                                                                      | 25 (2 per category)                                                                                                   | 55 + held-out test split                                                                           |
+| Candidates | 2                                                                                                                                                        | 3                                                                                                                     | agent-decided (up to 5)                                                                            |
+| Rounds | 1                                                                                                                                                        | 1                                                                                                                     | agent-decided                                                                                      |
+| Evolved agent | supervisor only                                                                                                                                          | supervisor only (`EVOLVE_TARGET` overrides)                                                                           | agent-decided (all bottlenecked agents)                                                            |
+| Final numbers from | validation set itself                                                                                                                                    | validation set itself                                                                                                 | DISJOINT held-out test set                                                                         |
+
+What each step costs per profile (measured on local runs; deployed
+adds Agent Engine serve latency to Steps 2 and 6):
+
+| Step | Lite | Standard | Full | What differs |
+|---|---|---|---|---|
+| 1 Reset to the V0 baseline | <1s | <1s | <1s | identical everywhere |
+| 2 Generate labeled traffic | ~4 min (13q) | ~5 min (25q) | ~8 min (32q of the 55, held-out split) | question count |
+| 3 Run the evolution job | ~14 min (2 candidates, 1 round, supervisor only) | ~26 min (3 candidates) | ~3 h (agent-decided: up to 5 candidates x rounds x all agents) | candidates, rounds, target agents |
+| Held-out measurement | ~5 min (13 unseen questions) | ~8 min (25 unseen) | ~30 min (23 unseen, from the split) | test-set size; ALWAYS the headline number |
+| 4 Review the PR | <1 min | <1 min | <1 min | identical (local artifact) |
+| 5-6 Merge + verify | sandbox: skipped | sandbox: skipped | sandbox: skipped | deployed-path steps; deployed runs open the real PR |
+| 7 Roll back | <1s | <1s | <1s | identical everywhere |
+| **Total (measured)** | **~25 min** | **~45 min** | **~3.5 h** | |
 
 All commands live in `scripts/demo/skill_evolution/`, e.g.:
 
