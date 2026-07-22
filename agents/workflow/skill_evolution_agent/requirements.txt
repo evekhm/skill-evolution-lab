@@ -5,3 +5,5 @@ google-cloud-storage>=2.18.0
 python-dotenv==1.2.2
 # BQ-sourced pre-flight (quality_agent.run_quality_report inside the container)
 bigquery-agent-analytics>=0.4.0
+pytest
+pytest-asyncio

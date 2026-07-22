@@ -100,7 +100,7 @@ def run_evolution(
     quality_report_path: str,
     skill_dir: str,
     run_dir: str | None = None,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     agentic: bool = True,
     candidates: int | None = None,
@@ -193,7 +193,7 @@ def run_evolution(
                     fh.write(skill_content)
                 res = score_candidate(
                     run_dir=_rd, candidate_path=tmp, skill_dir=_sd,
-                    questions_file=_QUESTIONS_FILE,
+                    questions_file=_questions_file(),
                 )
                 return float(res.get("meaningful_rate", 0.0))
 
@@ -250,6 +250,17 @@ def run_evolution(
 
 
 def detect_bottleneck_tool(quality_report_path: str) -> dict:
+    target_env = os.getenv("EVOLUTION_TARGET_AGENTS", "").strip()
+    if target_env:
+        # Target bound (--mode <agent>): classification would spend
+        # ~5 min of LLM calls concluding what was already decided.
+        return {
+            "recommendation": target_env,
+            "note": (
+                f"Skipped classification: EVOLUTION_TARGET_AGENTS={target_env} "
+                "binds the evolution target. Proceed directly to evolution."
+            ),
+        }
     """Detect which agent is the primary quality bottleneck.
 
     Classifies failures as routing, skill, tool, or architecture issues.
@@ -267,6 +278,10 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
     if not os.path.isfile(quality_report_path):
         return {"error": f"Quality report not found: {quality_report_path}"}
 
+    cached = _bottleneck_cache.get(os.path.abspath(quality_report_path))
+    if cached is not None:
+        return {**cached, "note": "cached (already classified this report)"}
+
     with open(quality_report_path) as f:
         report = json.load(f)
 
@@ -278,7 +293,7 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
 
     try:
         result = detect_bottleneck(report, client)
-        return {
+        out = {
             "recommendation": result.recommendation,
             "confidence": result.confidence,
             "total_failures": result.total_failures,
@@ -288,6 +303,11 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
             "architecture_failures": len(result.architecture_failures),
             "summary": result.summary,
         }
+        # Cache so coevolve (and repeat tool calls) reuse this instead of
+        # re-classifying the same report (~5 min of LLM calls, observed
+        # running twice per loop before this).
+        _bottleneck_cache[os.path.abspath(quality_report_path)] = out
+        return out
     except Exception as e:
         logger.error("Bottleneck detection failed: %s", e, exc_info=True)
         return {"error": str(e)}
@@ -298,10 +318,14 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+_coevolution_rounds_run = 0  # EVOLUTION_MAX_ROUNDS guard (per process)
+_bottleneck_cache: dict = {}  # report path -> classification (run once per report)
+
+
 def run_coevolution(
     quality_report_path: str,
     output_dir: str | None = None,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     agentic: bool = True,
 ) -> dict:
@@ -322,6 +346,26 @@ def run_coevolution(
     """
     from agents.workflow.skill_evolution_agent.coevolve import coevolve
 
+    # EVOLUTION_MAX_ROUNDS (set by main.py from --rounds) is BINDING: the
+    # orchestrating agent cannot add extra evolution rounds beyond it.
+    global _coevolution_rounds_run
+    max_rounds = os.getenv("EVOLUTION_MAX_ROUNDS")
+    if max_rounds and _coevolution_rounds_run >= int(max_rounds):
+        logger.warning(
+            "run_coevolution refused: EVOLUTION_MAX_ROUNDS=%s reached "
+            "(%d round(s) already run)", max_rounds, _coevolution_rounds_run,
+        )
+        return {
+            "status": "refused",
+            "reason": (
+                f"EVOLUTION_MAX_ROUNDS={max_rounds} reached "
+                f"({_coevolution_rounds_run} round(s) already run). "
+                "Do NOT evolve further — publish the best result so far "
+                "to the registry and open the PR."
+            ),
+        }
+    _coevolution_rounds_run += 1
+
     if not os.path.isfile(quality_report_path):
         return {"error": f"Quality report not found: {quality_report_path}"}
 
@@ -332,7 +376,7 @@ def run_coevolution(
             model_id=model_id,
             max_workers=max_workers,
             agentic=agentic,
-            questions_file=_QUESTIONS_FILE,
+            questions_file=_questions_file(),
             select_by_score=True,
         )
 
@@ -446,6 +490,13 @@ def read_current_eval_cases() -> dict:
 # Default questions file for evolution loop. Honor EVAL_QUESTIONS_FILE so the
 # demo (e.g. run_demo.sh --quick) can validate candidates against the smaller
 # quick set instead of the full 235-question set.
+def _questions_file() -> str:
+    """Resolve the scoring question set at CALL time, so bindings set by
+    main.py (e.g. the --quick profile) reach the tools even though this
+    module was imported earlier."""
+    return os.environ.get("EVAL_QUESTIONS_FILE") or _QUESTIONS_FILE
+
+
 _QUESTIONS_FILE = os.environ.get("EVAL_QUESTIONS_FILE") or os.path.join(
     _repo_root, "eval", "data", "questions", "demo_conversations.json"
 )
@@ -630,7 +681,7 @@ def run_quality_report(
         traj_val = str(trajectory_samples)
         if traj_val != "0":
             cmd.extend(["--trajectory-samples", traj_val])
-    _eval_spec = os.path.join(_repo_root, "eval", "data", "eval_spec.json")
+    _eval_spec = os.path.join(_repo_root, "eval", "data", "two_defect_eval_spec.json")
     if os.path.isfile(_eval_spec):
         cmd.extend(["--eval-spec", _eval_spec])
 
@@ -799,6 +850,20 @@ def _default_pr_body(
         f"| {m['evolved_unhelpful']}% |\n"
         f"| Skill size | | {evolved_size} chars |\n\n"
     )
+    selector_path = os.path.join(run_dir, "trace_selector.json")
+    if os.path.isfile(selector_path):
+        try:
+            with open(selector_path) as f:
+                sel = json.load(f)
+            labels = ", ".join(f"{k}={v}" for k, v in (sel.get("labels") or {}).items()) or "(none)"
+            body += (
+                f"### Trace Selector (reproducibility)\n\n"
+                f"Evolved from BigQuery traces where: app=`{sel.get('app_name')}`, "
+                f"agent_version=`{sel.get('agent_version') or 'any'}`, "
+                f"labels: {labels}, window: {sel.get('time_period')}\n\n"
+            )
+        except Exception:
+            pass
     if session_ids:
         body += f"### Failing Sessions ({len(session_ids)})\n\n"
         for sid in session_ids[:10]:
@@ -864,6 +929,23 @@ def _collect_quality_metrics(
         if os.path.isfile(path):
             evolved_report = path
             break
+
+    if evolved_report is None:
+        # Co-evolution runs score best-of-N candidates without writing a
+        # {version}_quality_report.json — fall back to the best candidate
+        # report so PR titles carry the real evolved rate instead of "?%".
+        best_rate = -1.0
+        for pattern in ("candidate_*_report.json",
+                        "_score_candidate_*_report.json"):
+            for path in glob_mod.glob(
+                os.path.join(run_dir, "**", pattern), recursive=True,
+            ):
+                try:
+                    rate = float(_extract_rate(path, "meaningful_rate"))
+                except ValueError:
+                    continue
+                if rate > best_rate:
+                    best_rate, evolved_report = rate, path
 
     baseline_report = None
     baseline_label = "initial"
@@ -1148,6 +1230,11 @@ def create_evolution_issue(
     Returns:
         Dict with status, issue URL/number, or dry_run file path.
     """
+    if os.getenv("EVOLUTION_PUBLISH", "1") == "0" and not dry_run:
+        return {
+            "status": "skipped",
+            "reason": "EVOLUTION_PUBLISH=0 — local sandbox run",
+        }
     if agent is None:
         agent = _DEFAULT_AGENT
     run_dir = os.path.abspath(run_dir)
@@ -1354,6 +1441,48 @@ def _ensure_git_workdir() -> str:
     return workdir
 
 
+_publish_gate_cache: dict = {}
+
+
+def _publish_gate_check(run_dir: str, version: str, agent: str) -> tuple[bool | None, str]:
+    """Full CI-equivalent gate on the WINNER before anything is
+    published. Deploys the evolved skill to the local skill dir, runs
+    the COMPLETE golden suite (no -k filter — the exact tests the PR
+    gate runs), restores the previous skill, caches per winner so the
+    registry push and the PR share one check. Green -> publish; red ->
+    no registry push, no PR, no refusal email."""
+    key = (os.path.abspath(run_dir), version, agent)
+    if key in _publish_gate_cache:
+        return _publish_gate_cache[key]
+    entry = _AGENTS.get(agent) or {}
+    skill_dir = entry.get("skill_dir")
+    evolved = _find_evolved_skill(run_dir, version, agent)
+    if not (skill_dir and evolved):
+        result = (None, "publish gate inconclusive: skill file/dir not found")
+        _publish_gate_cache[key] = result
+        return result
+    live = os.path.join(_repo_root, skill_dir, "SKILL.md")
+    backup = None
+    try:
+        if os.path.isfile(live):
+            with open(live) as f:
+                backup = f.read()
+        with open(evolved) as f:
+            candidate = f.read()
+        with open(live, "w") as f:
+            f.write(candidate)
+        result = _golden_gate_check(select=None)
+    finally:
+        if backup is not None:
+            with open(live, "w") as f:
+                f.write(backup)
+    logger.info(
+        "Publish gate for %s %s: %s (%s)", agent, version, result[0], result[1],
+    )
+    _publish_gate_cache[key] = result
+    return result
+
+
 def push_skill_to_registry(
     run_dir: str,
     version: str = "v1",
@@ -1374,11 +1503,27 @@ def push_skill_to_registry(
     Returns:
         Dict with status, skill_id and revision count.
     """
+    if os.getenv("EVOLUTION_PUBLISH", "1") == "0":
+        return {
+            "status": "skipped",
+            "reason": "EVOLUTION_PUBLISH=0 — local sandbox run; nothing "
+                      "leaves this machine (registry push disabled)",
+        }
     import shutil
     import tempfile
 
     if agent is None:
         agent = _DEFAULT_AGENT
+    gate_ok, gate_summary = _publish_gate_check(run_dir, version, agent)
+    if gate_ok is False:
+        return {
+            "status": "refused_by_gate",
+            "reason": (
+                "Winner failed the full CI-equivalent golden suite — "
+                f"NOT pushed to the registry ({gate_summary}). No PR "
+                "will be opened; no refusal email."
+            ),
+        }
     entry = _AGENTS.get(agent)
     if not entry:
         return {"status": "error", "error": f"Unknown agent: {agent}"}
@@ -1432,6 +1577,174 @@ def push_skill_to_registry(
         shutil.rmtree(staging, ignore_errors=True)
 
 
+def extract_regression_cases(
+    run_dir: str,
+    agent: str = "policy_agent",
+    max_cases: int = 5,
+) -> dict:
+    """Extract RESOLVED failures into the golden regression gate.
+
+    A resolved failure is a question the baseline quality report scored
+    unhelpful/partial but the WINNING candidate's report scored
+    meaningful. Each becomes:
+      - an eval/data/eval_cases.json entry (CI routing gate;
+        expected_agent from the question's category), and
+      - an eval/data/golden_evals.json entry (LLM-judge ground truth;
+        the winning candidate's judge-approved answer).
+
+    The gate grows each evolution cycle, so a future skill that
+    re-breaks a resolved case fails CI before it can merge. Call this
+    AFTER candidate selection and BEFORE create_evolution_pr — the PR
+    picks up the updated eval files automatically.
+    """
+    import glob as glob_mod
+
+    def _usefulness(session: dict) -> str:
+        return (
+            (session.get("metrics") or {})
+            .get("response_usefulness", {})
+            .get("category", "")
+        )
+
+    # Baseline report = earliest *_quality_report.json in the run dir
+    reports = sorted(glob_mod.glob(
+        os.path.join(run_dir, "*_quality_report.json")
+    ))
+    if not reports:
+        # Clean skip (an "error" makes the orchestrator retry in a loop)
+        return {"status": "skipped",
+                "reason": f"No baseline quality report in {run_dir}"}
+    with open(reports[0]) as f:
+        baseline = json.load(f)
+    failures = {
+        s["question"]: s for s in baseline.get("sessions", [])
+        if _usefulness(s) in ("unhelpful", "partial") and s.get("question")
+    }
+    if not failures:
+        return {"status": "no_failures", "added": 0}
+
+    # Winning candidate = highest meaningful_rate candidate report
+    best_report, best_rate = None, -1.0
+    # Two naming schemes: the orchestrator scoring calls
+    # (candidate_N_report.json) and coevolve internal scoring
+    # (_score_candidate_N_report.json).
+    patterns = ["candidate_*_report.json", "_score_candidate_*_report.json"]
+    for pattern in patterns:
+        for p in glob_mod.glob(
+            os.path.join(run_dir, "**", pattern), recursive=True,
+        ):
+            try:
+                rate = float(_extract_rate(p, "meaningful_rate"))
+            except ValueError:
+                continue
+            if rate > best_rate:
+                best_rate, best_report = rate, p
+    if not best_report:
+        return {"status": "skipped",
+                "reason": f"No candidate reports in {run_dir}"}
+    with open(best_report) as f:
+        winner = json.load(f)
+    resolved = []
+    for s in winner.get("sessions", []):
+        q = s.get("question", "")
+        if q in failures and _usefulness(s) == "meaningful" and s.get("response"):
+            resolved.append(s)
+    if not resolved:
+        return {"status": "no_resolved_failures", "added": 0}
+
+    # question -> category from the shipped question sets (deterministic)
+    q_category = {}
+    for qf in glob_mod.glob(
+        os.path.join(_repo_root, "eval", "data", "questions", "*.json")
+    ):
+        try:
+            with open(qf) as f:
+                qdata = json.load(f)
+            for item in qdata.get("questions", qdata if isinstance(qdata, list) else []):
+                if isinstance(item, dict) and item.get("question"):
+                    q_category[item["question"]] = item.get("category", "")
+        except Exception:
+            continue
+    agent_for_category = {"benefits": "benefits_agent", "calc": "hr_calculator"}
+
+    if os.getenv("EVOLUTION_PUBLISH", "1") == "0":
+        # Local sandbox: regression artifacts belong to the run dir —
+        # never overwrite the repo's tracked eval files.
+        eval_cases_path = os.path.join(run_dir, "eval_cases.json")
+        golden_path = os.path.join(run_dir, "golden_evals.json")
+    else:
+        eval_cases_path = os.path.join(_repo_root, "eval", "data", "eval_cases.json")
+        golden_path = os.path.join(_repo_root, "eval", "data", "golden_evals.json")
+    new_eval_cases, new_golden = [], []
+    stamp = time.strftime("%Y%m%d")
+    for i, s in enumerate(resolved[:max_cases], 1):
+        q = s["question"]
+        category = q_category.get(q, "")
+        answer = " ".join(s["response"].split())
+        if len(answer) > 400:
+            answer = answer[:400].rsplit(". ", 1)[0] + "."
+        case_id = f"reg-{stamp}-{i:02d}"
+        new_eval_cases.append({
+            "id": case_id,
+            "question": q,
+            "category": category or "regression",
+            "expected_agent": agent_for_category.get(category, "policy_agent"),
+        })
+        new_golden.append({
+            "id": case_id,
+            "question": q,
+            "expected_answer": answer,
+            "topic": category or "regression",
+        })
+
+    added_eval = _append_regression_cases(eval_cases_path, new_eval_cases)
+    added_golden = _append_regression_cases(golden_path, new_golden)
+
+    marker = {
+        "added_eval_cases": added_eval,
+        "added_golden": added_golden,
+        "source_baseline": os.path.basename(reports[0]),
+        "source_candidate": os.path.basename(best_report),
+        "cases": [c["question"] for c in new_eval_cases[:added_eval]] if added_eval else [],
+    }
+    with open(os.path.join(run_dir, "regression_cases.json"), "w") as f:
+        json.dump(marker, f, indent=2)
+
+    logger.info(
+        "Extracted %d regression case(s) from %d resolved failure(s) "
+        "(gate grows: eval_cases +%d, golden +%d)",
+        added_eval, len(resolved), added_eval, added_golden,
+    )
+    return {"status": "success", **marker}
+
+
+def _append_regression_cases(path: str, new_cases: list[dict]) -> int:
+    """Append cases with id+question dedup. Handles both file shapes
+    ({"eval_cases": [...]} and bare list). A missing file starts empty
+    (sandbox runs write into a fresh run dir)."""
+    if os.path.isfile(path):
+        with open(path) as f:
+            data = json.load(f)
+    else:
+        data = {"eval_cases": []}
+    cases = data["eval_cases"] if isinstance(data, dict) else data
+    existing_ids = {c.get("id") for c in cases}
+    existing_questions = {c.get("question") for c in cases}
+    added = 0
+    for case in new_cases:
+        if case["id"] in existing_ids or case["question"] in existing_questions:
+            continue
+        cases.append(case)
+        existing_ids.add(case["id"])
+        existing_questions.add(case["question"])
+        added += 1
+    if added:
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+    return added
+
+
 def create_evolution_pr(
     run_dir: str,
     version: str = "v1",
@@ -1469,6 +1782,26 @@ def create_evolution_pr(
     Returns:
         Dict with status, PR URL, and metrics.
     """
+    if (os.getenv("EVOLUTION_PUBLISH", "1") == "0"
+            and not dry_run and not output_file):
+        return {
+            "status": "skipped",
+            "reason": "EVOLUTION_PUBLISH=0 — local sandbox run; the demo "
+                      "creates a local PR preview instead (pr_preview.md)",
+        }
+    if not dry_run and not output_file:
+        _gate_agent = agent or _DEFAULT_AGENT
+        gate_ok, gate_summary = _publish_gate_check(run_dir, version, _gate_agent)
+        if gate_ok is False:
+            return {
+                "status": "refused_by_gate",
+                "reason": (
+                    "Winner failed the full CI-equivalent golden suite — "
+                    f"PR NOT opened ({gate_summary}). Fix the skill or run "
+                    "another round; the refusal stays in this log instead "
+                    "of an email."
+                ),
+            }
     if agent is None:
         agent = _DEFAULT_AGENT
     run_dir = os.path.abspath(run_dir)
@@ -1575,15 +1908,39 @@ def create_evolution_pr(
         with open(abs_skill_path, "w") as f:
             f.write(evolved_content)
 
+        # Regression cases extracted this run ride the same PR: copy the
+        # updated eval files so resolved failures become permanent gate
+        # cases the moment the skill merges.
+        regression_note = ""
+        add_paths = [repo_skill_path]
+        marker_path = os.path.join(run_dir, "regression_cases.json")
+        if os.path.isfile(marker_path):
+            with open(marker_path) as f:
+                marker = json.load(f)
+            if marker.get("added_eval_cases") or marker.get("added_golden"):
+                for rel in ("eval/data/eval_cases.json",
+                            "eval/data/golden_evals.json"):
+                    src = os.path.join(_repo_root, rel)
+                    dst = os.path.join(git_root, rel)
+                    if os.path.isfile(src):
+                        os.makedirs(os.path.dirname(dst), exist_ok=True)
+                        _safe_copy2(src, dst)
+                        add_paths.append(rel)
+                regression_note = (
+                    f"\nRegression gate: +{marker.get('added_eval_cases', 0)} "
+                    f"eval case(s) extracted from resolved failures"
+                )
+
         commit_msg = (
             f"Evolve {agent} skill to {version}\n\n"
             f"Meaningful rate: {metrics['baseline_meaningful']}% "
-            f"-> {metrics['evolved_meaningful']}%\n"
+            f"-> {metrics['evolved_meaningful']}%"
+            f"{regression_note}\n"
             f"Run: {os.path.basename(run_dir)}"
         )
 
         subprocess.run(
-            ["git", "add", repo_skill_path],
+            ["git", "add"] + add_paths,
             cwd=git_root, capture_output=True,
         )
         subprocess.run(
@@ -1827,7 +2184,7 @@ def score_candidate(
         return {"error": f"Skill directory not found: {skill_dir}"}
 
     if questions_file is None or not os.path.isfile(questions_file):
-        questions_file = _QUESTIONS_FILE
+        questions_file = _questions_file()
 
     os.makedirs(run_dir, exist_ok=True)
     cand_name = os.path.splitext(os.path.basename(candidate_path))[0]
@@ -1862,7 +2219,7 @@ def score_candidate(
     ]
     # Same eval spec as V0 so candidate and baseline are scored identically
     # (scope-aware: out-of-scope -> declined, not unhelpful).
-    _eval_spec = os.path.join(_repo_root, "eval", "data", "eval_spec.json")
+    _eval_spec = os.path.join(_repo_root, "eval", "data", "two_defect_eval_spec.json")
     if os.path.isfile(_eval_spec):
         cmd.extend(["--eval-spec", _eval_spec])
 
@@ -1889,7 +2246,7 @@ def score_candidate(
         report = json.load(f)
 
     summary = report.get("summary", {})
-    return {
+    result = {
         "status": "success",
         "candidate": cand_name,
         "meaningful_rate": summary.get("meaningful_rate"),
@@ -1899,6 +2256,81 @@ def score_candidate(
         "report_path": report_path,
         "elapsed_seconds": round(elapsed, 1),
     }
+
+    # CI-gate pre-check — SUPERVISOR candidates only. Routing and fan-out
+    # are supervisor behaviors: with the candidate still deployed on disk,
+    # run the same asserts the Eval Gate will run on the PR, so a candidate
+    # that scores well on the evolve set by absorbing facts instead of
+    # routing loses HERE, before a PR opens (meaningful_rate zeroed for
+    # selection). Policy/benefits candidates skip this: they cannot affect
+    # routing, and the V0 supervisor's flaky direct-answering would only
+    # add noise (verified live: V0 routing flakes 0-3 tests per run).
+    if "knowledge_supervisor" not in skill_dir:
+        return result
+    if os.getenv("EVOLUTION_PUBLISH", "1") == "0":
+        # Sandbox: nothing gets published, so the ~3-4 min pytest
+        # pre-check per candidate buys nothing — CI gates any real PR.
+        result["gate_passed"] = None
+        result["gate_summary"] = "skipped (sandbox run)"
+        return result
+    gate_passed, gate_summary = _golden_gate_check()
+    result["gate_passed"] = gate_passed
+    result["gate_summary"] = gate_summary
+    if gate_passed is False:
+        result["raw_meaningful_rate"] = result["meaningful_rate"]
+        result["meaningful_rate"] = 0.0
+        logger.warning(
+            "Candidate %s REFUSED by golden gate pre-check (%s); "
+            "meaningful_rate zeroed for selection (raw: %s)",
+            cand_name, gate_summary, result["raw_meaningful_rate"],
+        )
+    return result
+
+
+def _golden_gate_check(
+    timeout: int = 1200, select: str | None = "routing or compound",
+) -> tuple[bool | None, str]:
+    """Run the CI gate's asserts against the skills currently on disk
+    (same tests eval.yml runs on the PR). select=None runs the FULL
+    suite — the publish gate uses that so a PR is only opened when the
+    CI gate will pass.
+
+    Returns (passed, summary). passed is None when the check could not
+    run (pytest missing, unexpected crash) — treated as inconclusive so
+    scoring still works in degraded environments.
+    """
+    cmd = [
+        sys.executable, "-m", "pytest",
+        os.path.join("eval", "tests", "test_eval.py"),
+        "-q", "--tb=no", "-p", "no:cacheprovider",
+    ]
+    if select:
+        cmd[3:3] = ["-k", select]
+    try:
+        r = subprocess.run(
+            cmd, cwd=_repo_root, capture_output=True, text=True,
+            timeout=timeout,
+            # The container's pytest collects nothing without the repo
+            # root on sys.path (observed live: 'no tests ran' zeroed ten
+            # healthy candidates before this env was set).
+            env={**os.environ, "PYTHONPATH": _repo_root},
+        )
+    except FileNotFoundError:
+        return None, "pytest unavailable — gate pre-check skipped"
+    except subprocess.TimeoutExpired:
+        return None, "gate pre-check timed out — treated as inconclusive"
+    tail = (r.stdout or "").strip().split("\n")[-1] if r.stdout else ""
+    if r.returncode == 0:
+        return True, tail or "all gate asserts passed"
+    if "No module named pytest" in (r.stderr or ""):
+        return None, "pytest unavailable — gate pre-check skipped"
+    # Collection failures are INCONCLUSIVE: zero tests executed means we
+    # learned nothing about the candidate. Refusal requires real failing
+    # asserts ('N failed' in the summary line).
+    if "no tests ran" in tail or "error" in tail.lower() or " failed" not in tail:
+        stderr_tail = (r.stderr or "").strip().split("\n")[-1][:120]
+        return None, f"gate pre-check inconclusive ({tail or stderr_tail})"
+    return False, tail
 
 
 # ---------------------------------------------------------------------------

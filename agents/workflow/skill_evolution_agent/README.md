@@ -232,8 +232,9 @@ For local use, authenticate with `gh auth login`. For Cloud Run,
 set up GitHub App credentials (same as the quality agent's
 `setup_github.sh` configuration).
 
-**Comparison with the Reactive Loop**: The quality agent in the
-reactive loop creates GitHub **issues** (one per failure pattern).
+**Comparison with the reactive loop** (original agent-quality-lab
+repo): its quality agent creates GitHub **issues** (one per failure
+pattern).
 The evolution agent creates a GitHub **PR** (one per evolution
 round, with the full evolved skill). Issues are for quick narrow
 fixes; PRs are for comprehensive skill rewrites.

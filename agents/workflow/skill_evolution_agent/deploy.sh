@@ -51,8 +51,14 @@ mkdir -p "${SCRIPT_DIR}/eval/data" \
 cp "${PROJECT_ROOT}/eval/eval_cases.py" "${SCRIPT_DIR}/eval/"
 cp "${PROJECT_ROOT}/eval/data/eval_cases.json" "${SCRIPT_DIR}/eval/data/"
 cp "${PROJECT_ROOT}/eval/data/eval_spec.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
+cp "${PROJECT_ROOT}/eval/data/two_defect_eval_spec.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
 cp "${PROJECT_ROOT}/eval/data/agent_context.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
 cp "${PROJECT_ROOT}/eval/data/golden_evals.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
+# The publish gate runs the CI golden suite in-container before any
+# registry push or PR — it needs the tests and the question files.
+mkdir -p "${SCRIPT_DIR}/eval/tests" "${SCRIPT_DIR}/eval/data/questions"
+cp -r "${PROJECT_ROOT}/eval/tests/." "${SCRIPT_DIR}/eval/tests/" 2>/dev/null || true
+cp "${PROJECT_ROOT}"/eval/data/questions/*.json "${SCRIPT_DIR}/eval/data/questions/" 2>/dev/null || true
 
 # Agent registry (required — pipeline can't discover agents without it)
 if [ ! -f "${PROJECT_ROOT}/eval/skill_evolution/agent_registry.json" ]; then
@@ -130,7 +136,7 @@ gcloud run jobs deploy "$JOB_NAME" \
   --image "$IMAGE_NAME" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
-  --task-timeout=10800s \
+  --task-timeout=28800s \
   --max-retries=0 \
   --memory=2Gi \
   --set-secrets="GH_TOKEN=github-pat:latest" \

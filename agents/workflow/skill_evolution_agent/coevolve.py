@@ -25,6 +25,7 @@ Library module — invoked via tools.py (ADK agent) or main.py (CLI).
 import json
 import logging
 import os
+from types import SimpleNamespace
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -70,7 +71,7 @@ def coevolve(
     report_path: str,
     agent_configs: dict | None = None,
     output_dir: str | None = None,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     candidates: int | None = None,
     template_path: str | None = None,
@@ -114,7 +115,43 @@ def coevolve(
     )
 
     logger.info("Step 1: Detecting bottleneck...")
-    bottleneck = detect_bottleneck(report, client, model_id)
+    _bound_targets = os.getenv("EVOLUTION_TARGET_AGENTS", "").strip()
+    _precomputed = None
+    try:
+        from agents.workflow.skill_evolution_agent.tools import _bottleneck_cache
+        _precomputed = _bottleneck_cache.get(os.path.abspath(report_path))
+    except Exception:
+        pass
+    if _bound_targets:
+        # Target bound (--mode <agent>): skip the ~5-min LLM
+        # classification; agents_to_evolve is filtered to the bound
+        # targets below anyway.
+        logger.info(
+            "Skipping bottleneck classification: EVOLUTION_TARGET_AGENTS=%s",
+            _bound_targets,
+        )
+        bottleneck = SimpleNamespace(
+            recommendation="both", summary="skipped (target bound)",
+            confidence="high", routing_failures=0, skill_failures=0,
+            tool_failures=0, architecture_failures=0,
+        )
+    elif _precomputed:
+        logger.info(
+            "Reusing bottleneck classification from the orchestrator's "
+            "earlier detect_bottleneck call: %s",
+            _precomputed.get("recommendation"),
+        )
+        bottleneck = SimpleNamespace(
+            recommendation=_precomputed.get("recommendation", "both"),
+            summary=_precomputed.get("summary", "precomputed"),
+            confidence=_precomputed.get("confidence", "high"),
+            routing_failures=_precomputed.get("routing_failures", 0),
+            skill_failures=_precomputed.get("skill_failures", 0),
+            tool_failures=_precomputed.get("tool_failures", 0),
+            architecture_failures=_precomputed.get("architecture_failures", 0),
+        )
+    else:
+        bottleneck = detect_bottleneck(report, client, model_id)
     result.bottleneck_recommendation = bottleneck.recommendation
     result.bottleneck_summary = bottleneck.summary
     logger.info("Bottleneck: %s", bottleneck.summary)
@@ -140,6 +177,24 @@ def coevolve(
         )
         agents_to_evolve = [fallback]
 
+    # EVOLUTION_TARGET_AGENTS (set by main.py from --mode <agent>) is
+    # BINDING: it restricts evolution to the named agents regardless of the
+    # bottleneck recommendation, so a scoped demo run stays scoped.
+    target_env = os.getenv("EVOLUTION_TARGET_AGENTS", "").strip()
+    if target_env:
+        targets = [t.strip() for t in target_env.split(",") if t.strip()]
+        bound = [a for a in agents_to_evolve if a in targets]
+        dropped = [a for a in agents_to_evolve if a not in targets]
+        if not bound:
+            bound = [t for t in targets if t in configs]
+        if dropped or bound != agents_to_evolve:
+            logger.info(
+                "EVOLUTION_TARGET_AGENTS=%s binds scope: evolving %s "
+                "(bottleneck wanted %s)",
+                target_env, bound, agents_to_evolve,
+            )
+        agents_to_evolve = bound
+
     # Evolve the supervisor (routing) BEFORE the policy agent, so the policy
     # agent is scored against the already-improved routing (sequential
     # co-evolution, as the design intends).
@@ -159,11 +214,20 @@ def coevolve(
         if not (select_by_score and output_dir):
             return None
 
+        _counter = {"n": 0}
+
         def _score(skill_content):
             from agents.workflow.skill_evolution_agent.tools import (
                 score_candidate,
             )
-            tmp = os.path.join(output_dir, "_score_candidate_tmp.md")
+            # Distinct name per candidate: score_candidate derives its
+            # report filename from this, so every candidate report
+            # survives for regression extraction and PR metrics (a
+            # shared tmp name left only the LAST report on disk).
+            _counter["n"] += 1
+            tmp = os.path.join(
+                output_dir, f"_score_candidate_{_counter['n']}.md",
+            )
             with open(tmp, "w") as fh:
                 fh.write(skill_content)
             res = score_candidate(

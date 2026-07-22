@@ -31,9 +31,11 @@ Usage:
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import sys
+import time
 import uuid
 
 # Ensure this package is importable when run directly
@@ -60,10 +62,10 @@ for _noisy in (
 logger = logging.getLogger("skill_evolution.run")
 
 _QUESTIONS_FULL = os.path.join(
-    _project_root, "eval", "data", "questions", "demo_conversations.json",
+    _project_root, "eval", "data", "questions", "two_defect_evolve.json",
 )
 _QUESTIONS_QUICK = os.path.join(
-    _project_root, "eval", "data", "questions", "demo_quick.json",
+    _project_root, "eval", "data", "questions", "two_defect_quick.json",
 )
 
 
@@ -142,6 +144,35 @@ def _run_traffic_orchestration(
         return {"status": "error", "error": str(e)}
 
 
+_STEP_STATE = {"n": None, "t0": None}
+
+
+def _step_close() -> None:
+    if _STEP_STATE["t0"] is not None:
+        el = int(time.time() - _STEP_STATE["t0"])
+        print(f"\n  \033[32m\u2714 STEP {_STEP_STATE['n']}/7 completed "
+              f"in {el}s.\033[0m", flush=True)
+        _STEP_STATE["t0"] = None
+
+
+def _step_banner(n: int, title: str, goal: str = "") -> None:
+    """Demo step marker — numbering and titles are IDENTICAL to the
+    README's "Run the Demo" Steps 1-7 so the console maps 1:1 to the
+    documentation. Each step closes with its elapsed time."""
+    _step_close()
+    line = "\u2501" * 70
+    print(f"\n\033[2m{line}\033[0m\n", flush=True)
+    print(f"  \033[1m\033[36m\u25b6 STEP {n}/7 \u2014 {title}\033[0m", flush=True)
+    print(f"  \033[2mREADME: Run the Demo > Step {n}\033[0m", flush=True)
+    if goal:
+        print(f"  \033[2mGoal: {goal}\033[0m", flush=True)
+    print("", flush=True)
+    _STEP_STATE["n"] = n
+    _STEP_STATE["t0"] = time.time()
+    import atexit
+    atexit.register(_step_close)
+
+
 def _bigquery_quality_report(run_dir: str) -> str | None:
     """Pre-flight from real traces: score BigQuery sessions instead of
     generating synthetic traffic (QUALITY_SOURCE=bigquery).
@@ -152,6 +183,21 @@ def _bigquery_quality_report(run_dir: str) -> str | None:
     min_sessions = int(os.environ.get("MIN_SESSIONS", "20"))
     time_period = os.environ.get("EVAL_TIME_PERIOD", "7d")
     agent_version = os.environ.get("AGENT_VERSION") or None
+    labels = {}
+    for pair in os.environ.get("EVOLUTION_TRACE_LABELS", "").split(","):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            if k.strip():
+                labels[k.strip()] = v.strip()
+    selector = {
+        "time_period": time_period,
+        "agent_version": agent_version,
+        "labels": labels,
+        "app_name": os.environ.get("QUALITY_APP_NAME", "knowledge_supervisor"),
+    }
+    with open(os.path.join(run_dir, "trace_selector.json"), "w") as f:
+        json.dump(selector, f, indent=2)
+    logger.info("Trace selector for this run: %s", selector)
     try:
         from agents.workflow.quality_agent.tools import (
             run_quality_report as _bq_quality_report,
@@ -161,6 +207,7 @@ def _bigquery_quality_report(run_dir: str) -> str | None:
             time_period=time_period,
             output_dir=run_dir,
             agent_version=agent_version,
+            labels=labels or None,
         )
         total = result.get("summary", {}).get("total_sessions", 0)
         if total < min_sessions:
@@ -216,7 +263,7 @@ def _run_scoring_orchestration(
     # Ground scoring with the eval spec (scope + golden Q&A + tools). Without
     # it the judge has no scope, so out-of-scope questions are scored
     # 'unhelpful' instead of 'declined' and the meaningful rate is capped.
-    _eval_spec = os.path.join(_project_root, "eval", "data", "eval_spec.json")
+    _eval_spec = os.path.join(_project_root, "eval", "data", "two_defect_eval_spec.json")
     if os.path.isfile(_eval_spec):
         cmd.extend(["--eval-spec", _eval_spec])
 
@@ -337,7 +384,7 @@ async def run_evolution_agent(
             "9. Run validation traffic on evolved skill, score, report delta\n"
             "10. compare_versions(run_dir)\n"
             "11. upload_run_to_gcs if configured\n"
-            "12. push_skill_to_registry(run_dir, version, agent) — new Skill\n"
+            "12. extract_regression_cases(run_dir, agent) — resolved failures\n   become permanent CI gate cases (the PR carries the updated eval\n   files automatically) — then push_skill_to_registry(run_dir,\n   version, agent) — new Skill\n"
             "    Registry revision (only when the evolved skill beat the baseline)\n"
             f"13. create_evolution_pr(issue_number={from_issue}) — "
             f"PR with Fixes #{from_issue}; mention the registry revision in the body\n\n"
@@ -366,6 +413,9 @@ async def run_evolution_agent(
             _QUESTIONS_QUICK if quick else _QUESTIONS_FULL
         )
 
+        _step_banner(2, "Generate labeled traffic",
+                     "adversarial conversations against V0; their "
+                     "failures are the evolution input")
         # Pre-flight source: real BigQuery traces (QUALITY_SOURCE=bigquery)
         # with a generated-traffic fallback below MIN_SESSIONS, or generated
         # traffic directly (default).
@@ -396,6 +446,30 @@ async def run_evolution_agent(
 
         logger.info("Pre-flight complete. Starting agent with report: %s", report_path)
 
+        # Quality gate (SDK agent_improvement_cycle parity): when the
+        # baseline already meets the threshold there is nothing to
+        # evolve — stop instead of burning an evolution round.
+        threshold = float(os.environ.get("QUALITY_THRESHOLD", "0.95")) * 100
+        try:
+            with open(report_path) as _f:
+                _v0_rate = float(
+                    json.load(_f).get("summary", {}).get("meaningful_rate", 0)
+                )
+        except Exception:
+            _v0_rate = 0.0
+        if _v0_rate >= threshold:
+            _step_close()
+            msg = (
+                f"QUALITY GATE: V0 meaningful rate {_v0_rate:.1f}% meets the "
+                f"threshold ({threshold:.0f}%) — nothing to evolve, stopping."
+            )
+            print(f"\n  \033[32m\u2714 {msg}\033[0m\n", flush=True)
+            logger.info(msg)
+            return msg
+        _step_banner(3, "Run the evolution job",
+                     "one analyst per failure -> candidate skills -> "
+                     "replay validation -> best one wins")
+
         questions_note = "Use 22-question quick set for candidate scoring." if not quick else "Use 22-question quick set for ALL traffic."
         prompt = (
             f"Quality report is ready at {report_path}.\n"
@@ -419,7 +493,7 @@ async def run_evolution_agent(
             "4. extract_eval_cases to save regression tests\n"
             "5. Upload to GCS if configured\n"
             "6. If the best evolved version beat the baseline:\n"
-            "   push_skill_to_registry(run_dir, version, agent) — new Skill\n"
+            "   extract_regression_cases(run_dir, agent) — resolved failures\n   become permanent CI gate cases (the PR carries the updated eval\n   files automatically) — then push_skill_to_registry(run_dir,\n   version, agent) — new Skill\n"
             "   Registry revision — then create_evolution_pr; mention the\n"
             "   registry revision in the PR body\n"
             "Do NOT restore skills — the evolved skill stays deployed.\n"
@@ -668,6 +742,12 @@ Examples:
         help="Minimum failures required to trigger evolution (default: agent decides)",
     )
     parser.add_argument(
+        "--trace-labels",
+        help="Evolve only traces matching these custom_tags labels, "
+        "comma-separated k=v (e.g. run_id=demo-r2,traffic_source=generator). "
+        "Binding: exported as EVOLUTION_TRACE_LABELS for the BQ pre-flight.",
+    )
+    parser.add_argument(
         "--quick",
         action="store_true",
         help="Use 22-question quick set for all traffic (faster, less signal)",
@@ -684,6 +764,57 @@ Examples:
         help="Test tools only, don't run the agent",
     )
     args = parser.parse_args()
+
+    # Make the scoping flags BINDING at the tool layer (the orchestrating
+    # agent treats prompt overrides as hints; these env vars are enforced
+    # by evolve.py / coevolve.py / run_coevolution regardless of what the
+    # agent decides).
+    if args.candidates:
+        os.environ["EVOLUTION_CANDIDATES"] = str(args.candidates)
+    if args.rounds:
+        os.environ["EVOLUTION_MAX_ROUNDS"] = str(args.rounds)
+    if args.mode not in ("auto", "coevolve"):
+        os.environ["EVOLUTION_TARGET_AGENTS"] = args.mode
+    if getattr(args, "trace_labels", None):
+        os.environ["EVOLUTION_TRACE_LABELS"] = args.trace_labels
+    if args.quick:
+        # BINDING quick profile — reaches the tool layer via env (the
+        # prompt-level "use the quick set" hint was ignored in
+        # practice): 25-question set, single-turn scoring, flash
+        # scoring supervisor. Measured: candidate validation went
+        # ~12.3 min -> ~2 min per candidate.
+        _repo = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))))
+        os.environ.setdefault("EVAL_QUESTIONS_FILE", os.path.join(
+            _repo, "eval", "data", "questions", "two_defect_quick.json"))
+        # Full conversation depth even in quick mode (Eva's call):
+        # deflection shows in turn 1, pushback/parroting in turn 2,
+        # drift in turns 3-4 — ranking sees all of it.
+        os.environ["EVAL_MAX_TURNS"] = "4"
+        # Score on the SERVING model so candidate ranking measures what
+        # production will actually run (flash-lite lives on the global
+        # endpoint only).
+        os.environ["SUPERVISOR_MODEL_ID"] = "gemini-3.1-flash-lite"
+        os.environ.setdefault("MODEL_LOCATION", "global")
+        os.environ.setdefault("EVOLUTION_MAX_ANALYSTS", "30")
+        # The agent's default threshold (30 failures) is sized for
+        # 205-question runs; a 25-question quick run can only produce
+        # ~25. Bind a proportionate floor unless the caller set one.
+        os.environ.setdefault("MIN_FAILURES", "5")
+    bound = {
+        k: os.environ[k]
+        for k in (
+            "EVOLUTION_CANDIDATES",
+            "EVOLUTION_MAX_ROUNDS",
+            "EVOLUTION_TARGET_AGENTS",
+            "EVOLUTION_TRACE_LABELS",
+            "EVAL_QUESTIONS_FILE",
+            "EVAL_MAX_TURNS",
+        )
+        if k in os.environ
+    }
+    if bound:
+        logger.info("Binding overrides (enforced in tools): %s", bound)
 
     if args.test:
         run_test()

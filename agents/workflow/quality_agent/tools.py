@@ -147,6 +147,27 @@ def _find_agy() -> str | None:
     return None
 
 
+def _gh_repo_args() -> list:
+    """--repo flag for gh when GITHUB_REPO is set.
+
+    Deployed containers are not git checkouts, so gh cannot infer the
+    repository from cwd (observed live: the daily job's issue creation
+    failed with 'not a git repository'). Locally, without the env var,
+    gh keeps inferring from the checkout as before.
+    """
+    repo = os.getenv("GITHUB_REPO", "").strip()
+    return ["--repo", repo] if repo else []
+
+
+def _app_secrets_available() -> bool:
+    """True when the GitHub App secrets exist (bot-authored issues)."""
+    try:
+        _read_secret("github-app-config")
+        return True
+    except Exception:
+        return False
+
+
 def _gh_available() -> bool:
     """Check if gh CLI is available and authenticated."""
     try:
@@ -266,10 +287,79 @@ def _load_full_sessions(report_path: str) -> dict[str, dict]:
     }
 
 
+def _resolve_labeled_sessions(
+    labels: dict, time_period: str, app_name: str | None,
+) -> list[str]:
+    """Resolve label filters to session ids: trace tags UNION run_labels.
+
+    Local-runner traffic carries labels inside each trace's custom_tags;
+    deployed traffic can't (agent tags are fixed at startup), so the
+    traffic generator records session->label rows in the run_labels side
+    table instead. A label selector must match either source.
+    """
+    import re
+
+    from google.cloud import bigquery
+
+    m = re.match(r"^(\d+)([mhd])$", time_period or "")
+    interval = None
+    if m:
+        unit = {"m": "MINUTE", "h": "HOUR", "d": "DAY"}[m.group(2)]
+        interval = f"INTERVAL {m.group(1)} {unit}"
+
+    client = bigquery.Client(project=PROJECT_ID)
+    events = f"`{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}`"
+    side = f"`{PROJECT_ID}.{DATASET_ID}.run_labels`"
+    clean = lambda s: str(s).replace("\\", "").replace("'", "")
+
+    trace_where = ["1=1"]
+    if interval:
+        trace_where.append(
+            f"timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), {interval})"
+        )
+    if app_name:
+        trace_where.append(f"agent = '{clean(app_name)}'")
+    having = ["1=1"]
+    for k, v in labels.items():
+        trace_where.append(
+            f"JSON_VALUE(attributes, '$.custom_tags.{clean(k)}') = '{clean(v)}'"
+        )
+        having.append(
+            f"COUNTIF(label_key = '{clean(k)}' "
+            f"AND label_value = '{clean(v)}') > 0"
+        )
+    side_where = (
+        f"created_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), {interval})"
+        if interval else "1=1"
+    )
+
+    trace_sql = (
+        f"SELECT DISTINCT session_id FROM {events} "
+        f"WHERE {' AND '.join(trace_where)}"
+    )
+    side_sql = (
+        f"SELECT session_id FROM {side} WHERE {side_where} "
+        f"GROUP BY session_id HAVING {' AND '.join(having)}"
+    )
+
+    def _run(sql):
+        return [r.session_id for r in client.query(sql).result()]
+
+    ids = set(_run(trace_sql))
+    try:
+        ids |= set(_run(side_sql))
+    except Exception as e:
+        # run_labels doesn't exist until the first deployed labeled run.
+        logger.info("run_labels side table not queried (%s)", e)
+    return sorted(ids)
+
+
 def run_quality_report(
     time_period: str = "6h",
     output_dir: str | None = None,
     agent_version: str | None = None,
+    app_name: str | None = None,
+    labels: dict | None = None,
 ) -> dict:
     """Run a quality report on recent agent sessions from BigQuery.
 
@@ -286,6 +376,16 @@ def run_quality_report(
         output_dir: If set, save the quality report JSON to this directory.
         agent_version: If set, filter sessions to this agent version
             (matches custom_tags.agent_version in BigQuery).
+        labels: Additional custom_tags filters (e.g. {"run_id": "X",
+            "traffic_source": "generator"}); combined with agent_version.
+        app_name: Filter sessions to one agent app (BigQuery `agent`
+            column). Defaults to QUALITY_APP_NAME env or
+            'knowledge_supervisor' — the root agent's sessions are the
+            unit of judgment; A2A sub-agents log their own session rows
+            (in a live table they are ~40-45% of all sessions), and
+            judging those fragments out of conversational context both
+            inflates cost and pollutes the failure counts. Pass "" to
+            disable the filter.
 
     Returns:
         A dict with 'summary' (counts, rates, per_agent breakdown),
@@ -309,16 +409,69 @@ def run_quality_report(
         # run_evaluation uses asyncio.run() internally, which fails
         # when called from the ADK runner's event loop. Run it in a
         # separate thread so it gets its own event loop.
-        custom_labels = None
+        if app_name is None:
+            app_name = os.getenv("QUALITY_APP_NAME", "knowledge_supervisor")
+        app_name = app_name or None  # "" disables the filter
+
+        # User labels resolve to explicit session ids (trace custom_tags
+        # UNION the run_labels side table) so labeled deployed traffic is
+        # selectable too; agent_version stays a plain trace-tag filter.
+        custom_labels = {}
         if agent_version:
-            custom_labels = {"agent_version": agent_version}
+            custom_labels["agent_version"] = agent_version
+        custom_labels = custom_labels or None
+        session_ids = None
+        if labels:
+            session_ids = _resolve_labeled_sessions(
+                dict(labels), time_period, app_name,
+            )
+            logger.info(
+                "Labels %s resolved to %d sessions", labels, len(session_ids),
+            )
+            if not session_ids:
+                return {
+                    "summary": {
+                        "total_sessions": 0,
+                        "message": (
+                            f"No sessions match labels {labels} "
+                            f"in last {time_period}"
+                        ),
+                    },
+                    "sessions": [],
+                }
+
+        # Golden Q&A ground truth: load the eval spec so the judge grades
+        # matched questions against expected answers (see README, "The
+        # single input"). Without it every score is an ungrounded LLM
+        # estimate. EVAL_SPEC overrides; "" disables.
+        eval_spec = None
+        spec_path = os.getenv("EVAL_SPEC")
+        if spec_path is None:
+            spec_path = os.path.join(
+                _repo_root, "eval", "data", "two_defect_eval_spec.json",
+            )
+        if spec_path and os.path.isfile(spec_path):
+            with open(spec_path) as f:
+                eval_spec = json.load(f)
+            logger.info(
+                "Eval spec loaded: %s (golden_qa entries: %d)",
+                spec_path, len(eval_spec.get("golden_qa", [])),
+            )
+        else:
+            logger.warning(
+                "No eval spec at %s — judging WITHOUT golden ground truth",
+                spec_path,
+            )
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             result = pool.submit(
                 run_evaluation,
                 time_range=time_period,
-                limit=100,
+                limit=max(100, len(session_ids or [])),
                 custom_labels=custom_labels,
+                app_name=app_name,
+                eval_spec=eval_spec,
+                session_ids=session_ids,
             ).result()
         report = result["report"]
         resolved_map = result["resolved_map"]
@@ -576,10 +729,13 @@ def _build_issue_body(
         parts.append("```")
 
     # 8. Footer
+    _app = os.getenv("QUALITY_APP_NAME", "knowledge_supervisor")
+    _labels = os.getenv("EVOLUTION_TRACE_LABELS", "") or "(none)"
     parts.append(
         "\n---\n*Created by "
         "Quality Agent "
-        f"| Dataset: `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}`*"
+        f"| Dataset: `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}` "
+        f"| App: `{_app}` | Labels: {_labels}*"
     )
 
     return "\n".join(parts)
@@ -737,8 +893,17 @@ def create_github_issue(
     # Determine run directory for .md persistence
     run_dir = os.path.dirname(report_path) if report_path else None
 
-    # Try gh CLI first, fall back to PyGithub
-    if _gh_available():
+    # Prefer the GitHub App (bot authorship) when its secrets exist —
+    # matches the reference deployment where quality issues post as
+    # <app>[bot]. gh CLI (PAT-owner attribution) is the fallback.
+    if _app_secrets_available():
+        result = _create_issue_pygithub(
+            title, body, labels,
+            category=category, agent_name=agent_name, topic=topic,
+            agent_version=agent_version,
+            affected_sessions=affected_sessions, summary=summary,
+        )
+    elif _gh_available():
         result = _create_issue_gh(
             title, issue_body, labels,
             category=category, agent_name=agent_name, topic=topic,
@@ -782,7 +947,7 @@ def _find_existing_issue(
 
     try:
         r = subprocess.run(
-            ["gh", "issue", "list", "--state", "open", *label_args,
+            ["gh", "issue", "list", *_gh_repo_args(), "--state", "open", *label_args,
              "--json", "number,title", "--limit", "50"],
             cwd=_repo_root, capture_output=True, text=True,
         )
@@ -851,7 +1016,7 @@ def _update_existing_issue_gh(
 
     try:
         r = subprocess.run(
-            ["gh", "issue", "comment", str(issue_number),
+            ["gh", "issue", "comment", str(issue_number), *_gh_repo_args(),
              "--body", comment_body],
             cwd=_repo_root, capture_output=True, text=True,
         )
@@ -888,7 +1053,7 @@ def _create_issue_gh(
             label_args.extend(["--label", label])
 
         r = subprocess.run(
-            ["gh", "issue", "create",
+            ["gh", "issue", "create", *_gh_repo_args(),
              "--title", title,
              "--body", body,
              *label_args],
@@ -899,7 +1064,7 @@ def _create_issue_gh(
         if r.returncode != 0:
             logger.warning("gh issue create failed with labels: %s", r.stderr)
             r = subprocess.run(
-                ["gh", "issue", "create",
+                ["gh", "issue", "create", *_gh_repo_args(),
                  "--title", title,
                  "--body", body],
                 cwd=_repo_root,

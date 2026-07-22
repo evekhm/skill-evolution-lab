@@ -60,6 +60,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("traffic_generator")
 
+# One run_id per generator invocation - stamps every event this run
+# produces so evolution can select exactly this slice of traces.
+_RUN_ID = time.strftime("%Y%m%d-%H%M%S")
+
 env_path = os.path.join(os.path.dirname(__file__), "../../../.env")
 if os.path.exists(env_path):
     load_dotenv(dotenv_path=env_path, override=False)
@@ -585,6 +589,21 @@ def _build_bq_plugins() -> list:
             )
 
             agent_version = os.getenv("AGENT_VERSION", "unknown")
+            # Generator traffic is auto-labeled (traffic_source + a
+            # per-invocation run_id) and TRACE_LABELS ("k=v,k2=v2")
+            # merges on top — evolution runs can then select exactly
+            # this slice with --trace-labels.
+            custom_tags = {
+                "agent_version": agent_version,
+                "traffic_source": "generator",
+                "run_id": _RUN_ID,
+            }
+            for pair in os.getenv("TRACE_LABELS", "").split(","):
+                if "=" in pair:
+                    k, v = pair.split("=", 1)
+                    if k.strip():
+                        custom_tags[k.strip()] = v.strip()
+            logger.info("BQ custom_tags for this run: %s", custom_tags)
             bq_plugin = BigQueryAgentAnalyticsPlugin(
                 project_id=PROJECT_ID,
                 dataset_id=dataset_id,
@@ -593,7 +612,7 @@ def _build_bq_plugins() -> list:
                     enabled=True,
                     batch_size=1,
                     shutdown_timeout=10.0,
-                    custom_tags={"agent_version": agent_version},
+                    custom_tags=custom_tags,
                 ),
                 location=dataset_location,
             )
@@ -604,6 +623,50 @@ def _build_bq_plugins() -> list:
         except Exception as e:
             logger.warning("BigQuery logging not available: %s", e)
     return plugins
+
+
+def _record_run_labels(session_ids: list) -> None:
+    """Persist session->label rows for deployed traffic.
+
+    Deployed agents stamp their BigQuery custom_tags once at startup, so
+    per-run labels cannot ride the traces themselves. The generator knows
+    the sessions it created, so it records (session_id, label) rows in a
+    small side table; label selectors union this with the trace-tag match,
+    giving --label identical semantics on the local and deployed paths.
+    """
+    dataset_id = os.getenv("DATASET_ID")
+    if not (dataset_id and session_ids):
+        return
+    labels = {"run_id": _RUN_ID, "traffic_source": "generator"}
+    for pair in os.getenv("TRACE_LABELS", "").split(","):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            if k.strip():
+                labels[k.strip()] = v.strip()
+    try:
+        from google.cloud import bigquery
+
+        client = bigquery.Client(project=PROJECT_ID)
+        table = f"{PROJECT_ID}.{dataset_id}.run_labels"
+        client.query(
+            f"CREATE TABLE IF NOT EXISTS `{table}` ("
+            "session_id STRING, label_key STRING, label_value STRING, "
+            "run_id STRING, created_at TIMESTAMP)"
+        ).result()
+        clean = lambda s: str(s).replace("\\", "").replace("'", "")
+        rows = ", ".join(
+            f"('{clean(sid)}', '{clean(k)}', '{clean(v)}', "
+            f"'{_RUN_ID}', CURRENT_TIMESTAMP())"
+            for sid in session_ids
+            for k, v in labels.items()
+        )
+        client.query(f"INSERT INTO `{table}` VALUES {rows}").result()
+        logger.info(
+            "Recorded labels for %d deployed sessions in %s: %s",
+            len(session_ids), table, labels,
+        )
+    except Exception as e:
+        logger.warning("run_labels recording failed: %s", e)
 
 
 async def _send_message(runner, user_id: str, session_id: str, text: str) -> tuple[str, int]:
@@ -772,10 +835,34 @@ async def run_local_multiturn(
         )
         for q in questions
     ]
-    results = await asyncio.gather(*tasks)
+    results = list(await asyncio.gather(*tasks))
+    results = await _retry_errored(results, questions, lambda q: _run_one_multiturn(
+        send_fn, sim_client, sim_model, q["question"], sem, max_turns, persona,
+        scripted_turns=q.get("turns"),
+    ))
     elapsed = time.monotonic() - start
 
     return _summarize_multiturn(list(results), total, elapsed, concurrency)
+
+
+async def _retry_errored(results, questions, make_task):
+    """One retry for conversations that died on infrastructure errors
+    (quota/503/timeouts). A dead conversation graded as a failure
+    silently taxes every quality score; one fresh attempt removes the
+    noise without hiding persistent failures."""
+    retried = 0
+    for i, r in enumerate(results):
+        if r.get("errors") and r.get("user_turns", 0) == 0:
+            q = questions[i] if i < len(questions) else {"question": r.get("question", "")}
+            logger.warning("Retrying dead conversation: %s", r.get("question", "")[:60])
+            try:
+                results[i] = await make_task(q)
+                retried += 1
+            except Exception as e:
+                logger.warning("Retry failed too: %s", e)
+    if retried:
+        logger.info("Retried %d dead conversation(s)", retried)
+    return results
 
 
 def _summarize_multiturn(
@@ -854,9 +941,45 @@ async def run_deployed_multiturn(
     engine = engines[0]
     logger.info("Using Agent Engine: %s", engine.resource_name)
 
+    async def _with_quota_retry(fn):
+        # Fresh projects default to 90 QueryReasoningEngine requests/min
+        # (sessions + streams share it); back off instead of failing the
+        # conversation.
+        delays = [30, 60, 90, 120]
+        for attempt, delay in enumerate([0] + delays):
+            if delay:
+                logger.warning(
+                    "Agent Engine quota exhausted; retrying in %ds (%d/%d)",
+                    delay, attempt, len(delays),
+                )
+                await asyncio.sleep(delay)
+            try:
+                # Deadline per attempt: a hung engine call otherwise blocks
+                # the conversation for ~10 min before surfacing a 503.
+                return await asyncio.wait_for(
+                    asyncio.to_thread(fn),
+                    timeout=float(os.getenv("ENGINE_CALL_TIMEOUT", "120")),
+                )
+            except asyncio.TimeoutError:
+                if attempt == len(delays):
+                    raise
+            except Exception as e:
+                msg = str(e)
+                retryable = (
+                    "RESOURCE_EXHAUSTED" in msg
+                    or "Quota exceeded" in msg
+                    or "UNAVAILABLE" in msg
+                    or "503" in msg
+                )
+                if not retryable or attempt == len(delays):
+                    raise
+        raise RuntimeError("unreachable")
+
     async def session_factory():
         user_id = f"conv_{uuid.uuid4().hex[:8]}"
-        session = await asyncio.to_thread(engine.create_session, user_id=user_id)
+        session = await _with_quota_retry(
+            lambda: engine.create_session(user_id=user_id)
+        )
         session_id = session["id"] if isinstance(session, dict) else session.id
         return user_id, session_id
 
@@ -876,7 +999,7 @@ async def run_deployed_multiturn(
                             response_text = part["text"]
             return response_text, tool_calls
 
-        return await asyncio.to_thread(_call)
+        return await _with_quota_retry(_call)
 
     # Simulator client for unscripted follow-ups
     sim_client = Client(project=PROJECT_ID, location=REGION)
@@ -898,7 +1021,12 @@ async def run_deployed_multiturn(
         )
         for q in questions
     ]
-    results = await asyncio.gather(*tasks)
+    results = list(await asyncio.gather(*tasks))
+    results = await _retry_errored(results, questions, lambda q: _run_one_multiturn(
+        send_fn, sim_client, sim_model, q["question"], sem, max_turns, persona,
+        scripted_turns=q.get("turns"),
+        session_factory=session_factory,
+    ))
     elapsed = time.monotonic() - start
 
     return _summarize_multiturn(list(results), total, elapsed, concurrency)
@@ -992,29 +1120,19 @@ async def run_deployed(
     """Send questions to the deployed Reasoning Engine in batches."""
     global shutdown_requested
 
-    from google.cloud import aiplatform
     import vertexai
-    from vertexai.preview import reasoning_engines
+    from vertexai import agent_engines
 
-    aiplatform.init(project=PROJECT_ID, location=REGION)
     vertexai.init(project=PROJECT_ID, location=REGION)
 
     display_name = os.getenv("SUPERVISOR_DISPLAY_NAME", "knowledge-supervisor")
-    logger.info(f"Searching for Reasoning Engine '{display_name}'...")
-    engines = reasoning_engines.ReasoningEngine.list(
-        filter=f'display_name="{display_name}"'
-    )
+    logger.info(f"Searching for Agent Engine '{display_name}'...")
+    engines = list(agent_engines.list(filter=f'display_name="{display_name}"'))
     if not engines:
-        logger.error(f"ERROR: Reasoning Engine '{display_name}' not found!")
+        logger.error(f"ERROR: Agent Engine '{display_name}' not found!")
         return
-    engine_resource_name = engines[0].resource_name
-    logger.info(f"Using Reasoning Engine: {engine_resource_name}")
-
-    from google.cloud import aiplatform_v1
-
-    gapic_client = aiplatform_v1.ReasoningEngineExecutionServiceClient(
-        client_options={"api_endpoint": f"{REGION}-aiplatform.googleapis.com"}
-    )
+    engine = engines[0]
+    logger.info(f"Using Agent Engine: {engine.resource_name}")
 
     sem = asyncio.Semaphore(concurrency)
     start_time = time.time()
@@ -1031,21 +1149,23 @@ async def run_deployed(
 
             start_query_time = time.time()
             try:
-                from google.protobuf import struct_pb2
+                # AdkApp deployments register stream_query (a plain `query`
+                # class_method does not exist), so stream and keep the last
+                # text part as the answer.
+                def _call():
+                    text = ""
+                    for event in engine.stream_query(
+                        user_id=f"load_{uuid.uuid4().hex[:8]}", message=q,
+                    ):
+                        content = (
+                            event.get("content") if isinstance(event, dict) else None
+                        )
+                        for part in (content or {}).get("parts", []):
+                            if isinstance(part, dict) and part.get("text"):
+                                text = part["text"]
+                    return text
 
-                input_struct = struct_pb2.Struct()
-                input_struct.update({"query": q})
-
-                request = aiplatform_v1.QueryReasoningEngineRequest(
-                    name=engine_resource_name,
-                    input=input_struct,
-                    class_method="query",
-                )
-
-                response = await asyncio.to_thread(
-                    gapic_client.query_reasoning_engine, request=request
-                )
-                final_answer = response.output
+                final_answer = await asyncio.to_thread(_call)
             except Exception as e:
                 logger.info(f"[Query {current_query_num}] Error: {e}")
                 final_answer = f"Error: {e}"
@@ -1172,6 +1292,24 @@ def parse_args() -> argparse.Namespace:
     )
     # Execution
     parser.add_argument(
+        "--limit",
+        type=int,
+        metavar="N",
+        help="Run only the first N questions of --from-file (exact "
+        "session count for demos).",
+    )
+    parser.add_argument(
+        "--label",
+        action="append",
+        default=[],
+        metavar="K=V",
+        help="Custom label stamped into every BQ event of this run "
+        "(repeatable, e.g. --label experiment=round1). Labels reach "
+        "BigQuery on the --local path (deployed agents' plugins fix "
+        "their tags at startup); evolve on the slice with the job's "
+        "--trace-labels.",
+    )
+    parser.add_argument(
         "--local",
         action="store_true",
         help="Run through local ADK supervisor. Uses production A2A agents by default.",
@@ -1223,11 +1361,31 @@ def parse_args() -> argparse.Namespace:
 async def main():
     args = parse_args()
 
+    if getattr(args, "label", None):
+        extra = ",".join(args.label)
+        base = os.getenv("TRACE_LABELS", "")
+        os.environ["TRACE_LABELS"] = f"{base},{extra}" if base else extra
+        logger.info(
+            "Custom labels for this run: %s (run_id=%s)", extra, _RUN_ID,
+        )
+        if not args.local:
+            logger.info(
+                "Deployed run: labels are recorded in the run_labels side "
+                "table when the run completes (deployed traces carry "
+                "startup-fixed tags only)."
+            )
+
     # --- Step 1: Get questions ---
     if args.question:
         questions = [{"question": args.question, "topic": "manual"}]
     elif args.from_file:
         questions = load_questions(args.from_file)
+        if getattr(args, "limit", None):
+            questions = questions[: args.limit]
+            logger.info(
+                "Limited to first %d question(s) of %s",
+                len(questions), args.from_file,
+            )
     else:
         # Resolve topics config
         if args.count:
@@ -1311,15 +1469,25 @@ async def main():
     else:
         # Run against deployed Reasoning Engine
         concurrency = args.concurrency or int(os.getenv("CONCURRENCY", "3"))
-        if args.multi_turn:
-            # One pass, scripted turns honored, one session per conversation.
+        if args.multi_turn or args.from_file:
+            # One pass over the question set, one Agent Engine session per
+            # conversation. --from-file without --multi-turn seeds each
+            # question as a single turn (max_turns=1 skips the simulator);
+            # the duration-based load loop below is reserved for generated
+            # topic traffic.
             result = await run_deployed_multiturn(
                 questions,
                 concurrency=concurrency,
-                max_turns=args.max_turns,
+                max_turns=args.max_turns if args.multi_turn else 1,
                 persona=args.persona,
             )
             _print_multiturn_metrics(result["metrics"])
+            if os.getenv("TRACE_LABELS"):
+                _record_run_labels([
+                    c.get("session_id")
+                    for c in result.get("conversations", [])
+                    if c.get("session_id")
+                ])
             output_path = args.output or os.path.join(
                 os.path.dirname(__file__), "../../../eval/load_test_results.json"
             )

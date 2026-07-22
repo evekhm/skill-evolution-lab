@@ -632,7 +632,7 @@ def _file_size(path: str) -> str:
 def collect_patches(
     report_path: str,
     skill_dir: str,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     max_success_samples: int = 15,
     analyst_mode: str = "both",
@@ -697,6 +697,20 @@ def collect_patches(
     else:
         successes_to_use = successes[:max_success_samples]
         failures_to_use = failures
+
+    # EVOLUTION_MAX_ANALYSTS (set by --quick): stride-sample the failures
+    # so every part of the failure distribution stays represented while
+    # the fleet stays demo-sized. Full runs leave this unset.
+    cap = os.getenv("EVOLUTION_MAX_ANALYSTS")
+    if cap and len(failures_to_use) > int(cap):
+        n = int(cap)
+        stride = len(failures_to_use) / n
+        sampled = [failures_to_use[int(i * stride)] for i in range(n)]
+        logger.info(
+            "EVOLUTION_MAX_ANALYSTS=%d: stride-sampled %d of %d failures",
+            n, len(sampled), len(failures_to_use),
+        )
+        failures_to_use = sampled
 
     # Lazy import for agentic analysts to avoid circular imports
     agentic_analyst_fn = None
@@ -856,7 +870,7 @@ def consolidate_once(
 def evolve(
     report_path: str,
     skill_dir: str,
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     max_success_samples: int = 15,
     hierarchical: bool = False,
@@ -935,7 +949,12 @@ def evolve(
     if prevalence:
         _save_artifact(artifacts_dir, "3d_prevalence.txt", prevalence)
 
-    # Auto-decide candidates based on quality score
+    # Auto-decide candidates based on quality score.
+    # EVOLUTION_CANDIDATES (set by main.py from --candidates) is BINDING:
+    # it wins over the rate-based auto-selection so demo runs stay bounded.
+    if candidates is None and os.getenv("EVOLUTION_CANDIDATES"):
+        candidates = int(os.environ["EVOLUTION_CANDIDATES"])
+        logger.info("Candidates bound by EVOLUTION_CANDIDATES=%d", candidates)
     if candidates is None:
         rate = summary.get("meaningful_rate", 0)
         if rate >= 90:
