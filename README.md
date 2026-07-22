@@ -523,14 +523,14 @@ adds Agent Engine serve latency to Steps 2 and 6):
 
 | Step | Lite | Standard | Full | What differs |
 |---|---|---|---|---|
-| 1 Reset to the V0 baseline | <1s | <1s | <1s | identical everywhere |
-| 2 Generate labeled traffic | ~4 min (13q) | ~5 min (25q) | ~8 min (32q of the 55, held-out split) | question count |
-| 3 Run the evolution job | ~14 min (2 candidates, 1 round, supervisor only) | ~26 min (3 candidates) | ~3 h (agent-decided: up to 5 candidates x rounds x all agents) | candidates, rounds, target agents |
-| Held-out measurement | ~5 min (13 unseen questions) | ~8 min (25 unseen) | ~30 min (23 unseen, from the split) | test-set size; ALWAYS the headline number |
-| 4 Review the PR | <1 min | <1 min | <1 min | identical (local artifact) |
-| 5-6 Merge + verify | sandbox: skipped | sandbox: skipped | sandbox: skipped | deployed-path steps; deployed runs open the real PR |
-| 7 Roll back | <1s | <1s | <1s | identical everywhere |
-| **Total (measured)** | **~25 min** | **~45 min** | **~3.5 h** | |
+| 1 Reset to the V0 baseline | <1s | <1s | <1s | Nothing — all profiles restore the same three V0 skill files and stamp a fresh run label. |
+| 2 Generate labeled traffic | ~4 min (13q) | ~5 min (25q) | ~8 min (32q) | Question count only — same 4-turn adversarial simulator, same judging. The count sets two things downstream: how many failures the analysts get to learn from, and the score granularity (each question is worth 7.7pp at 13q, 4pp at 25q). Full uses the 32-question evolve half of its 55-question split. |
+| 3 Run the evolution job | ~14 min | ~26 min | ~3 h | The multipliers. Lite pins 1 round x 2 candidates x ONE agent (supervisor; naming the target also skips the ~5-min bottleneck classification). Standard raises to 3 candidates — one more full validation replay, steadier ranking. Full is agent-decided end to end: bottleneck attribution picks WHICH agents to evolve (supervisor, policy, benefits — each with its own analyst pass and candidate replays), and rounds/candidates go up to 5x5. Cost grows multiplicatively: candidates x questions x agents. |
+| Held-out measurement | ~5 min (13 unseen) | ~8 min (25 unseen) | ~30 min (23 unseen) | Mechanics identical everywhere: fresh traffic on questions evolution never saw, winner scored, V0 restored and scored on the same set — the difference between those two grounded rates is the headline. Profiles differ only in test-set size, which sets how much the number can be trusted: 7.7pp resolution at lite (directional), 4pp at standard, and full draws its 23 from the stratified split (the quotable one). |
+| 4 Review the PR | <1 min | <1 min | <1 min | Mechanics identical: local branch + `pr_preview.md` with the grounded metrics table, skill diff, and publish commands. Only the numbers inside differ — they come from that profile's own reports. |
+| 5-6 Merge + verify | skipped | skipped | skipped | Local runs are a sandbox, so the activation steps have nothing to act on. Deployed runs replace this row with the real thing: the winner is pushed to the Skill Registry and opened as a PR (Step 5: a human merge activates it), then the Step-1 deflection question is re-asked live to prove the fix (Step 6). |
+| 7 Roll back | <1s | <1s | <1s | Nothing — V0 files restored; every evolved skill stays snapshotted in the run dir as `vN_*_skill.md`. |
+| **Total (measured)** | **~26 min** | **~45 min** | **~3.5 h** | |
 
 All commands live in `scripts/demo/skill_evolution/`, e.g.:
 
