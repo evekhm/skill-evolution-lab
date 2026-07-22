@@ -51,6 +51,7 @@ mkdir -p "${SCRIPT_DIR}/eval/data" \
 cp "${PROJECT_ROOT}/eval/eval_cases.py" "${SCRIPT_DIR}/eval/"
 cp "${PROJECT_ROOT}/eval/data/eval_cases.json" "${SCRIPT_DIR}/eval/data/"
 cp "${PROJECT_ROOT}/eval/data/eval_spec.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
+cp "${PROJECT_ROOT}/eval/data/two_defect_eval_spec.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
 cp "${PROJECT_ROOT}/eval/data/agent_context.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
 cp "${PROJECT_ROOT}/eval/data/golden_evals.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
 

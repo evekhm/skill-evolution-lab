@@ -681,7 +681,7 @@ def run_quality_report(
         traj_val = str(trajectory_samples)
         if traj_val != "0":
             cmd.extend(["--trajectory-samples", traj_val])
-    _eval_spec = os.path.join(_repo_root, "eval", "data", "eval_spec.json")
+    _eval_spec = os.path.join(_repo_root, "eval", "data", "two_defect_eval_spec.json")
     if os.path.isfile(_eval_spec):
         cmd.extend(["--eval-spec", _eval_spec])
 
@@ -2219,7 +2219,7 @@ def score_candidate(
     ]
     # Same eval spec as V0 so candidate and baseline are scored identically
     # (scope-aware: out-of-scope -> declined, not unhelpful).
-    _eval_spec = os.path.join(_repo_root, "eval", "data", "eval_spec.json")
+    _eval_spec = os.path.join(_repo_root, "eval", "data", "two_defect_eval_spec.json")
     if os.path.isfile(_eval_spec):
         cmd.extend(["--eval-spec", _eval_spec])
 

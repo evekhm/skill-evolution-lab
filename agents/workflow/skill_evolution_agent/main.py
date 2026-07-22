@@ -263,7 +263,7 @@ def _run_scoring_orchestration(
     # Ground scoring with the eval spec (scope + golden Q&A + tools). Without
     # it the judge has no scope, so out-of-scope questions are scored
     # 'unhelpful' instead of 'declined' and the meaningful rate is capped.
-    _eval_spec = os.path.join(_project_root, "eval", "data", "eval_spec.json")
+    _eval_spec = os.path.join(_project_root, "eval", "data", "two_defect_eval_spec.json")
     if os.path.isfile(_eval_spec):
         cmd.extend(["--eval-spec", _eval_spec])
 

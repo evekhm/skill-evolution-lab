@@ -56,6 +56,7 @@ cp "${PROJECT_ROOT}/ensure_sdk.py" "${SCRIPT_DIR}/ensure_sdk.py"
 cp "${PROJECT_ROOT}/agents/workflow/gcs_utils.py" "${SCRIPT_DIR}/gcs_utils.py"
 mkdir -p "${SCRIPT_DIR}/eval/data"
 cp "${PROJECT_ROOT}/eval/data/eval_spec.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
+cp "${PROJECT_ROOT}/eval/data/two_defect_eval_spec.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
 cp "${PROJECT_ROOT}/eval/data/agent_context.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
 cp "${PROJECT_ROOT}/eval/data/quality_config.json" "${SCRIPT_DIR}/eval/data/" 2>/dev/null || true
 
