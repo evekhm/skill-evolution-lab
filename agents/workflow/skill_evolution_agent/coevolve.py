@@ -132,6 +132,7 @@ def coevolve(
         )
         bottleneck = SimpleNamespace(
             recommendation="both", summary="skipped (target bound)",
+            confidence="high",
         )
     elif _precomputed:
         logger.info(
@@ -142,6 +143,7 @@ def coevolve(
         bottleneck = SimpleNamespace(
             recommendation=_precomputed.get("recommendation", "both"),
             summary=_precomputed.get("summary", "precomputed"),
+            confidence=_precomputed.get("confidence", "high"),
         )
     else:
         bottleneck = detect_bottleneck(report, client, model_id)

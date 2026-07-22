@@ -379,7 +379,7 @@ score_testset() {
         -i "$RUN_DIR/${label}_traffic.json" \
         -o "$RUN_DIR/${label}_report.json" \
         --tag-turns --trajectory-samples all --concurrency 10 \
-        --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+        --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
         --report
     echo "  $label report: $RUN_DIR/${label}_report.json"
 }
@@ -447,7 +447,7 @@ if $V0_ONLY; then
         -i "$RUN_DIR/v0_traffic.json" \
         -o "$RUN_DIR/v0_quality_report.json" \
         --tag-turns --trajectory-samples all --concurrency 10 \
-        --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+        --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
         --report
     SCORE_END=$(date +%s)
     echo "  Scoring done in $((SCORE_END - SCORE_START))s"
@@ -553,7 +553,7 @@ if $RESCORE_ONLY; then
             -i "$traffic" \
             -o "$report" \
             --tag-turns --trajectory-samples all --concurrency 10 \
-            --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+            --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
             --report
         t1=$(date +%s)
         echo "  $label rescored in $((t1 - t0))s -> $report"
@@ -623,7 +623,7 @@ if [[ -n "$TEST_VERSION" ]]; then
         -i "$RUN_DIR/v${V}_full_traffic.json" \
         -o "$RUN_DIR/v${V}_full_quality_report.json" \
         --tag-turns --trajectory-samples all --concurrency 10 \
-        --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+        --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
         --report
     SCORE_END=$(date +%s)
     echo "  Scoring done in $((SCORE_END - SCORE_START))s"
@@ -752,7 +752,7 @@ if $REUSE_V0; then
             -i "$RUN_DIR/v0_traffic.json" \
             -o "$RUN_DIR/v0_quality_report.json" \
             --tag-turns --trajectory-samples all --concurrency 10 \
-            --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+            --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
             --report
         SCORE_END=$(date +%s)
         echo "  V0 scoring done in $((SCORE_END - SCORE_START))s"
@@ -872,16 +872,24 @@ step_close
     echo ""
     echo "## Quality (meaningful rate)"
     echo ""
-    echo "| Version | Rate |"
-    echo "|---|---|"
-    v0r=$(jq -r '.summary.meaningful_rate // "?"' "$RUN_DIR/v0_quality_report.json" 2>/dev/null)
-    echo "| V0 baseline | ${v0r}% |"
+    echo "| Version | Ground-truth rate | Judge rate | Matched |"
+    echo "|---|---|---|---|"
+    row() {
+        local label="$1" f="$2"
+        local gt j m tot
+        gt=$(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "n/a"' "$f")
+        j=$(jq -r '.summary.meaningful_rate // "?"' "$f")
+        m=$(jq -r '.summary.golden_eval_summary.matched // 0' "$f")
+        tot=$(jq -r '.summary.total_sessions // "?"' "$f")
+        echo "| $label | ${gt}% | ${j}% | ${m}/${tot} |"
+    }
+    row "V0 baseline" "$RUN_DIR/v0_quality_report.json"
     for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
              "$RUN_DIR"/candidate_*_report.json; do
         [ -f "$f" ] || continue
         n=$(basename "$f"); v=$(echo "$n" | grep -oE '^v[0-9]+' || echo "${n%_report.json}")
         [ "$v" = "v0" ] && continue
-        echo "| $v | $(jq -r '.summary.meaningful_rate // "?"' "$f")% |"
+        row "$v" "$f"
     done
     [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
     _thr=$(awk "BEGIN{printf \"%.0f\", ${QUALITY_THRESHOLD:-0.95}*100}")
