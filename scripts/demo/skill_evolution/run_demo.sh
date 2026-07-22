@@ -672,13 +672,13 @@ fi
 
 # Held-out evolve/test split (Trace2Skill §2.1): patches + candidate scoring
 # use D_evolve; V0/V1 are reported on the disjoint D_test. Full mode only.
-TESTSET="$EVAL_DIR/data/questions/two_defect_test_quick.json"
+TESTSET="$EVAL_DIR/data/questions/two_defect_test.json"
 # ONE exam for every profile: the same 25 unseen questions. Profiles
 # differ in how much they train (questions, rounds, agents) — the
 # final score is always comparable because the exam never changes.
 # Full trains on the complete 55-question evolve set (no split): its
 # extra effort must show up on the common exam.
-echo "  [config] Final exam (all profiles): $(basename "$TESTSET") — 25 unseen questions"
+echo "  [config] Final exam (all profiles): $(basename "$TESTSET") — all 55 unseen questions (1.8 points each)"
 
 banner "SKILL EVOLUTION AGENT (ADK)"
 echo "  Run directory: $RUN_DIR"
@@ -794,7 +794,17 @@ if [ -n "$TESTSET" ]; then
     cp "$BENEFITS_SKILL/SKILL.md"   "$RUN_DIR/v1_benefits_skill.md"
     cp "$SUPERVISOR_SKILL/SKILL.md" "$RUN_DIR/v1_supervisor_skill.md"
     restore_v0
-    score_testset "$TESTSET" v0_test
+    # V0's exam score is a constant while V0 and the exam are unchanged —
+    # reuse the committed reference instead of re-measuring (~13 min).
+    # FRESH_V0_EXAM=1 forces a fresh measurement.
+    REF_DIR="$EVAL_DIR/data/reference"
+    if [ -z "${FRESH_V0_EXAM:-}" ] && [ -f "$REF_DIR/v0_exam_report.json" ] \
+        && sha256sum -c "$REF_DIR/v0_exam_checksums.txt" --status 2>/dev/null; then
+        cp "$REF_DIR/v0_exam_report.json" "$RUN_DIR/v0_test_report.json"
+        echo "  V0 exam: reusing committed reference ($(head -1 "$REF_DIR/v0_exam_meta.txt"))"
+    else
+        score_testset "$TESTSET" v0_test
+    fi
     banner "HELD-OUT RESULT (disjoint D_test)"
     # Headline on the GROUND-TRUTH (golden-matched) rate, not the generic
     # usefulness judge -- the judge mislabels verbose, tool-grounded answers
