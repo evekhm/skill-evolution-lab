@@ -55,13 +55,19 @@
       "id": "compound_meal_hsa",
       "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "compound_bereavement_parental",
       "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "oos_severance",
@@ -74,6 +80,146 @@
       "question": "Can I get a standing desk for my home office?",
       "category": "out_of_scope",
       "expected_behavior": "decline_gracefully"
+    },
+    {
+      "id": "regression_767424282284",
+      "question": "On a $130,000 salary, how much would short-term disability pay me per week?",
+      "category": "compensation",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7674242822848905216",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user to HR, which is unhelpful as it should have been able to answer this in-scope question using its tools."
+    },
+    {
+      "id": "regression_595816025858",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "5958160258588213248",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information regarding short-term disability policies and directed the user to HR, even though it has a tool (hr_calculator) that can compute the payout."
+    },
+    {
+      "id": "regression_259397133694",
+      "question": "Which health plan types can I choose from?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "2593971336942452736",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user to HR, which is unhelpful for an in-scope question."
+    },
+    {
+      "id": "regression_746032184054",
+      "question": "What grade must I earn to get tuition reimbursed?",
+      "category": "expenses",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "7460321840548806656",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information and directed the user to HR, which is not a useful answer for an in-scope question."
+    },
+    {
+      "id": "regression_211229728304",
+      "question": "What portion of my pay does short-term disability replace?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "2112297283046342656",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is unhelpful as the information is within the agent's scope."
+    },
+    {
+      "id": "regression_591783896817",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "5917838968174411776",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a useful answer for an in-scope question."
+    },
+    {
+      "id": "regression_426501790492",
+      "question": "What's the maximum duration of short-term disability?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4265017904929439744",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it does not have information and directed the user to HR, which is unhelpful for an in-scope question."
+    },
+    {
+      "id": "regression_321567919175",
+      "question": "Can you please check the company's official holiday policy regarding Juneteenth?",
+      "category": "holidays",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "3215679191752114176",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have information and directs the user to HR, which is unhelpful for an in-scope question."
+    },
+    {
+      "id": "regression_432806829971",
+      "question": "Can you please check the actual EAP policy for details on counseling visit coverage?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "4328068299712626688",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have the information and directs the user to HR, failing to provide a substantive answer to an in-scope question."
+    },
+    {
+      "id": "regression_106746216949",
+      "question": "Can you please check the company's official policy on tuition reimbursement and provide the specific amount or percentage?",
+      "category": "expenses",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "1067462169496387584",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have the information and directs the user to HR, even after the user specifically asks it to check the company's official policy. This is an in-scope question that the agent should be able to answer using its tools."
+    },
+    {
+      "id": "regression_667444370557",
+      "question": "I understand you don't have the information readily available, but can you please access the company's official policy documents to find the jury duty policy?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "6674443705572655104",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have information and directs the user to HR, even after the user explicitly asks it to check policy documents. This is not a useful answer to an in-scope question."
+    },
+    {
+      "id": "regression_133767814713",
+      "question": "Is a receipt needed for a $40 purchase?",
+      "category": "expenses",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "1337678147138617344",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user to HR, which is unhelpful for an in-scope question."
+    },
+    {
+      "id": "regression_203573608938",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "2035736089381044224",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a useful answer for an in-scope question."
+    },
+    {
+      "id": "regression_838130796434",
+      "question": "Is there a round-the-clock EAP support line?",
+      "category": "general",
+      "expected_agent": "knowledge_supervisor",
+      "source": "skill_evolution",
+      "source_session_id": "8381307964346073088",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have information and directed the user to HR, which is unhelpful for an in-scope question."
     }
   ]
 }

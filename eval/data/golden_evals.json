@@ -1,7 +1,7 @@
 {
   "eval_set_id": "golden_evals_hr_policy",
   "name": "Golden Eval Set: HR Policy Q&A",
-  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact — what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
+  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact \u2014 what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
   "version": "1.0",
   "eval_cases": [
     {
@@ -150,7 +150,7 @@
       "question": "Is Juneteenth a company holiday?",
       "expected_answer": "No, Juneteenth is not a company holiday.",
       "topic": "holidays",
-      "notes": "Tests hallucination resistance — agent must not assume"
+      "notes": "Tests hallucination resistance \u2014 agent must not assume"
     },
     {
       "id": "holiday_03",
@@ -197,30 +197,30 @@
     {
       "id": "scope_01",
       "question": "What are the salary bands for senior engineers?",
-      "expected_answer": "DECLINE — salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_02",
       "question": "How do I get promoted?",
-      "expected_answer": "DECLINE — promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_03",
       "question": "Can you help me set up my laptop?",
-      "expected_answer": "DECLINE — IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_04",
       "question": "What's the dress code?",
-      "expected_answer": "DECLINE — dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "compound_01",
-      "question": "Compare PTO and sick leave — what rolls over and what doesn't?",
+      "question": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?",
       "expected_answer": "PTO: 20 days/year, up to 5 days roll over. Sick leave: 10 days/year, no rollover.",
       "topic": "multi_topic",
       "notes": "Tests multi-topic handling with comparison"
@@ -231,6 +231,36 @@
       "expected_answer": "PTO: 20 days/year. Sick leave: 10 days/year. Parental leave: 16 weeks (primary) or 8 weeks (secondary). 11 paid holidays/year.",
       "topic": "multi_topic",
       "notes": "Tests comprehensive multi-topic response"
+    },
+    {
+      "id": "reg-20260722-01",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "expected_answer": "You can be reimbursed up to $75 per day for meals while traveling for work. Remember that receipts are required for any expense over $25.",
+      "topic": "expenses"
+    },
+    {
+      "id": "reg-20260722-02",
+      "question": "Is a receipt needed for a $40 purchase?",
+      "expected_answer": "Yes, a receipt is needed for a $40 purchase. According to company policy, business expenses must be submitted within 30 days. Receipts are required for any expense over $25. Meals are reimbursed up to $75 per day during business travel. Travel expenses exceeding $500 require pre-approval from your manager. You can submit expenses through the company expense portal at expenses.company.com.",
+      "topic": "expenses"
+    },
+    {
+      "id": "reg-20260722-03",
+      "question": "Which health plan types can I choose from?",
+      "expected_answer": "The company offers both PPO and HMO health insurance plans, and covers 80% of the premiums for employees and 50% for dependents. The maximum out-of-pocket expense for the PPO plan is $4,000 for an individual and $8,000 for a family (in-network).",
+      "topic": "benefits"
+    },
+    {
+      "id": "reg-20260722-04",
+      "question": "Is there a round-the-clock EAP support line?",
+      "expected_answer": "Yes, there is a 24/7 EAP hotline available. It provides free, confidential counseling for up to 8 sessions per issue per year, covering mental health, stress, legal, and financial matters for employees and their household members. You can reach it at eap.company.com or by calling 1-800-555-0123.",
+      "topic": "eap"
+    },
+    {
+      "id": "reg-20260722-05",
+      "question": "What grade must I earn to get tuition reimbursed?",
+      "expected_answer": "Yes, there is an annual limit. The company reimburses up to $5,250 per calendar year for job-related courses or degree programs. To get tuition reimbursed, you must earn a grade of B or better (or pass for pass/fail courses). Remember that courses also require manager pre-approval.",
+      "topic": "tuition_reimbursement"
     }
   ]
 }
