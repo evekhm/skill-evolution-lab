@@ -302,6 +302,256 @@
       "question": "If I make $117,000 and take 8 weeks of short-term disability, what's my total payout?",
       "expected_answer": "$10,800 total ($1,350/week for 8 weeks, within the 12-week max).",
       "topic": "calc"
+    },
+    {
+      "question": "What percentage of my medical premium does the employer pay?",
+      "expected_answer": "The company covers 80% of health insurance premiums for the employee (50% for dependents).",
+      "topic": "benefits"
+    },
+    {
+      "question": "Which health plan types can I choose from?",
+      "expected_answer": "PPO and HMO plans are available.",
+      "topic": "benefits"
+    },
+    {
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "expected_answer": "5 paid days (a parent is immediate family).",
+      "topic": "bereavement"
+    },
+    {
+      "question": "How many days off if my sibling passes away?",
+      "expected_answer": "5 paid days (a sibling is immediate family).",
+      "topic": "bereavement"
+    },
+    {
+      "question": "How many counseling visits does the EAP cover?",
+      "expected_answer": "Up to 8 counseling sessions per issue per year.",
+      "topic": "eap"
+    },
+    {
+      "question": "Is there a round-the-clock EAP support line?",
+      "expected_answer": "Yes - the EAP includes a 24/7 hotline.",
+      "topic": "eap"
+    },
+    {
+      "question": "What's the per-diem for meals while traveling for work?",
+      "expected_answer": "$75 per day for meals during business travel.",
+      "topic": "expenses"
+    },
+    {
+      "question": "Is a receipt needed for a $40 purchase?",
+      "expected_answer": "Yes - receipts are required for any expense over $25.",
+      "topic": "expenses"
+    },
+    {
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "expected_answer": "Yes - compressed work weeks like four 10-hour days are allowed with manager approval.",
+      "topic": "flex_time"
+    },
+    {
+      "question": "What's the earliest I can begin work under flexible hours?",
+      "expected_answer": "7am - flexible start between 7am and 10am, covering the 10am-3pm core hours.",
+      "topic": "flex_time"
+    },
+    {
+      "question": "How many company-paid holidays are there?",
+      "expected_answer": "11 paid holidays per year.",
+      "topic": "holidays"
+    },
+    {
+      "question": "Do we get Juneteenth off?",
+      "expected_answer": "No - Juneteenth is NOT a company holiday (11 paid holidays are observed).",
+      "topic": "holidays"
+    },
+    {
+      "question": "Does the company pay me during jury duty, and is there a limit?",
+      "expected_answer": "Jury duty is fully paid for the entire duration of service, with no day limit.",
+      "topic": "jury_duty"
+    },
+    {
+      "question": "How many vacation days do I get a year?",
+      "expected_answer": "20 PTO days per year, accrued monthly.",
+      "topic": "pto"
+    },
+    {
+      "question": "How many unused vacation days carry into next year?",
+      "expected_answer": "Up to 5 unused PTO days roll over to the next year.",
+      "topic": "pto"
+    },
+    {
+      "question": "How often can I work from home each week?",
+      "expected_answer": "Up to 3 days per week with manager approval.",
+      "topic": "remote_work"
+    },
+    {
+      "question": "Does working remotely require sign-off from anyone?",
+      "expected_answer": "Yes - remote work requires manager approval (up to 3 days per week).",
+      "topic": "remote_work"
+    },
+    {
+      "question": "What portion of my pay does short-term disability replace?",
+      "expected_answer": "60% of your salary.",
+      "topic": "short_term_disability"
+    },
+    {
+      "question": "What's the maximum duration of short-term disability?",
+      "expected_answer": "Short-term disability pays 60% of salary for up to 12 weeks.",
+      "topic": "short_term_disability"
+    },
+    {
+      "question": "How many sick days am I given annually?",
+      "expected_answer": "10 sick days per year; they do not roll over.",
+      "topic": "sick_leave"
+    },
+    {
+      "question": "Can I bank unused sick days for next year?",
+      "expected_answer": "10 sick days per year.",
+      "topic": "sick_leave"
+    },
+    {
+      "question": "How much will the company reimburse for tuition each year?",
+      "expected_answer": "Up to $5,250 per year for job-related courses.",
+      "topic": "tuition_reimbursement"
+    },
+    {
+      "question": "What grade must I earn to get tuition reimbursed?",
+      "expected_answer": "A grade of B or better is required for reimbursement.",
+      "topic": "tuition_reimbursement"
+    },
+    {
+      "question": "At what rate does my PTO accrue?",
+      "expected_answer": "About 1.67 days per month (20 days/year, accrued monthly).",
+      "topic": "pto"
+    },
+    {
+      "question": "Is my unused PTO paid out if I resign?",
+      "expected_answer": "Yes - unused accrued PTO is paid out at the final rate of pay on separation.",
+      "topic": "pto"
+    },
+    {
+      "question": "After how many days out sick is a doctor's note required?",
+      "expected_answer": "Yes - a doctor's note is required for absences longer than 3 consecutive days.",
+      "topic": "sick_leave"
+    },
+    {
+      "question": "When are the required overlap hours for remote staff?",
+      "expected_answer": "Core collaboration hours are 10am-3pm in the employee's local timezone.",
+      "topic": "remote_work"
+    },
+    {
+      "question": "Am I allowed to be remote four days a week?",
+      "expected_answer": "The policy allows up to 3 remote days per week with manager approval; four is above the limit.",
+      "topic": "remote_work"
+    },
+    {
+      "question": "Does booking a $700 flight need approval first?",
+      "expected_answer": "Yes - travel expenses over $500 require prior approval.",
+      "topic": "expenses"
+    },
+    {
+      "question": "What's the deadline to file an expense report?",
+      "expected_answer": "Business expenses must be submitted within 30 days.",
+      "topic": "expenses"
+    },
+    {
+      "question": "What's the most a family pays out of pocket in-network?",
+      "expected_answer": "$8,000 for a family (in-network, PPO).",
+      "topic": "benefits"
+    },
+    {
+      "question": "What's the individual in-network out-of-pocket cap?",
+      "expected_answer": "$4,000 for an individual (in-network, PPO).",
+      "topic": "benefits"
+    },
+    {
+      "question": "What's the employer HSA contribution for family coverage?",
+      "expected_answer": "$1,500 per year for family coverage (HDHP).",
+      "topic": "benefits"
+    },
+    {
+      "question": "What does the company put in an HSA for a single employee?",
+      "expected_answer": "$750 per year for individual coverage (HDHP).",
+      "topic": "benefits"
+    },
+    {
+      "question": "Is a routine dental cleaning covered?",
+      "expected_answer": "Yes - preventive dental care is fully covered.",
+      "topic": "benefits"
+    },
+    {
+      "question": "How much of a major dental procedure is covered?",
+      "expected_answer": "80% coverage for major dental procedures.",
+      "topic": "benefits"
+    },
+    {
+      "question": "Are braces covered, and what's the cap?",
+      "expected_answer": "Orthodontia is covered at 50% up to a $2,000 lifetime maximum.",
+      "topic": "benefits"
+    },
+    {
+      "question": "What's covered for an eye exam and frames?",
+      "expected_answer": "Annual eye exam covered, plus a $200 frame allowance every 2 years.",
+      "topic": "benefits"
+    },
+    {
+      "question": "What percentage does the company match on 401k?",
+      "expected_answer": "4% company match on the 401(k).",
+      "topic": "benefits"
+    },
+    {
+      "question": "How long until I'm fully vested in the match?",
+      "expected_answer": "Fully vested after 1 year of employment.",
+      "topic": "benefits"
+    },
+    {
+      "question": "If I quit before a year, do I keep the employer match?",
+      "expected_answer": "The 401(k) match vests after 1 year, so leaving earlier forfeits the unvested match.",
+      "topic": "benefits"
+    },
+    {
+      "question": "How many weeks of leave does a primary caregiver get?",
+      "expected_answer": "16 weeks paid for a primary caregiver.",
+      "topic": "benefits"
+    },
+    {
+      "question": "As a secondary caregiver, how much parental leave do I get?",
+      "expected_answer": "8 weeks for a secondary caregiver (16 weeks for primary).",
+      "topic": "benefits"
+    },
+    {
+      "question": "When can I sign up for benefits each year?",
+      "expected_answer": "Open enrollment runs every November; new hires enroll within 30 days.",
+      "topic": "benefits"
+    },
+    {
+      "question": "Is the Wednesday before Thanksgiving a paid day off?",
+      "expected_answer": "Thanksgiving week is covered by the 11-holiday calendar, including the Wednesday before Thanksgiving.",
+      "topic": "holidays"
+    },
+    {
+      "question": "What's the bereavement allowance for a grandparent?",
+      "expected_answer": "3 paid days (a grandparent is extended family).",
+      "topic": "bereavement"
+    },
+    {
+      "question": "Is there a waiting period before short-term disability starts?",
+      "expected_answer": "Yes - a 7-day waiting period.",
+      "topic": "short_term_disability"
+    },
+    {
+      "question": "What fraction of dependent premiums does the employer cover?",
+      "expected_answer": "50% of premiums for dependents.",
+      "topic": "benefits"
+    },
+    {
+      "question": "Can I get reimbursed for a job-related class, and up to how much?",
+      "expected_answer": "Yes - tuition reimbursement up to $5,250/year for job-related courses (manager pre-approval, grade B or better).",
+      "topic": "tuition_reimbursement"
+    },
+    {
+      "question": "Do leftover sick days roll into the following year?",
+      "expected_answer": "Sick leave does not roll over.",
+      "topic": "sick_leave"
     }
   ]
 }

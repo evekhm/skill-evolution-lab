@@ -1,0 +1,129 @@
+{
+  "questions": [
+    {
+      "id": "e16_benefits",
+      "category": "benefits",
+      "question": "What percentage of my medical premium does the employer pay?"
+    },
+    {
+      "id": "e17_benefits",
+      "category": "benefits",
+      "question": "Which health plan types can I choose from?"
+    },
+    {
+      "id": "e35_bereavement",
+      "category": "bereavement",
+      "question": "How much bereavement leave do I get for losing a parent?"
+    },
+    {
+      "id": "e36_bereavement",
+      "category": "bereavement",
+      "question": "How many days off if my sibling passes away?"
+    },
+    {
+      "id": "ec05_calc_std",
+      "category": "calc",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?"
+    },
+    {
+      "id": "ec06_calc_std",
+      "category": "calc",
+      "question": "On a $130,000 salary, how much would short-term disability pay me per week?"
+    },
+    {
+      "id": "e39_eap",
+      "category": "eap",
+      "question": "How many counseling visits does the EAP cover?"
+    },
+    {
+      "id": "e40_eap",
+      "category": "eap",
+      "question": "Is there a round-the-clock EAP support line?"
+    },
+    {
+      "id": "e12_expenses",
+      "category": "expenses",
+      "question": "What's the per-diem for meals while traveling for work?"
+    },
+    {
+      "id": "e13_expenses",
+      "category": "expenses",
+      "question": "Is a receipt needed for a $40 purchase?"
+    },
+    {
+      "id": "e41_flex",
+      "category": "flex_time",
+      "question": "Can I do a compressed schedule of four 10-hour days?"
+    },
+    {
+      "id": "e42_flex",
+      "category": "flex_time",
+      "question": "What's the earliest I can begin work under flexible hours?"
+    },
+    {
+      "id": "e32_holidays",
+      "category": "holidays",
+      "question": "How many company-paid holidays are there?"
+    },
+    {
+      "id": "e33_holidays",
+      "category": "holidays",
+      "question": "Do we get Juneteenth off?"
+    },
+    {
+      "id": "e38_jury",
+      "category": "jury_duty",
+      "question": "Does the company pay me during jury duty, and is there a limit?"
+    },
+    {
+      "id": "e01_pto",
+      "category": "pto",
+      "question": "How many vacation days do I get a year?"
+    },
+    {
+      "id": "e02_pto",
+      "category": "pto",
+      "question": "How many unused vacation days carry into next year?"
+    },
+    {
+      "id": "e08_remote",
+      "category": "remote_work",
+      "question": "How often can I work from home each week?"
+    },
+    {
+      "id": "e09_remote",
+      "category": "remote_work",
+      "question": "Does working remotely require sign-off from anyone?"
+    },
+    {
+      "id": "e45_std",
+      "category": "short_term_disability",
+      "question": "What portion of my pay does short-term disability replace?"
+    },
+    {
+      "id": "e46_std",
+      "category": "short_term_disability",
+      "question": "What's the maximum duration of short-term disability?"
+    },
+    {
+      "id": "e05_sick",
+      "category": "sick_leave",
+      "question": "How many sick days am I given annually?"
+    },
+    {
+      "id": "e06_sick",
+      "category": "sick_leave",
+      "question": "Can I bank unused sick days for next year?"
+    },
+    {
+      "id": "e43_tuition",
+      "category": "tuition_reimbursement",
+      "question": "How much will the company reimburse for tuition each year?"
+    },
+    {
+      "id": "e44_tuition",
+      "category": "tuition_reimbursement",
+      "question": "What grade must I earn to get tuition reimbursed?"
+    }
+  ]
+}

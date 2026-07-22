@@ -173,6 +173,14 @@ def supervisor():
     return _build_local_supervisor(local_agents=True)
 
 
+@pytest.mark.xfail(
+    _BASELINE_SUPERVISOR,
+    reason="The V0 baseline supervisor (version 0) carries the deliberate "
+    "deflect-to-HR defect, so whether it routes or deflects on any given "
+    "run is nondeterministic (observed 0-3 flakes per run). Hard-asserted "
+    "once the skill carries version >= 1.",
+    strict=False,
+)
 @pytest.mark.parametrize(
     "case",
     [c for c in EVAL_CASES if c.get("expected_agent")],

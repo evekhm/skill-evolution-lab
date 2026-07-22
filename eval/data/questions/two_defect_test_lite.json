@@ -1,0 +1,83 @@
+{
+  "description": "Held-out test subset (13q, 1/category) \u2014 final V0-vs-winner measurement for the quick profiles; disjoint from every evolve set.",
+  "questions": [
+    {
+      "id": "t16_benefits",
+      "category": "benefits",
+      "question": "What share of my health premium does the company cover?",
+      "expected_answer": "80% of the employee premium (50% for dependents)."
+    },
+    {
+      "id": "t35_bereavement",
+      "category": "bereavement",
+      "question": "How many bereavement days do I get for an immediate family member?",
+      "expected_answer": "5 paid days for an immediate family member."
+    },
+    {
+      "id": "tc06_calc_std",
+      "category": "calc",
+      "question": "I earn $52,000. What's my total short-term disability payout if I'm out for 4 weeks?",
+      "expected_answer": "$2,400 total ($600/week = 60% of weekly salary, for 4 weeks)."
+    },
+    {
+      "id": "t39_eap",
+      "category": "eap",
+      "question": "How many EAP counseling sessions do I get?",
+      "expected_answer": "Up to 8 counseling sessions per issue per year."
+    },
+    {
+      "id": "t12_expenses",
+      "category": "expenses",
+      "question": "What's the daily meal reimbursement limit on business travel?",
+      "expected_answer": "$75/day for meals on business travel."
+    },
+    {
+      "id": "t41_flex_time",
+      "category": "flex_time",
+      "question": "Can I work four 10-hour days instead of five 8-hour days?",
+      "expected_answer": "Yes - compressed work weeks like four 10-hour days are allowed with manager approval."
+    },
+    {
+      "id": "t32_holidays",
+      "category": "holidays",
+      "question": "How many paid holidays does the company observe?",
+      "expected_answer": "11 paid holidays per year."
+    },
+    {
+      "id": "t38_jury_duty",
+      "category": "jury_duty",
+      "question": "Is jury duty paid, and for how long?",
+      "expected_answer": "Fully paid for the entire duration of service, with no day cap."
+    },
+    {
+      "id": "t01_pto",
+      "category": "pto",
+      "question": "How many PTO days do I get per year?",
+      "expected_answer": "20 PTO days per year, accrued monthly."
+    },
+    {
+      "id": "t08_remote_work",
+      "category": "remote_work",
+      "question": "How many days a week can I work from home?",
+      "expected_answer": "Up to 3 days per week with manager approval."
+    },
+    {
+      "id": "t45_short_term_disability",
+      "category": "short_term_disability",
+      "question": "What does short-term disability pay?",
+      "expected_answer": "60% of your salary."
+    },
+    {
+      "id": "t05_sick_leave",
+      "category": "sick_leave",
+      "question": "How many sick days do I get per year?",
+      "expected_answer": "10 sick days per year."
+    },
+    {
+      "id": "t43_tuition_reimbursement",
+      "category": "tuition_reimbursement",
+      "question": "What's the annual tuition reimbursement limit?",
+      "expected_answer": "Up to $5,250 per calendar year."
+    }
+  ]
+}
