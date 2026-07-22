@@ -48,6 +48,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Discover Cloud Run URL
+echo "=========================================="
+echo "  TARGET PROJECT: ${PROJECT_ID}"
+echo "  MODE: DEPLOYED (Cloud Run A2A service)"
+echo "=========================================="
 echo "Discovering ${SERVICE_NAME} in ${PROJECT}/${REGION}..."
 SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \
     --project="$PROJECT" --region="$REGION" \
@@ -86,6 +90,7 @@ echo "────────────────────────�
 TASK_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
 MSG_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
 
+T0=$(date +%s.%N)
 RESPONSE=$(curl -s -X POST \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
@@ -110,4 +115,7 @@ echo "$RESPONSE" | jq -r '
     .error.message //
     "No text in response"
 ' 2>/dev/null || echo "$RESPONSE"
+T1=$(date +%s.%N)
+LATENCY=$(awk "BEGIN{printf \"%.1f\", ${T1}-${T0}}")
 echo ""
+echo "Latency: ${LATENCY}s"
