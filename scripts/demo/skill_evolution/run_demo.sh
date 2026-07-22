@@ -120,7 +120,7 @@
 # ============================================================================
 #
 #   --quick              22 questions (2 per category), ~15 min total
-#   --full               205 questions (all categories), ~1 hour total (default)
+#   --full               55 questions (all categories) + held-out test split (default)
 #   --reuse-v0 [path]    Reuse V0 data. Path is optional and can be:
 #                          - a directory (copies traffic + scoring if available)
 #                          - a .json file (traffic only, will score fresh)
@@ -223,6 +223,7 @@ while [[ $# -gt 0 ]]; do
         --rescore)      RESCORE=true; shift ;;
         --resume)       RUN_DIR="$2"; shift 2 ;;
         --v0-only)      V0_ONLY=true; shift ;;
+        --eval-only)    V0_ONLY=true; shift ;;
         --evolve-only)  EVOLVE_ONLY=true; shift ;;
         --rescore-only) RESCORE_ONLY=true; shift ;;
         --test-version) TEST_VERSION="$2"; shift 2 ;;
@@ -251,6 +252,37 @@ if [[ -z "${RUN_DIR:-}" ]]; then
     RUN_DIR="$EVAL_DIR/runs/$(date +%Y-%m-%d_%H%M%S)_demo_${MODE}"
 fi
 mkdir -p "$RUN_DIR"
+DEMO_START_TS=$(date +%s)
+
+# Quick mode pins the fast profile unless the caller chose values:
+# 1 round, 3 candidates. Agent-decided runs were choosing 5 candidates
+# + a second round, doubling runtime for rounds that scored worse.
+# Local demo scale can never reach the agent's 30-failure default —
+# a 13-32 question set tops out well below it. Bind a proportionate
+# floor for BOTH modes; explicit --min-failures still overrides.
+MIN_FAILURES="${MIN_FAILURES:-5}"
+
+if [ "$MODE" = "quick" ]; then
+    ROUNDS="${ROUNDS:-1}"
+    CANDIDATES="${CANDIDATES:-2}"
+    # One target agent: evolving all three (supervisor+policy+benefits)
+    # triples candidate scoring for no demo gain — the supervisor stage
+    # alone reaches the headline number. EVOLVE_TARGET overrides.
+    EVOLVE_TARGET="${EVOLVE_TARGET:-supervisor}"
+fi
+
+# One auto-generated label for the WHOLE demo run, tied 1:1 to the run
+# folder name. Every traffic invocation inside inherits it via
+# TRACE_LABELS, so this run is its own BigQuery slice — guaranteed
+# distinct from everything already in the table. Override the label
+# with DEMO_TRACE_LABEL=k=v; user-set TRACE_LABELS are kept additively.
+DEMO_TRACE_LABEL="${DEMO_TRACE_LABEL:-demo_run=$(basename "$RUN_DIR")}"
+export TRACE_LABELS="${TRACE_LABELS:+$TRACE_LABELS,}$DEMO_TRACE_LABEL"
+
+# Local demo is a SANDBOX: the evolution agent's registry/PR/issue tools
+# are disabled (BQ trace logging stays on). The PR is produced as a
+# local artifact instead. Override with EVOLUTION_PUBLISH=1.
+export EVOLUTION_PUBLISH="${EVOLUTION_PUBLISH:-0}"
 
 # Tee output to log file
 RUN_LOG="$RUN_DIR/run.log"
@@ -261,17 +293,61 @@ exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$RUN_LOG")) 2>&1
 cd "$PROJECT_ROOT"
 
 echo "  [config] EVAL_MODEL_ID=$EVAL_MODEL_ID (all local agents)"
+echo "  [config] BigQuery slice label: $DEMO_TRACE_LABEL"
+echo "  [config] Quality gate: QUALITY_THRESHOLD=${QUALITY_THRESHOLD:-0.95} (skip evolution if V0 already meets it)"
+echo "  [config] Agents: LOCAL in-process — every traffic call runs with"
+echo "           --local --local-agents; the deployed stack receives ZERO"
+echo "           requests from this run"
 
 # =====================================================================
 # Helpers
 # =====================================================================
 
+# SDK-style stage output (examples/agent_improvement_cycle): each
+# banner closes the previous stage with a green check + elapsed time,
+# then opens the next as a bold headline between dim separators.
+# run.log stays plain — the tee pipeline strips ANSI codes.
+BOLD=$'\033[1m'; DIM=$'\033[2m'; CYAN=$'\033[36m'; GREEN=$'\033[32m'; RESET=$'\033[0m'
+_STAGE_START=""
+_STAGE_NAME=""
+# Demo step markers — numbering and titles IDENTICAL to the README's
+# "Run the Demo" Steps 1-7, so the console maps 1:1 to the docs.
+# Each step closes with its elapsed time (SDK agent_improvement_cycle
+# step_start/step_end logic).
+_STEP_T0=""; _STEP_NO=""
+step_close() {
+    if [ -n "$_STEP_T0" ]; then
+        local _sel=$(( $(date +%s) - _STEP_T0 ))
+        echo ""
+        echo -e "  ${GREEN}\xe2\x9c\x94 STEP ${_STEP_NO}/7 completed in ${_sel}s.${RESET}"
+        _STEP_T0=""
+    fi
+}
+step() {
+    step_close
+    banner "STEP $1/7 \xe2\x80\x94 $2"
+    echo -e "  ${DIM}README: Run the Demo > Step $1${RESET}"
+    [ -n "${3:-}" ] && echo -e "  ${DIM}Goal: $3${RESET}"
+    echo ""
+    # The step's completion line comes from step_close (with the real
+    # elapsed time) — clear the stage timer so the next banner doesn't
+    # ALSO close the step header as a 0s stage.
+    _STAGE_START=""
+    _STEP_T0=$(date +%s); _STEP_NO="$1"
+}
 banner() {
+    if [ -n "$_STAGE_START" ]; then
+        local _el=$(( $(date +%s) - _STAGE_START ))
+        echo ""
+        echo -e "  ${GREEN}\xe2\x9c\x94 ${_STAGE_NAME} \xe2\x80\x94 ${_el}s${RESET}"
+    fi
     echo ""
-    echo "================================================================"
-    echo "  $1"
-    echo "================================================================"
+    echo -e "${DIM}$(printf '\xe2\x94\x81%.0s' $(seq 1 70))${RESET}"
     echo ""
+    echo -e "  ${BOLD}${CYAN}\xe2\x96\xb6 $1${RESET}"
+    echo ""
+    _STAGE_START=$(date +%s)
+    _STAGE_NAME="$1"
 }
 
 restore_v0() {
@@ -303,7 +379,7 @@ score_testset() {
         -i "$RUN_DIR/${label}_traffic.json" \
         -o "$RUN_DIR/${label}_report.json" \
         --tag-turns --trajectory-samples all --concurrency 10 \
-        --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+        --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
         --report
     echo "  $label report: $RUN_DIR/${label}_report.json"
 }
@@ -317,19 +393,19 @@ PERSONA_FLAG=""
 [ -n "$PERSONA" ] && PERSONA_FLAG="--persona $PERSONA"
 
 # Resolve questions file
-# --quick uses demo_quick.json (34 curated test questions, 2 per category)
-# --full uses demo_conversations.json (Alex persona traffic questions)
+# --quick uses two_defect_quick.json (25 questions, 2 per category)
+# --full uses two_defect_evolve.json (55 questions, all categories)
 if [ -n "$QUESTIONS_OVERRIDE" ]; then
     QUESTIONS_FILE="$QUESTIONS_OVERRIDE"
 elif [ "$MODE" = "quick" ]; then
-    QUESTIONS_FILE="$EVAL_DIR/data/questions/demo_quick.json"
+    QUESTIONS_FILE="$EVAL_DIR/data/questions/two_defect_lite.json"
 else
-    QUESTIONS_FILE="$EVAL_DIR/data/questions/demo_conversations.json"
+    QUESTIONS_FILE="$EVAL_DIR/data/questions/two_defect_evolve.json"
 fi
 
 # Make the evolution agent's candidate scoring (score_candidate) use the same
 # question set as the run, so --quick stays quick instead of validating every
-# candidate against the full 235-question set.
+# candidate against the full 55-question set.
 export EVAL_QUESTIONS_FILE="$QUESTIONS_FILE"
 
 # =====================================================================
@@ -371,7 +447,7 @@ if $V0_ONLY; then
         -i "$RUN_DIR/v0_traffic.json" \
         -o "$RUN_DIR/v0_quality_report.json" \
         --tag-turns --trajectory-samples all --concurrency 10 \
-        --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+        --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
         --report
     SCORE_END=$(date +%s)
     echo "  Scoring done in $((SCORE_END - SCORE_START))s"
@@ -434,9 +510,11 @@ if $EVOLVE_ONLY; then
     [ -n "$ROUNDS" ] && AGENT_FLAGS="$AGENT_FLAGS --rounds $ROUNDS"
     [ -n "$CANDIDATES" ] && AGENT_FLAGS="$AGENT_FLAGS --candidates $CANDIDATES"
     [ -n "$MIN_FAILURES" ] && AGENT_FLAGS="$AGENT_FLAGS --min-failures $MIN_FAILURES"
+    [ -n "${EVOLVE_TARGET:-}" ] && AGENT_FLAGS="$AGENT_FLAGS --mode $EVOLVE_TARGET"
 
     EVOLVE_START=$(date +%s)
-    uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
+    step_close
+uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
         tee "$RUN_DIR/agent_output.log"
     EVOLVE_END=$(date +%s)
 
@@ -444,6 +522,7 @@ if $EVOLVE_ONLY; then
     echo "  All outputs: $RUN_DIR"
     echo "  Elapsed:     $((EVOLVE_END - EVOLVE_START))s"
     echo "  Finished:    $(date)"
+echo "  Wall time:   $(( ($(date +%s) - DEMO_START_TS) / 60 ))m $(( ($(date +%s) - DEMO_START_TS) % 60 ))s"
     exit 0
 fi
 
@@ -474,7 +553,7 @@ if $RESCORE_ONLY; then
             -i "$traffic" \
             -o "$report" \
             --tag-turns --trajectory-samples all --concurrency 10 \
-            --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+            --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
             --report
         t1=$(date +%s)
         echo "  $label rescored in $((t1 - t0))s -> $report"
@@ -544,7 +623,7 @@ if [[ -n "$TEST_VERSION" ]]; then
         -i "$RUN_DIR/v${V}_full_traffic.json" \
         -o "$RUN_DIR/v${V}_full_quality_report.json" \
         --tag-turns --trajectory-samples all --concurrency 10 \
-        --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+        --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
         --report
     SCORE_END=$(date +%s)
     echo "  Scoring done in $((SCORE_END - SCORE_START))s"
@@ -593,17 +672,13 @@ fi
 
 # Held-out evolve/test split (Trace2Skill §2.1): patches + candidate scoring
 # use D_evolve; V0/V1 are reported on the disjoint D_test. Full mode only.
-TESTSET=""
-if $HELDOUT && [ "$MODE" = "full" ] && ! $REUSE_V0; then
-    banner "HELD-OUT SPLIT (evolve/test)"
-    uv run python "$EVAL_DIR/data/questions/split_questions.py" "$QUESTIONS_FILE" \
-        --evolve-frac "$HELDOUT_FRAC" \
-        --out-evolve "$RUN_DIR/heldout.evolve.json" \
-        --out-test "$RUN_DIR/heldout.test.json"
-    export EVAL_QUESTIONS_FILE="$RUN_DIR/heldout.evolve.json"
-    TESTSET="$RUN_DIR/heldout.test.json"
-    echo "  Evolving on D_evolve; will report V0/V1 on D_test ($TESTSET)"
-fi
+TESTSET="$EVAL_DIR/data/questions/two_defect_test_quick.json"
+# ONE exam for every profile: the same 25 unseen questions. Profiles
+# differ in how much they train (questions, rounds, agents) — the
+# final score is always comparable because the exam never changes.
+# Full trains on the complete 55-question evolve set (no split): its
+# extra effort must show up on the common exam.
+echo "  [config] Final exam (all profiles): $(basename "$TESTSET") — 25 unseen questions"
 
 banner "SKILL EVOLUTION AGENT (ADK)"
 echo "  Run directory: $RUN_DIR"
@@ -647,6 +722,7 @@ if $REUSE_V0; then
     # cp -n avoids "same file" error when V0_SRC == RUN_DIR (resume in-place)
     cp -n "$V0_TRAFFIC_SRC" "$RUN_DIR/v0_traffic.json" 2>/dev/null || true
 
+    step 1 "Reset to the V0 baseline" "start from the known-weak V0 skill so the improvement is measurable"
     restore_v0
     cp -n "$POLICY_SKILL/SKILL.md" "$RUN_DIR/v0_policy_skill.md" 2>/dev/null || true
     cp -n "$BENEFITS_SKILL/SKILL.md" "$RUN_DIR/v0_benefits_skill.md" 2>/dev/null || true
@@ -672,7 +748,7 @@ if $REUSE_V0; then
             -i "$RUN_DIR/v0_traffic.json" \
             -o "$RUN_DIR/v0_quality_report.json" \
             --tag-turns --trajectory-samples all --concurrency 10 \
-            --eval-spec "$EVAL_DIR/data/eval_spec.json" \
+            --eval-spec "$EVAL_DIR/data/two_defect_eval_spec.json" \
             --report
         SCORE_END=$(date +%s)
         echo "  V0 scoring done in $((SCORE_END - SCORE_START))s"
@@ -686,6 +762,7 @@ else
     # Restore the V0 baseline skills BEFORE the full loop runs its pre-flight,
     # so the V0 measurement reflects the true weak baseline — not whatever a
     # previous run left deployed (which would have no evolution headroom).
+    step 1 "Reset to the V0 baseline" "start from the known-weak V0 skill so the improvement is measurable"
     restore_v0
     cp "$POLICY_SKILL/SKILL.md" "$RUN_DIR/v0_policy_skill.md" 2>/dev/null || true
     cp "$BENEFITS_SKILL/SKILL.md" "$RUN_DIR/v0_benefits_skill.md" 2>/dev/null || true
@@ -701,9 +778,12 @@ fi
 [ -n "$ROUNDS" ] && AGENT_FLAGS="$AGENT_FLAGS --rounds $ROUNDS"
 [ -n "$CANDIDATES" ] && AGENT_FLAGS="$AGENT_FLAGS --candidates $CANDIDATES"
 [ -n "$MIN_FAILURES" ] && AGENT_FLAGS="$AGENT_FLAGS --min-failures $MIN_FAILURES"
+    [ -n "${EVOLVE_TARGET:-}" ] && AGENT_FLAGS="$AGENT_FLAGS --mode $EVOLVE_TARGET"
 
+step_close
 uv run python agents/workflow/skill_evolution_agent/main.py $AGENT_FLAGS 2>&1 | \
-    tee "$RUN_DIR/agent_output.log"
+    tee "$RUN_DIR/agent_output.log" || \
+    echo "  WARNING: agent step exited non-zero — continuing to restore/summary (see agent_output.log)"
 
 # Held-out evaluation: the agent leaves V1 deployed. Score V1 on the disjoint
 # test set, snapshot V1, restore V0, then score V0 on the same test set. These
@@ -732,9 +812,123 @@ if [ -n "$TESTSET" ]; then
         -o "$RUN_DIR/TRIAGE.md" || echo "  (triage step failed; see logs)"
 fi
 
-banner "Done"
-echo "  All outputs: $RUN_DIR"
-echo "  Finished:    $(date)"
+# --- PR as a local artifact: branch + commit + pr_preview.md, no push.
+# Preview the version with the BEST measured rate (the agent can evolve
+# past its own peak: a later round may score worse than an earlier one).
+BEST_V=""; BEST_RATE=-1; BEST_REPORT=""
+for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
+         "$RUN_DIR"/candidate_*_report.json; do
+    [ -f "$f" ] || continue
+    v=$(basename "$f" | grep -oE '^v[0-9]+' || true)
+    [ "$v" = "v0" ] && continue
+    rate=$(jq -r '.summary.meaningful_rate // -1' "$f" 2>/dev/null)
+    if awk "BEGIN{exit !($rate > $BEST_RATE)}"; then
+        BEST_RATE="$rate"; BEST_REPORT="$f"
+        # candidate reports carry no version; the deployed winner is
+        # the highest vN skill snapshot in the run dir
+        if [ -z "$v" ]; then
+            BEST_V=$(ls "$RUN_DIR" | grep -oE '^v[0-9]+' | grep -v '^v0$' | sort -V | tail -1)
+        else
+            BEST_V="$v"
+        fi
+    fi
+done
+if [ -n "$BEST_V" ]; then
+    step 4 "Review the PR" "the learning as a reviewable artifact: metrics, diff, regression cases"
+    banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
+    bash "$SCRIPT_DIR/create_evolution_pr.sh" \
+        --run-dir "$RUN_DIR" --version "$BEST_V" --local \
+        --agent "${EVOLVE_TARGET:-policy_agent}" \
+        --evolved-report "$BEST_REPORT" \
+        || echo "  (pr preview failed; see logs)"
+fi
+
+step_close
 echo ""
-echo "  To create a PR with the evolved skill:"
-echo "    ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir $RUN_DIR"
+echo -e "  ${DIM}STEPS 5-6/7 \xe2\x80\x94 Merge to activate + Verify the fix: deployed-path"
+echo -e "  steps; in the sandbox the PR stays a local artifact (pr_preview.md)${RESET}"
+
+step 7 "Roll back" "leave the system at V0; evolved skills stay snapshotted in the run dir"
+if declare -f restore_v0 >/dev/null; then
+    restore_v0 || echo "  (restore failed — check agents/enterprise/*/skill/)"
+    echo "  Evolved skills remain in $RUN_DIR as vN_*_skill.md"
+fi
+step_close
+
+# --- SUMMARY.md: one file that reads the whole run ---
+{
+    echo "# Demo Run Summary — $(basename "$RUN_DIR")"
+    echo ""
+    echo "- Wall time: $(( ($(date +%s) - DEMO_START_TS) / 60 ))m $(( ($(date +%s) - DEMO_START_TS) % 60 ))s"
+    echo "- BigQuery slice: \`$DEMO_TRACE_LABEL\`"
+    echo "  (\`EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh\`)"
+    echo "- Published anywhere: $([ "${EVOLUTION_PUBLISH}" = "0" ] && echo "NO (sandbox — registry/PR/issue disabled)" || echo "YES (EVOLUTION_PUBLISH=1)")"
+    echo "- Agents: LOCAL in-process; zero requests to the deployed stack"
+    echo "- Live skills: restored to V0; evolved versions snapshotted here as vN_*_skill.md"
+    echo ""
+    echo "## Quality (meaningful rate)"
+    echo ""
+    echo "| Version | Ground-truth rate | Judge rate | Matched |"
+    echo "|---|---|---|---|"
+    row() {
+        local label="$1" f="$2"
+        local gt j m tot
+        gt=$(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "n/a"' "$f")
+        j=$(jq -r '.summary.meaningful_rate // "?"' "$f")
+        m=$(jq -r '.summary.golden_eval_summary.matched // 0' "$f")
+        tot=$(jq -r '.summary.total_sessions // "?"' "$f")
+        echo "| $label | ${gt}% | ${j}% | ${m}/${tot} |"
+    }
+    row "V0 baseline" "$RUN_DIR/v0_quality_report.json"
+    for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
+             "$RUN_DIR"/candidate_*_report.json; do
+        [ -f "$f" ] || continue
+        n=$(basename "$f"); v=$(echo "$n" | grep -oE '^v[0-9]+' || echo "${n%_report.json}")
+        [ "$v" = "v0" ] && continue
+        row "$v" "$f"
+    done
+    if [ -f "$RUN_DIR/v0_test_report.json" ] && [ -f "$RUN_DIR/v1_test_report.json" ]; then
+        gt0=$(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "?"' "$RUN_DIR/v0_test_report.json")
+        gt1=$(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "?"' "$RUN_DIR/v1_test_report.json")
+        d=$(awk "BEGIN{printf \"%+.1f\", $gt1-$gt0}" 2>/dev/null || echo "?")
+        echo ""
+        echo "## HELD-OUT RESULT — measured on unseen questions"
+        echo ""
+        echo "| | V0 | Winner | Gain |"
+        echo "|---|---|---|---|"
+        echo "| Ground-truth rate | ${gt0}% | ${gt1}% | ${d}pp |"
+    fi
+    [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
+    _thr=$(awk "BEGIN{printf \"%.0f\", ${QUALITY_THRESHOLD:-0.95}*100}")
+    if [ -n "$BEST_V" ] && awk "BEGIN{exit !($BEST_RATE >= $_thr)}"; then
+        echo "Quality gate: winner ${BEST_RATE}% MEETS the ${_thr}% threshold"
+    elif [ -n "$BEST_V" ]; then
+        echo "Quality gate: winner ${BEST_RATE}% below the ${_thr}% threshold — another cycle is warranted"
+    fi
+    echo ""
+    echo "## Files worth reading"
+    echo ""
+    echo "- \`run.log\` — full console output of the run"
+    echo "- \`v0_quality_report.json/.md\` — the judged baseline (failures = evolution input)"
+    echo "- \`_score_candidate_N_report.json\` — each candidate's replay score"
+    echo "- \`vN_*_skill.md\` — every evolved skill, per version"
+    echo "- \`pr_preview.md\` — the PR as a local artifact (branch name inside)"
+    echo "- \`TRIAGE.md\` — what evolution fixed vs what it cannot fix (if generated)"
+} > "$RUN_DIR/SUMMARY.md"
+
+banner "Done"
+echo "  Summary:     $RUN_DIR/SUMMARY.md"
+echo ""
+echo "  To reset EVERYTHING before a fresh run (skill files + registry"
+echo "  newest revision + live agents back to V0):"
+echo "    bash scripts/demo/skill_evolution/rollback_demo.sh"
+echo "  Optional — also delete this run's BigQuery slice:"
+echo "    bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_TRACE_LABEL"
+echo "  All outputs: $RUN_DIR"
+echo "  This run's BigQuery slice:"
+echo "    EVOLUTION_TRACE_LABELS=$DEMO_TRACE_LABEL bash scripts/test/show_traces.sh"
+echo "  Finished:    $(date)"
+echo "  Wall time:   $(( ($(date +%s) - DEMO_START_TS) / 60 ))m $(( ($(date +%s) - DEMO_START_TS) % 60 ))s"
+echo ""
+echo "  To publish the previewed PR:"
+echo "    ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir $RUN_DIR --version ${LATEST_V:-v1}"

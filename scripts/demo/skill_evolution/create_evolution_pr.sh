@@ -11,6 +11,9 @@
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/2026-05-18_...
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --version v2
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --dry-run
+#   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --local
+#       (--local: create the branch + commit + PR document in the run
+#        dir, but push NOTHING — the PR as a local artifact)
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --output /tmp/evolved.md
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --create-issue
 #   ./scripts/demo/skill_evolution/create_evolution_pr.sh --run-dir eval/runs/... --issue 42
@@ -44,6 +47,7 @@ RUN_DIR=""
 VERSION="v2"
 AGENT="policy_agent"
 DRY_RUN=false
+LOCAL_ONLY=false
 OUTPUT_FILE=""
 BASE_BRANCH="${GITHUB_BASE_BRANCH:-main}"
 CREATE_ISSUE=false
@@ -61,6 +65,7 @@ while [[ $# -gt 0 ]]; do
         --evolved-report)   EVOLVED_REPORT="$2"; shift 2 ;;
         --baseline-report)  BASELINE_REPORT_OVERRIDE="$2"; shift 2 ;;
         --dry-run)          DRY_RUN=true; shift ;;
+        --local)            LOCAL_ONLY=true; shift ;;
         --create-issue)     CREATE_ISSUE=true; shift ;;
         --issue)            ISSUE_NUMBER="$2"; shift 2 ;;
         -h|--help)
@@ -127,7 +132,9 @@ EVOLVED_SIZE=$(wc -c < "$EVOLVED_SKILL")
 extract_rate() {
     local report="$1" field="$2"
     if [ -n "$report" ] && [ -f "$report" ]; then
-        jq -r ".summary.${field} // empty | . * 10 | round | . / 10 | tostring" \
+        # Prefer the golden ground-truth rate; the ungrounded judge rate
+        # is the fallback for reports without golden matching.
+        jq -r "(.summary.golden_eval_summary.matched_${field} // .summary.${field}) // empty | . * 10 | round | . / 10 | tostring" \
             "$report" 2>/dev/null || true
     fi
 }
@@ -302,16 +309,16 @@ cp "$EVOLVED_SKILL" "$TMPFILE"
 # --- Stash uncommitted changes ---
 STASHED=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
-    git stash push -m "create_evolution_pr: temp stash"
+    git stash push --quiet -m "create_evolution_pr: temp stash"
     STASHED=true
 fi
 
 ORIGINAL_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 cleanup() {
-    git checkout "$ORIGINAL_BRANCH" 2>/dev/null || true
+    git checkout --quiet "$ORIGINAL_BRANCH" 2>/dev/null || true
     if $STASHED; then
-        git stash pop 2>/dev/null || true
+        git stash pop --quiet >/dev/null 2>&1 || true
     fi
     rm -f "$TMPFILE"
 }
@@ -319,12 +326,12 @@ trap cleanup EXIT
 
 # --- Create branch from base, commit ONLY the skill file ---
 git fetch origin "$BASE_BRANCH" --quiet
-git checkout -b "$BRANCH" "origin/$BASE_BRANCH"
+git checkout --quiet -b "$BRANCH" "origin/$BASE_BRANCH"
 
 mkdir -p "$(dirname "$SKILL_PATH")"
 cp "$TMPFILE" "$SKILL_PATH"
 git add "$SKILL_PATH"
-git commit -m "$(cat <<EOF
+git commit --quiet -m "$(cat <<EOF
 Evolve ${AGENT} skill to ${VERSION}
 
 Meaningful rate: ${BASE_M_DISP} -> ${EVO_M_DISP}${MEANINGFUL_DELTA:+ (${MEANINGFUL_DELTA}pp)}
@@ -333,8 +340,10 @@ Run: $(basename "$RUN_DIR")
 EOF
 )"
 
-# --- Push ---
-git push -u origin "$BRANCH"
+# --- Push (skipped in --local mode) ---
+if ! $LOCAL_ONLY; then
+    git push -u origin "$BRANCH"
+fi
 
 # --- Generate PR body (try agy, fall back to static) ---
 DIFF_TEXT=$(git diff "origin/${BASE_BRANCH}...HEAD" -- "$SKILL_PATH")
@@ -376,6 +385,35 @@ if [ -n "$ISSUE_NUMBER" ]; then
     PR_BODY="${PR_BODY}
 
 Fixes #${ISSUE_NUMBER}"
+fi
+
+# --- Local mode: the PR as an artifact, nothing leaves the machine ---
+if $LOCAL_ONLY; then
+    PREVIEW="$RUN_DIR/pr_preview.md"
+    {
+        echo "# ${TITLE}"
+        echo ""
+        echo "Branch: \`${BRANCH}\` (local only — not pushed)"
+        echo "Base:   \`${BASE_BRANCH}\`"
+        echo ""
+        echo "$PR_BODY"
+        echo ""
+        echo "## Diff"
+        echo ""
+        echo '\`\`\`diff'
+        echo "$DIFF_TEXT"
+        echo '\`\`\`'
+        echo ""
+        echo "To publish:"
+        echo '\`\`\`bash'
+        echo "git push -u origin ${BRANCH}"
+        echo "gh pr create --base ${BASE_BRANCH} --head ${BRANCH} --title \"${TITLE}\" --body-file ${PREVIEW}"
+        echo '\`\`\`'
+    } > "$PREVIEW"
+    echo ""
+    echo "Local PR artifact: $PREVIEW"
+    echo "Local branch:      $BRANCH (commit kept, nothing pushed)"
+    exit 0
 fi
 
 # --- Create PR via gh ---

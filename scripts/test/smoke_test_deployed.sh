@@ -32,6 +32,10 @@ fi
 PROJECT="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
 LOCATION="${SUPERVISOR_REGION:-us-central1}"
 DISPLAY_NAME="knowledge-supervisor"
+echo "=========================================="
+echo "  TARGET PROJECT: ${PROJECT}"
+echo "  MODE: DEPLOYED (Agent Engine reasoning engine)"
+echo "=========================================="
 
 # Parse arguments
 QUERY=""
@@ -108,22 +112,27 @@ send_query() {
         ($resp.custom_metadata // {}) as $meta |
         ($meta["a2a:response"] // {}) as $a2a |
 
-        # Extract fields
+        # Tool calls: AgentTool emits function_call parts whose .name is
+        # the sub-agent; sum token usage across ALL supervisor turns
+        # (routing turn + synthesis turn), not just the first event.
+        ([.[] | .content?.parts[]? | .function_call?.name? // empty | select(. != "")]) as $calls |
+        ([.[] | select(.usage_metadata?)]) as $turns |
         {
           model: ($sup.model_version // "?"),
-          routed_to: ([.[] | .content?.parts[]? | .function_call?.args?.agent_name? // empty | select(. != "")] | first // null),
+          routed_to: ($calls | first // null),
           answer: ([.[] | .content?.parts[]? | .text? // empty | select(. != "")] | last // null),
           supervisor_tokens: {
-            prompt: ($sup.usage_metadata?.prompt_token_count // null),
-            output: ($sup.usage_metadata?.candidates_token_count // null),
-            thinking: ($sup.usage_metadata?.thoughts_token_count // null)
+            prompt: ([$turns[].usage_metadata.prompt_token_count // 0] | add // 0),
+            output: ([$turns[].usage_metadata.candidates_token_count // 0] | add // 0),
+            thinking: ([$turns[].usage_metadata.thoughts_token_count // 0] | add // 0)
           },
+          model_turns: ($turns | length),
           sub_agent_tokens: {
             prompt: ($a2a.metadata?.adk_usage_metadata?.promptTokenCount // null),
             output: ($a2a.metadata?.adk_usage_metadata?.candidatesTokenCount // null),
             thinking: ($a2a.metadata?.adk_usage_metadata?.thoughtsTokenCount // null)
           },
-          tools_called: ([($a2a.history // [])[]?.parts[]? | select(.kind == "data" and .data.args) | .data.name] | unique | join(", ")),
+          tools_called: ($calls | unique | join(", ")),
           task_status: ($a2a.status?.state // null)
         }
     ' 2>/dev/null)
@@ -136,8 +145,8 @@ send_query() {
           "  Routed to:  \(.routed_to // "direct")",
           "  Model:      \(.model)",
           "  Tools:      \(if .tools_called == "" then "(none)" else .tools_called end)",
-          "  Tokens:     supervisor \(.supervisor_tokens.prompt // 0)→\(.supervisor_tokens.output // 0) (thinking: \(.supervisor_tokens.thinking // 0))",
-          "              sub-agent  \(.sub_agent_tokens.prompt // 0)→\(.sub_agent_tokens.output // 0) (thinking: \(.sub_agent_tokens.thinking // 0))",
+          "  Tokens:     supervisor \(.supervisor_tokens.prompt)→\(.supervisor_tokens.output) over \(.model_turns) model turn(s) (thinking: \(.supervisor_tokens.thinking))",
+          (if .sub_agent_tokens.prompt != null then "              sub-agent  \(.sub_agent_tokens.prompt)→\(.sub_agent_tokens.output) (thinking: \(.sub_agent_tokens.thinking // 0))" else empty end),
           "",
           "  A: \(.answer)"
         '
