@@ -49,11 +49,24 @@ done
 
 echo "=== Rollback to V0 (baseline: ${BASELINE}) ==="
 
-# 1. Reset local skill files to V0
+# Refuse to run while a local demo is executing: the demo rewrites the
+# SKILL.md files this script publishes, so a concurrent rollback pushes
+# whatever evolved skill the demo has deployed at that moment.
+if pgrep -f "run_demo.sh" >/dev/null 2>&1; then
+    echo "ERROR: a local demo run is executing (pgrep -f run_demo.sh)."
+    echo "Wait for it to finish (it restores V0 itself), then rerun."
+    exit 1
+fi
+
+# 1. Reset local skill files to V0.
+# Copy from the committed SKILL.v0.md baselines — never git checkout:
+# a checkout restores whatever HEAD holds, and HEAD once carried an
+# evolved skill, which a later `seed` then republished as "V0".
 echo "[1/4] Resetting SKILL.md files to V0..."
-git -C "${PROJECT_ROOT}" checkout -- \
-    agents/enterprise/knowledge_supervisor/app/skill/SKILL.md \
-    agents/enterprise/benefits_agent/skill/SKILL.md 2>/dev/null || true
+cp "${PROJECT_ROOT}/agents/enterprise/knowledge_supervisor/app/skill/SKILL.v0.md" \
+   "${PROJECT_ROOT}/agents/enterprise/knowledge_supervisor/app/skill/SKILL.md"
+cp "${PROJECT_ROOT}/agents/enterprise/benefits_agent/skill/SKILL.v0.md" \
+   "${PROJECT_ROOT}/agents/enterprise/benefits_agent/skill/SKILL.md"
 
 POLICY_SKILL_DIR="${PROJECT_ROOT}/agents/enterprise/policy_agent/skill"
 if [ "${BASELINE}" = "two-defect" ]; then
@@ -75,10 +88,17 @@ else
     echo "[3/4] Skipped (--skip-redeploy): agents serve V0 after their next restart."
 fi
 
-# 4. Verify
-echo "[4/4] Verification:"
+# 4. Verify — by CONTENT, not by revision id: download the newest
+# revision and check it is actually a V0 skill (a bad push still
+# produces a fresh-looking revision id).
+echo "[4/4] Verification (content of newest registry revision):"
 for agent in policy_agent supervisor benefits_agent; do
-    uv run python "${PROJECT_ROOT}/eval/skill_evolution/registry_sync.py" revisions --agent "${agent}" | head -1
+    if ! uv run python "${PROJECT_ROOT}/eval/skill_evolution/registry_sync.py" \
+            verify-read --agent "${agent}" | grep -q 'version: "0"'; then
+        echo "ERROR: newest registry revision for ${agent} is NOT V0."
+        exit 1
+    fi
+    echo "  ${agent}: newest revision content-verified V0"
 done
 if [ "${SKIP_REDEPLOY}" = false ]; then
     echo "  Registry-read log lines (may take ~1 min to appear):"
