@@ -128,10 +128,11 @@ them):
    the Cloud Run Job `quality-agent`, daily scheduler at 08:00 UTC)
    scores recent root-agent sessions with the LLM judge, matched
    against the golden eval spec (scope + ground truth; full
-   expected-answer grading on the BigQuery path lands with SDK #358),
+   expected-answer grading on the BigQuery path lands with BigQuery
+   Agent Analytics SDK issue #358),
    and files labeled GitHub issues for failures.
 3. **Learn** — an evolution job reads the failing traces — run it
-   on demand (a scoped run takes ~10-15 minutes), let accumulating
+   on demand (a scoped deployed run measured ~50-80 min), let accumulating
    quality issues trigger it, or leave the scheduled tick (weekly by
    default, one env var to change). The job
    dispatches a fleet of analyst agents to diagnose each failure,
@@ -512,14 +513,14 @@ they deliver:
 |---|---|---|---|
 | Deliverable | see the loop work | reach the quality bar | evidence for a writeup or review |
 | Rounds | 1 | 2 — round 2 repeats the process from the round-1 winner, on the failures round 1 left | agent-decided, until a round stops improving |
-| Measured outcome (same 25-question exam for all) | being re-measured | being re-measured | being re-measured |
-| Cost (measured, local) | 26-44 min | ~92 min | ~3.5 h |
+| Measured outcome (same 55-question exam for all) | 41.8% -> 65.5% (+23.7pp) | 41.8% -> 67.3% (+25.5pp) | being re-measured |
+| Cost (measured, local) | 25m 3s | 85m 43s | being re-measured |
 | Run deployed (default) | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
 | Run local (sandbox) | `run_lite.sh --local` | `run_standard.sh --local` | `run_full.sh --local` |
 | Candidates per round | 2 | 3 | agent-decided (up to 5) |
 | Training questions | 13 (1 per category) | 25 (2 per category) | all 55 |
 | Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (any of the 3) |
-| Final score measured on | the SAME 25-question exam of unseen questions — identical for all three profiles, so the scores are directly comparable |||
+| Final score measured on | the SAME 55-question exam of unseen questions — identical for all three profiles, so the scores are directly comparable |||
 | Extra artifacts | SUMMARY + PR preview | SUMMARY + PR preview | + triage report, regression cases |
 
 What each step costs per profile (measured on local runs; deployed
@@ -528,13 +529,13 @@ adds Agent Engine serve latency to Steps 2 and 6):
 | Step | Lite | Standard | Full | What differs |
 |---|---|---|---|---|
 | 1 Reset to the V0 baseline | <1s | <1s | <1s | Nothing — all profiles restore the same three V0 skill files and stamp a fresh run label. |
-| 2 Generate labeled traffic | ~4 min (13q) | ~5 min (25q) | ~8 min (32q) | Question count only — same 4-turn adversarial simulator, same judging. The count sets two things downstream: how many failures the analysts get to learn from, and how coarse the score is: the score is correct-answers divided by question count, so at 13 questions one answer moves it by 7.7 points, at 25 by 4 points — small sets move in big jumps. Full uses the 32-question evolve half of its 55-question split. |
+| 2 Generate labeled traffic | ~4 min (13q) | ~5 min (25q) | being re-measured (55q) | Question count only — same 4-turn adversarial simulator, same judging. The count sets two things downstream: how many failures the analysts get to learn from, and how coarse the score is: the score is correct-answers divided by question count, so at 13 questions one answer moves it by 7.7 points, at 25 by 4 points — small sets move in big jumps. Full trains on the complete 55-question evolve set (no split). |
 | 3 Run the evolution job | ~14 min | ~26 min | ~3 h | After analyzing the failures, the system drafts several new versions of the skill and holds a tryout to pick the best. Lite and standard both improve ONE agent (the supervisor); lite writes 2 drafts, standard writes 3. Full may improve all three agents and lets the system decide the draft count (up to 5 per agent, over several rounds). Each draft is then measured the same way V0 was measured in Step 2: the full question set runs against it and every answer is graded. That measurement takes 5-8 minutes per draft, and it is what this step's time consists of: 2 drafts = ~14 min, 3 drafts = ~26 min, dozens (full) = hours. |
-| Held-out measurement | ~6 min (13-question exam) | ~10 min (25-question exam) | ~11 min (23-question exam) | The final exam, on questions the skill never trained on. Taken twice — once by the new skill, once by V0 — and the run's reported result is the difference between the two scores. Longer exams take proportionally longer. |
+| Held-out measurement | ~10 min | ~10 min | ~10 min | The final exam — the same 55 unseen questions for every profile. The new skill takes it live (measured: 608s); V0's score is reused from the committed, checksum-guarded reference measurement, so the exam runs once per evolution instead of twice. |
 | 4 Review the PR | <1 min | <1 min | <1 min | Mechanics identical: local branch + `pr_preview.md` with the grounded metrics table, skill diff, and publish commands. Only the numbers inside differ — they come from that profile's own reports. |
 | 5-6 Merge + verify | skipped | skipped | skipped | Local runs are a sandbox, so the activation steps have nothing to act on. Deployed runs replace this row with the real thing: the winner is pushed to the Skill Registry and opened as a PR (Step 5: a human merge activates it), then the Step-1 deflection question is re-asked live to prove the fix (Step 6). |
 | 7 Roll back | <1s | <1s | <1s | Nothing — V0 files restored; every evolved skill stays snapshotted in the run dir as `vN_*_skill.md`. |
-| **Total (measured)** | **~26 min** | **~45 min** (add ~47 min for a 2nd round) | **~3.5 h** | |
+| **Total (measured)** | **25m 3s** | **85m 43s** | **being re-measured** | |
 
 All commands live in `scripts/demo/skill_evolution/`, e.g.:
 
@@ -553,8 +554,9 @@ in-process (`--local --local-agents` on every traffic call — the
 deployed stack receives zero requests) and nothing is published.
 Extras pass through, e.g. `run_standard.sh --local --candidates 4`.
 
-Reference results: V0 (54%) -> V1 (97%) -> V2 (98%) on 205 multi-turn
-conversations locally; 21.1% -> 96.0% on the deployed loop's PR #4.
+Reference results: V0 (55.1%) -> V1 (85.4%) on 205 multi-turn
+conversations locally (a second round held at 84.4% — the plateau
+signal); 20.0% -> 96.0% on the deployed loop's PR #4.
 Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
 [AutoSkill](https://arxiv.org/abs/2603.01145) —
 [paper analysis](docs/skill-evolution/RESEARCH.md).
@@ -933,9 +935,9 @@ about what a local run produces and how to work with it.
 
 | Version | Meaningful Rate | What happened |
 |---------|----------------|---------------|
-| V0      | ~54-60%        | Baseline: minimal skill, agent redirects to HR for most questions |
-| V1      | ~80-97%        | Evolution adds keyword mappings, anti-hallucination rules, scope boundaries |
-| V2      | ~95-98%        | Refinement: edge cases, format improvements |
+| V0      | ~55%           | Baseline: minimal skill, agent redirects to HR for most questions |
+| V1      | ~85%           | Evolution adds keyword mappings, anti-hallucination rules, scope boundaries |
+| V2      | ~84%           | Plateau: refinement rounds stop adding — the loop's signal to stop |
 
 V0 -> V1 is the key jump. The evolved skill gains structured sections
 (Tool Usage, Anti-Patterns, Out-of-Scope, Keyword Mappings) that the
@@ -1006,7 +1008,7 @@ bash scripts/demo/skill_evolution/cleanup_label.sh demo_run=<run-folder>
 ### Try it interactively
 
 Start the agents locally and chat with the supervisor through the
-ADK web UI:
+Agent Development Kit (ADK) web UI:
 
 ```bash
 bash scripts/local/local_start.sh
@@ -1413,10 +1415,10 @@ Golden Q&A feeds three consumers:
 
 | Variant | Command | Time | Use when |
 |---|---|---|---|
-| Local quick | `bash scripts/demo/skill_evolution/run_lite.sh` | ~17 min | First contact; no deployment (lite profile; run_standard.sh for steadier numbers) |
-| Local full | `bash scripts/demo/skill_evolution/run_full.sh` | ~1-2 h | Full local evaluation (55 questions + held-out split) |
-| GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,2,--quick"` | ~30-45 min | Live demo of the deployed loop, warm BigQuery window |
-| GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~5-3 h | Production cadence: agent-decided scope, full validation |
+| Local quick | `bash scripts/demo/skill_evolution/run_lite.sh` | ~25 min | First contact; no deployment (lite profile; run_standard.sh for steadier numbers) |
+| Local full | `bash scripts/demo/skill_evolution/run_full.sh` | being re-measured | Full local evaluation (trains on all 55 questions, same 55-question exam) |
+| GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,2,--quick"` | ~50-80 min (measured: lite job 50 min, standard job 75 min) | Live demo of the deployed loop, warm BigQuery window |
+| GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~6 h (measured: 6h 14m) | Production cadence: agent-decided scope, full validation |
 
 ### Every step of the GCP demo run
 
@@ -1484,9 +1486,9 @@ The Quality Agent detects three types of production failures:
 
 | Type | How detected | Action |
 |------|-------------|--------|
-| **Regression** -- questions that used to work now fail | CA Data Agent finds similar past sessions that were meaningful | `[URGENT]` label for immediate attention |
+| **Regression** -- questions that used to work now fail | The Conversational Analytics data agent finds similar past sessions that were meaningful | `[URGENT]` label for immediate attention |
 | **Persistent gap** -- known topics handled poorly | LLM Judge with Golden Q&A ground truth scores unhelpful/partial | Issues accumulate --> Skill Evolution Agent |
-| **New topic** -- users asking about unanticipated things | CA Data Agent finds no historical sessions + no Golden Q&A match | `new-topic` --> human decision |
+| **New topic** -- users asking about unanticipated things | The Conversational Analytics data agent finds no historical sessions + no Golden Q&A match | `new-topic` --> human decision |
 
 New-topic issues require a human decision: add the capability (create
 Golden Q&A entries, add tool/data support, re-run evolution) or mark

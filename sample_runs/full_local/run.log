@@ -622,7 +622,7 @@ IMPORTANT: Us...'
 [logging_plugin]    Tool Name: score_candidate
 [logging_plugin]    Agent: skill_evolution_agent
 [logging_plugin]    Function Call ID: adk-80e442a4-c91b-4209-98ca-dc46627ba9c9
-[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_1', 'meaningful_rate': 87.5, 'unhelpful_rate': 12.5, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_1_traffic.json', 'report_path': '/home/admin_evekhm_alto...}
+[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_1', 'meaningful_rate': 87.5, 'unhelpful_rate': 12.5, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_1_traffic.json', 'report_path': '~...}
 [logging_plugin] 📢 EVENT YIELDED
 [logging_plugin]    Event ID: 507d20e1-5761-4dd3-bfa6-de36142d088c
 [logging_plugin]    Author: skill_evolution_agent
@@ -660,7 +660,7 @@ IMPORTANT: Us...'
 [logging_plugin]    Tool Name: score_candidate
 [logging_plugin]    Agent: skill_evolution_agent
 [logging_plugin]    Function Call ID: adk-cc00fde0-ebd6-436e-8d20-0d7aa80d6a7f
-[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_2', 'meaningful_rate': 81.2, 'unhelpful_rate': 15.6, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_2_traffic.json', 'report_path': '/home/admin_evekhm_alto...}
+[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_2', 'meaningful_rate': 81.2, 'unhelpful_rate': 15.6, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_2_traffic.json', 'report_path': '~...}
 [logging_plugin] 📢 EVENT YIELDED
 [logging_plugin]    Event ID: 0a30651d-00ff-46c9-8f43-49b51d2c625a
 [logging_plugin]    Author: skill_evolution_agent
@@ -698,7 +698,7 @@ IMPORTANT: Us...'
 [logging_plugin]    Tool Name: score_candidate
 [logging_plugin]    Agent: skill_evolution_agent
 [logging_plugin]    Function Call ID: adk-4801452f-dc42-4437-ae03-4f9de02206d8
-[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_3', 'meaningful_rate': 84.4, 'unhelpful_rate': 15.6, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_3_traffic.json', 'report_path': '/home/admin_evekhm_alto...}
+[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_3', 'meaningful_rate': 84.4, 'unhelpful_rate': 15.6, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_3_traffic.json', 'report_path': '~...}
 [logging_plugin] 📢 EVENT YIELDED
 [logging_plugin]    Event ID: f37944a3-6d9b-43ba-8458-aba4a0594216
 [logging_plugin]    Author: skill_evolution_agent
@@ -740,7 +740,7 @@ My primary metric here, the `meaningful_rate`, has yielded a clear wi...' | func
 [logging_plugin]    Tool Name: score_candidate
 [logging_plugin]    Agent: skill_evolution_agent
 [logging_plugin]    Function Call ID: adk-5d66d642-f712-4464-969f-eafcd5c1fcb0
-[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_1', 'meaningful_rate': 78.1, 'unhelpful_rate': 18.8, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_1_traffic.json', 'report_path': '/home/admin_evekhm_alto...}
+[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_1', 'meaningful_rate': 78.1, 'unhelpful_rate': 18.8, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_1_traffic.json', 'report_path': '~...}
 [logging_plugin] 📢 EVENT YIELDED
 [logging_plugin]    Event ID: eb2a3a0a-6806-425e-8376-afed2e8f8833
 [logging_plugin]    Author: skill_evolution_agent
@@ -939,7 +939,7 @@ IMPORTANT: Us...'
 [logging_plugin]    Tool Name: score_candidate
 [logging_plugin]    Agent: skill_evolution_agent
 [logging_plugin]    Function Call ID: adk-8ee34fe2-c2c9-4d98-9f30-af3ef7712554
-[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_1', 'meaningful_rate': 84.4, 'unhelpful_rate': 15.6, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_1_traffic.json', 'report_path': '/home/admin_evekhm_alto...}
+[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_1', 'meaningful_rate': 84.4, 'unhelpful_rate': 15.6, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_1_traffic.json', 'report_path': '~...}
 [logging_plugin] 📢 EVENT YIELDED
 [logging_plugin]    Event ID: 46886825-9b3b-45df-9ffb-748f652a8981
 [logging_plugin]    Author: skill_evolution_agent
@@ -977,7 +977,7 @@ IMPORTANT: Us...'
 [logging_plugin]    Tool Name: score_candidate
 [logging_plugin]    Agent: skill_evolution_agent
 [logging_plugin]    Function Call ID: adk-d69f9103-490e-4da7-99a1-7392e674f630
-[logging_plugin]    Result: {'status': 'error', 'phase': 'scoring', 'stderr_tail': '  File "~/ccai/skill-evolution-lab/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 473, in __call__\n    result = fn(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^\n  File "/home/admin_evekhm_al...}
+[logging_plugin]    Result: {'status': 'error', 'phase': 'scoring', 'stderr_tail': '  File "~/ccai/skill-evolution-lab/.venv/lib/python3.12/site-packages/tenacity/__init__.py", line 473, in __call__\n    result = fn(*args, **kwargs)\n             ^^^^^^^^^^^^^^^^^^^\n  File "~...}
 [logging_plugin] 📢 EVENT YIELDED
 [logging_plugin]    Event ID: 16c662bf-e71d-435f-8927-f5f5c5aa58bb
 [logging_plugin]    Author: skill_evolution_agent
@@ -1015,7 +1015,7 @@ IMPORTANT: Us...'
 [logging_plugin]    Tool Name: score_candidate
 [logging_plugin]    Agent: skill_evolution_agent
 [logging_plugin]    Function Call ID: adk-ef3e30b9-a792-4e3a-9540-3e48b7d2b3e1
-[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_2', 'meaningful_rate': 71.9, 'unhelpful_rate': 21.9, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_2_traffic.json', 'report_path': '/home/admin_evekhm_alto...}
+[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_2', 'meaningful_rate': 71.9, 'unhelpful_rate': 21.9, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_2_traffic.json', 'report_path': '~...}
 [logging_plugin] 📢 EVENT YIELDED
 [logging_plugin]    Event ID: 7fbf2f62-70dc-4205-92ae-dea5a01674b1
 [logging_plugin]    Author: skill_evolution_agent
@@ -1053,7 +1053,7 @@ IMPORTANT: Us...'
 [logging_plugin]    Tool Name: score_candidate
 [logging_plugin]    Agent: skill_evolution_agent
 [logging_plugin]    Function Call ID: adk-caca6d7c-b54e-4385-a516-85488fc87192
-[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_3', 'meaningful_rate': 75.0, 'unhelpful_rate': 21.9, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_3_traffic.json', 'report_path': '/home/admin_evekhm_alto...}
+[logging_plugin]    Result: {'status': 'success', 'candidate': 'candidate_3', 'meaningful_rate': 75.0, 'unhelpful_rate': 21.9, 'total_sessions': 32, 'results_path': '~/ccai/skill-evolution-lab/eval/runs/2026-07-22_024855_demo_full/candidate_3_traffic.json', 'report_path': '~...}
 [logging_plugin] 📢 EVENT YIELDED
 [logging_plugin]    Event ID: cefc630c-1397-4582-b668-c1cab9b835d7
 [logging_plugin]    Author: skill_evolution_agent
