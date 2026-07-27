@@ -7,16 +7,16 @@ report, the skill versions, and the full console log. Deployed run
 folders hold the Cloud Run job log, plus the PR artifact when the
 run opened one.
 
-| Sample | Config | Wall time | Result (ground truth, unseen questions) |
-|---|---|---|---|
-| [lite_local](lite_local/) | 13q, 1 round, 2 candidates, local sandbox | 25m 3s | 41.8% -> 65.5% (+23.7pp) |
-| [standard_local](standard_local/) | 25q, 2 rounds, 3 candidates, local sandbox | 85m 43s | 41.8% -> 67.3% (+25.5pp) |
-| [standard_local_2rounds](standard_local_2rounds/) | 25q, 2 rounds, 3 candidates — earlier 25-question exam, not comparable to the rows above | 92m 17s | 36.0% -> 84.0% (+48.0pp) |
-| [full_local](full_local/) | 55q split, agent-decided — earlier 23-question exam, not comparable to the rows above; being re-run | 202m 19s | 34.8% -> 78.3% (+43.5pp) |
-| [lite_deployed](lite_deployed/) | 13-session labeled slice, Cloud Run job | ~53 min | PR #47: 61.5% -> 85.5%, CI gate green |
-| [standard_deployed](standard_deployed/) | 25-session slice, 3 candidates | ~78 min | PR #48: 44.0% -> 81.8%, CI gate green |
-| [full_deployed](full_deployed/) | 55-session slice, agent-decided | ~6h 14m | 16.4% -> 61.8% (+45.4pp) on the evolve slice; PR step failed (job container git bug); registry push rolled back to V0 |
-| [deployed_incumbent_refusal](deployed_incumbent_refusal/) | unscoped window (safety behavior) | ~54 min | evolved 58.2% < baseline 72.0%: NO PR opened — the loop refuses regressions |
+| Sample | Config | Wall time | Evolve set (V0 -> winner, training questions) | Held-out exam (V0 -> winner, unseen questions) |
+|---|---|---|---|---|
+| [lite_local](lite_local/) | 13q, 1 round, 2 candidates, local sandbox | 54m 7s (incl. live V0 exam) | 30.8% -> 100% (13q) | 40.0% -> 100% (55/55, +60.0pp) |
+| [standard_local](standard_local/) | 25q, 2 rounds, 3 candidates, local sandbox | 77m 0s | 36.0% -> 100% (25q) | 40.0% -> 100% (55/55, +60.0pp) |
+| [standard_local_2rounds](standard_local_2rounds/) | 25q, 2 rounds, 3 candidates — earlier 25-question exam, not comparable to the rows above | 92m 17s | 52.0% -> 84.0% (25q) | 36.0% -> 84.0% (+48.0pp) |
+| [full_local](full_local/) | 55q split, agent-decided — earlier 23-question exam, not comparable to the rows above; being re-run | 202m 19s | 50.0% -> 84.4% (32q) | 34.8% -> 78.3% (+43.5pp) |
+| [lite_deployed](lite_deployed/) | 13-session labeled slice, Cloud Run job | ~53 min | PR #47: 61.5% -> 85.5%, CI gate green | — (deployed runs validate on their slice) |
+| [standard_deployed](standard_deployed/) | 25-session slice, 3 candidates | ~78 min | PR #48: 44.0% -> 81.8%, CI gate green | — |
+| [full_deployed](full_deployed/) | 55-session slice, agent-decided | ~6h 14m | 16.4% -> 61.8% (+45.4pp); PR step failed (job container git bug); registry push rolled back to V0 | — |
+| [deployed_incumbent_refusal](deployed_incumbent_refusal/) | unscoped window (safety behavior) | ~54 min | evolved 58.2% < baseline 72.0%: NO PR opened — the loop refuses regressions | — |
 
 Selection scores inside each run are measured on the evolve set; the
 result column above is always the held-out measurement (or the PR's

@@ -513,8 +513,9 @@ they deliver:
 |---|---|---|---|
 | Deliverable | see the loop work | reach the quality bar | evidence for a writeup or review |
 | Rounds | 1 | 2 — round 2 repeats the process from the round-1 winner, on the failures round 1 left | agent-decided, until a round stops improving |
-| Measured outcome (same 55-question exam for all) | 41.8% -> 65.5% (+23.7pp) | 41.8% -> 67.3% (+25.5pp) | being re-measured |
-| Cost (measured, local) | 25m 3s | 85m 43s | being re-measured |
+| Measured outcome — held-out (same 55-question exam for all) | 40.0% -> 100% (55/55) | 40.0% -> 100% (55/55) | being re-measured |
+| Measured outcome — evolve set (V0 -> winner on its training questions) | 30.8% -> 100% (13q) | 36.0% -> 100% (25q) | being re-measured |
+| Cost (measured, local) | 54m 7s incl. live V0 exam (~37 min when the committed V0 reference is reused) | 77m 0s (V0 reference reused) | being re-measured |
 | Run deployed (default) | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
 | Run local (sandbox) | `run_lite.sh --local` | `run_standard.sh --local` | `run_full.sh --local` |
 | Candidates per round | 2 | 3 | agent-decided (up to 5) |
@@ -529,13 +530,13 @@ adds Agent Engine serve latency to Steps 2 and 6):
 | Step | Lite | Standard | Full | What differs |
 |---|---|---|---|---|
 | 1 Reset to the V0 baseline | <1s | <1s | <1s | Nothing — all profiles restore the same three V0 skill files and stamp a fresh run label. |
-| 2 Generate labeled traffic | ~4 min (13q) | ~5 min (25q) | being re-measured (55q) | Question count only — same 4-turn adversarial simulator, same judging. The count sets two things downstream: how many failures the analysts get to learn from, and how coarse the score is: the score is correct-answers divided by question count, so at 13 questions one answer moves it by 7.7 points, at 25 by 4 points — small sets move in big jumps. Full trains on the complete 55-question evolve set (no split). |
-| 3 Run the evolution job | ~14 min | ~26 min | ~3 h | After analyzing the failures, the system drafts several new versions of the skill and holds a tryout to pick the best. Lite and standard both improve ONE agent (the supervisor); lite writes 2 drafts, standard writes 3. Full may improve all three agents and lets the system decide the draft count (up to 5 per agent, over several rounds). Each draft is then measured the same way V0 was measured in Step 2: the full question set runs against it and every answer is graded. That measurement takes 5-8 minutes per draft, and it is what this step's time consists of: 2 drafts = ~14 min, 3 drafts = ~26 min, dozens (full) = hours. |
-| Held-out measurement | ~10 min | ~10 min | ~10 min | The final exam — the same 55 unseen questions for every profile. The new skill takes it live (measured: 608s); V0's score is reused from the committed, checksum-guarded reference measurement, so the exam runs once per evolution instead of twice. |
+| 2 Generate labeled traffic | ~5 min (13q, measured 302s) | being re-measured (25q) | being re-measured (55q) | Question count only — same 4-turn adversarial simulator, same judging. The count sets two things downstream: how many failures the analysts get to learn from, and how coarse the score is: the score is correct-answers divided by question count, so at 13 questions one answer moves it by 7.7 points, at 25 by 4 points — small sets move in big jumps. Full trains on the complete 55-question evolve set (no split). |
+| 3 Run the evolution job | ~17 min (measured 1044s) | being re-measured | being re-measured | After analyzing the failures, the system drafts several new versions of the skill and holds a tryout to pick the best. Lite and standard both improve ONE agent (the supervisor); lite writes 2 drafts, standard writes 3. Full may improve all three agents and lets the system decide the draft count (up to 5 per agent, over several rounds). Each draft is then measured the same way V0 was measured in Step 2: the full question set runs against it and every answer is graded. That measurement takes 5-8 minutes per draft, and it is what this step's time consists of: 2 drafts = ~14 min, 3 drafts = ~26 min, dozens (full) = hours. |
+| Held-out measurement | ~14 min | ~14 min | ~14 min | The final exam — the same 55 unseen questions for every profile. The new skill takes it live (measured: 832s); V0's score comes from the committed, checksum-guarded reference measurement (re-measuring V0 live adds ~17 min, measured 1030s). |
 | 4 Review the PR | <1 min | <1 min | <1 min | Mechanics identical: local branch + `pr_preview.md` with the grounded metrics table, skill diff, and publish commands. Only the numbers inside differ — they come from that profile's own reports. |
 | 5-6 Merge + verify | skipped | skipped | skipped | Local runs are a sandbox, so the activation steps have nothing to act on. Deployed runs replace this row with the real thing: the winner is pushed to the Skill Registry and opened as a PR (Step 5: a human merge activates it), then the Step-1 deflection question is re-asked live to prove the fix (Step 6). |
 | 7 Roll back | <1s | <1s | <1s | Nothing — V0 files restored; every evolved skill stays snapshotted in the run dir as `vN_*_skill.md`. |
-| **Total (measured)** | **25m 3s** | **85m 43s** | **being re-measured** | |
+| **Total (measured)** | **54m 7s** (incl. 17 min live V0 exam) | **being re-measured** | **being re-measured** | |
 
 All commands live in `scripts/demo/skill_evolution/`, e.g.:
 
@@ -1415,7 +1416,7 @@ Golden Q&A feeds three consumers:
 
 | Variant | Command | Time | Use when |
 |---|---|---|---|
-| Local quick | `bash scripts/demo/skill_evolution/run_lite.sh` | ~25 min | First contact; no deployment (lite profile; run_standard.sh for steadier numbers) |
+| Local quick | `bash scripts/demo/skill_evolution/run_lite.sh` | ~37 min (~54 min with a live V0 exam) | First contact; no deployment (lite profile; run_standard.sh for steadier numbers) |
 | Local full | `bash scripts/demo/skill_evolution/run_full.sh` | being re-measured | Full local evaluation (trains on all 55 questions, same 55-question exam) |
 | GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,2,--quick"` | ~50-80 min (measured: lite job 50 min, standard job 75 min) | Live demo of the deployed loop, warm BigQuery window |
 | GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~6 h (measured: 6h 14m) | Production cadence: agent-decided scope, full validation |

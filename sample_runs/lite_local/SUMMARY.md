@@ -1,8 +1,8 @@
-# Demo Run Summary — 2026-07-22_223313_demo_quick
+# Demo Run Summary — 2026-07-24_224327_demo_quick
 
-- Wall time: 25m 3s
-- BigQuery slice: `demo_run=2026-07-22_223313_demo_quick`
-  (`EVOLUTION_TRACE_LABELS=demo_run=2026-07-22_223313_demo_quick bash scripts/test/show_traces.sh`)
+- Wall time: 54m 7s
+- BigQuery slice: `demo_run=2026-07-24_224327_demo_quick`
+  (`EVOLUTION_TRACE_LABELS=demo_run=2026-07-24_224327_demo_quick bash scripts/test/show_traces.sh`)
 - Published anywhere: NO (sandbox — registry/PR/issue disabled)
 - Agents: LOCAL in-process; zero requests to the deployed stack
 - Live skills: restored to V0; evolved versions snapshotted here as vN_*_skill.md
@@ -11,19 +11,20 @@
 
 | Version | Ground-truth rate | Judge rate | Matched |
 |---|---|---|---|
-| V0 baseline | 61.5% | 61.5% | 13/13 |
-| v1 | 65.5% | 65.5% | 55/55 |
-| candidate_1 | 76.9% | 76.9% | 13/13 |
-| candidate_2 | 76.9% | 76.9% | 13/13 |
+| V0 baseline | 30.8% | 30.8% | 13/13 |
+| v1 | 100.0% | 100.0% | 13/13 |
+| v1 | 100.0% | 100.0% | 13/13 |
+| candidate_1 | 100.0% | 100.0% | 13/13 |
+| candidate_2 | 100.0% | 100.0% | 13/13 |
 
 ## HELD-OUT RESULT — measured on unseen questions
 
 | | V0 | Winner | Gain |
 |---|---|---|---|
-| Ground-truth rate | 41.8% | 65.5% | +23.7pp |
+| Ground-truth rate | 40.0% | 100.0% | +60.0pp |
 
-Winner previewed as PR: **v1 (76.9%)** -> pr_preview.md
-Quality gate: winner 76.9% below the 95% threshold — another cycle is warranted
+Winner previewed as PR: **v1 (100.0%)** -> pr_preview.md
+Quality gate: winner 100.0% MEETS the 95% threshold
 
 ## Files worth reading
 
