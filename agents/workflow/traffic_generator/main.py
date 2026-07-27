@@ -71,9 +71,14 @@ if os.path.exists(env_path):
 _, project_id = google.auth.default()
 PROJECT_ID = os.getenv("PROJECT_ID", project_id)
 REGION = os.getenv("REGION", "us-central1")
+# Model calls may need a different endpoint than the infra region:
+# gemini-3.x models are served from the global endpoint only.
+MODEL_LOCATION = (
+    os.getenv("MODEL_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or "global"
+)
 
 os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
-os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
+os.environ["GOOGLE_CLOUD_LOCATION"] = MODEL_LOCATION
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 
@@ -192,7 +197,7 @@ async def generate_questions(client: Client, topic: str, count: int) -> list[str
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=os.getenv("EVAL_MODEL_ID", "gemini-3.5-flash"),
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -252,7 +257,7 @@ async def generate_out_of_scope_questions(
     )
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=os.getenv("EVAL_MODEL_ID", "gemini-3.5-flash"),
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
@@ -279,7 +284,7 @@ async def generate_all_questions(
         include_out_of_scope: If True (default), also generate questions for
             out-of-scope topics from agent_context.json (~10% of total).
     """
-    genai_client = Client(project=PROJECT_ID, location=REGION)
+    genai_client = Client(project=PROJECT_ID, location=MODEL_LOCATION)
 
     all_questions = []
     for topic, count in topics_config.items():
@@ -419,7 +424,7 @@ def _build_local_supervisor(local_agents: bool = False, direct_agent: bool = Fal
         from google.adk.models import Gemini
         from agents.enterprise.policy_agent.agent import create_agent as create_policy_agent
 
-        model_id = os.getenv("EVAL_MODEL_ID", "gemini-2.5-flash")
+        model_id = os.getenv("EVAL_MODEL_ID", "gemini-3.5-flash")
         policy_agent = create_policy_agent(model_id=model_id)
 
         if direct_agent:
@@ -447,6 +452,7 @@ def _build_local_supervisor(local_agents: bool = False, direct_agent: bool = Fal
             )
 
         from agents.enterprise.hr_calculator.agent import (
+            calculate_disability_pay,
             calculate_pto_details,
             calculate_working_days_for_period,
             get_remaining_working_days,
@@ -457,13 +463,19 @@ def _build_local_supervisor(local_agents: bool = False, direct_agent: bool = Fal
             model=Gemini(model=model_id),
             description=(
                 "Calculates PTO balances, sick leave balances, working days for "
-                "date ranges, and remaining work days in a period."
+                "date ranges, remaining work days in a period, and short-term "
+                "disability payouts for a given salary and leave length."
             ),
-            instruction="Calculate PTO balances, working days, and leave details using your tools.",
+            instruction=(
+                "Calculate PTO balances, working days, and leave details using "
+                "your tools. For short-term disability dollar amounts, ALWAYS "
+                "use calculate_disability_pay -- never compute pay by hand."
+            ),
             tools=[
                 calculate_pto_details,
                 calculate_working_days_for_period,
                 get_remaining_working_days,
+                calculate_disability_pay,
             ],
         )
 
@@ -817,8 +829,8 @@ async def run_local_multiturn(
         return await _send_message(runner, user_id, session_id, text)
 
     # Simulator client (separate from agent)
-    sim_client = Client(project=PROJECT_ID, location=REGION)
-    sim_model = "gemini-2.5-flash"
+    sim_client = Client(project=PROJECT_ID, location=MODEL_LOCATION)
+    sim_model = os.getenv("SIM_MODEL_ID", os.getenv("EVAL_MODEL_ID", "gemini-3.5-flash"))
 
     sem = asyncio.Semaphore(concurrency)
     total = len(questions)
@@ -1002,8 +1014,8 @@ async def run_deployed_multiturn(
         return await _with_quota_retry(_call)
 
     # Simulator client for unscripted follow-ups
-    sim_client = Client(project=PROJECT_ID, location=REGION)
-    sim_model = "gemini-2.5-flash"
+    sim_client = Client(project=PROJECT_ID, location=MODEL_LOCATION)
+    sim_model = os.getenv("SIM_MODEL_ID", os.getenv("EVAL_MODEL_ID", "gemini-3.5-flash"))
 
     sem = asyncio.Semaphore(concurrency)
     total = len(questions)

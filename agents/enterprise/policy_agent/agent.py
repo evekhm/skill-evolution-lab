@@ -88,7 +88,9 @@ TABLE_ID = os.getenv('TABLE_ID')
 
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 os.environ["GOOGLE_CLOUD_PROJECT"] = os.getenv("PROJECT_ID", project_id or "")
-os.environ["GOOGLE_CLOUD_LOCATION"] = os.getenv("REGION", "us-central1")
+os.environ["GOOGLE_CLOUD_LOCATION"] = (
+    os.getenv("MODEL_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or "global"
+)  # model endpoint, not infra region: gemini-3.x is global-only
 
 print(f"--- Policy Agent ---")
 print(f"DATASET_ID: {DATASET_ID}")

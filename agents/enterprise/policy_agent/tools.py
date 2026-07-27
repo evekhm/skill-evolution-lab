@@ -22,43 +22,11 @@ get_current_date returns today's date.
 """
 
 import datetime
-import re
+import os
 from zoneinfo import ZoneInfo
 
-# Common synonyms callers use, mapped to canonical COMPANY_POLICIES keys.
-_TOPIC_ALIASES = {
-    "vacation": "pto",
-    "annual_leave": "pto",
-    "telecommuting": "remote_work",
-    "work_from_home": "remote_work",
-    "wfh": "remote_work",
-    "reimbursement": "expenses",
-    "health_insurance": "benefits",
-    "insurance": "benefits",
-    "medical": "benefits",
-    "dental": "benefits",
-    "vision": "benefits",
-    "hsa": "benefits",
-    "orthodontia": "benefits",
-    "401k": "benefits",
-    "retirement": "benefits",
-    "pension": "benefits",
-    "parental_leave": "benefits",
-    "maternity_leave": "benefits",
-    "paternity_leave": "benefits",
-    "adoption_leave": "benefits",
-    "enrollment": "benefits",
-    "open_enrollment": "benefits",
-    "employee_assistance_program": "eap",
-    "counseling": "eap",
-    "jury": "jury_duty",
-    "flextime": "flex_time",
-    "flexible_schedule": "flex_time",
-    "tuition": "tuition_reimbursement",
-    "education": "tuition_reimbursement",
-    "disability": "short_term_disability",
-    "std": "short_term_disability",
-}
+from google import genai
+from google.genai import types
 
 COMPANY_POLICIES = {
     "pto": {
@@ -106,7 +74,10 @@ COMPANY_POLICIES = {
     "benefits": {
         "health_insurance": "PPO and HMO options, company covers 80% of premiums",
         "max_out_of_pocket": "$4,000 individual / $8,000 family (PPO, in-network)",
-        "hsa": "Company contributes $750/year individual, $1,500/year family (HDHP)",
+        "hsa": (
+            "Company contributes $750/year individual, $1,500/year family "
+            "(with the high-deductible version of the PPO plan)"
+        ),
         "dental": "Full coverage for preventive care, 80% for major procedures",
         "orthodontia": "50% coverage up to a $2,000 lifetime maximum",
         "vision": "Annual eye exam covered, $200 frame allowance every 2 years",
@@ -120,7 +91,9 @@ COMPANY_POLICIES = {
             "Health insurance: PPO and HMO plans available, company covers 80% of "
             "premiums for employee and 50% for dependents. Maximum out-of-pocket is "
             "$4,000 for an individual and $8,000 for a family (in-network, PPO). "
-            "HSA: available with the HDHP plan; the company contributes $750/year "
+            "HSA: available when the high-deductible version of the PPO plan is "
+            "elected (the two medical plan types offered remain PPO and HMO); the "
+            "company contributes $750/year "
             "for individual coverage and $1,500/year for family coverage. Dental: "
             "preventive care fully covered, 80% coverage for major procedures; "
             "orthodontia is covered at 50% up to a $2,000 lifetime maximum. Vision: "
@@ -210,8 +183,10 @@ COMPANY_POLICIES = {
         "details": (
             "Short-term disability covers 60% of your salary for up to 12 weeks "
             "after a 7-day waiting period, for a qualifying medical condition such "
-            "as surgery or recovery. Coordinate with HR; sick leave can cover the "
-            "waiting period. A physician's certification is required."
+            "as surgery or recovery. The waiting period does NOT reduce the number "
+            "of payable weeks: when an employee is out N weeks, all N weeks are "
+            "payable (up to the 12-week maximum). Coordinate with HR; sick leave "
+            "can cover the waiting period. A physician's certification is required."
         ),
     },
 }
@@ -237,22 +212,87 @@ BENEFITS_TOPICS = {
 }
 
 
+_genai_client = None
+
+
+def _client() -> genai.Client:
+    global _genai_client
+    if _genai_client is None:
+        _genai_client = genai.Client(
+            vertexai=True,
+            project=os.getenv("PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT"),
+            # gemini-3.x is served from the global endpoint.
+            location=os.getenv("MODEL_LOCATION")
+            or os.getenv("GOOGLE_CLOUD_LOCATION")
+            or "global",
+        )
+    return _genai_client
+
+
+def _resolver_model() -> str:
+    return os.getenv("TOPIC_RESOLVER_MODEL", "gemini-3.5-flash")
+
+
+def _topic_catalog() -> str:
+    """One line per canonical topic, derived from the policy data itself:
+    the topic's field names (what it covers) plus its first sentence."""
+    lines = []
+    for key, value in COMPANY_POLICIES.items():
+        if isinstance(value, dict):
+            fields = [f for f in value.keys() if f != "details"]
+            detail = value.get("details", "")
+        else:
+            fields = []
+            detail = str(value)
+        first_sentence = detail.split(". ")[0].strip()
+        covers = f" [covers: {', '.join(fields)}]" if fields else ""
+        lines.append(f"- {key}:{covers} {first_sentence}")
+    return "\n".join(lines)
+
+
+# Session-scoped memo of LLM resolutions, so repeated phrasings inside one
+# conversation don't re-pay the classification call.
+_resolution_cache: dict[str, str | None] = {}
+
+
 def _resolve_topic(topic: str):
     """Resolve a free-text topic to a canonical (key, value) in COMPANY_POLICIES.
 
-    Applies the synonym alias map, then exact match, then a fuzzy substring
-    match. Returns (None, None) if nothing matches. No domain restriction --
-    callers apply their own allow-list.
+    Exact canonical keys resolve directly; anything else is classified
+    semantically by an LLM against the topic catalog. Returns (None, None)
+    if the phrase belongs to no topic. No domain restriction -- callers
+    apply their own allow-list.
     """
-    topic_key = topic.lower().replace(" ", "_").replace("-", "_")
-    topic_key = _TOPIC_ALIASES.get(topic_key, topic_key)
+    normalized = " ".join(topic.strip().lower().split())
+    as_key = normalized.replace(" ", "_").replace("-", "_")
+    if as_key in COMPANY_POLICIES:
+        return as_key, COMPANY_POLICIES[as_key]
 
-    if topic_key in COMPANY_POLICIES:
-        return topic_key, COMPANY_POLICIES[topic_key]
-    for key, value in COMPANY_POLICIES.items():
-        if topic_key in key or key in topic_key:
-            return key, value
-    return None, None
+    if normalized in _resolution_cache:
+        key = _resolution_cache[normalized]
+        return (key, COMPANY_POLICIES[key]) if key else (None, None)
+
+    prompt = (
+        "Map the employee's phrase to ONE canonical HR topic key.\n\n"
+        f"Topic catalog:\n{_topic_catalog()}\n\n"
+        f"Employee phrase: {topic!r}\n\n"
+        "Reply with exactly one topic key from the catalog (the part before "
+        "the colon), or NONE if the phrase belongs to no listed topic."
+    )
+    try:
+        response = _client().models.generate_content(
+            model=_resolver_model(),
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.0),
+        )
+        answer = (response.text or "").strip().strip("`'\"").lower()
+    except Exception:
+        # Resolver unavailable: fall back to exact-key resolution only.
+        return None, None
+
+    key = answer if answer in COMPANY_POLICIES else None
+    _resolution_cache[normalized] = key
+    return (key, COMPANY_POLICIES[key]) if key else (None, None)
 
 
 def _format_result(topic_key: str, result: dict) -> dict:
@@ -274,8 +314,8 @@ def lookup_company_policy(topic: str) -> dict:
 
     Args:
         topic: One of: pto, sick_leave, remote_work, expenses, holidays,
-               bereavement, jury_duty, flex_time. Common synonyms (vacation,
-               telecommuting, jury, flextime) are accepted. Benefits topics
+               bereavement, jury_duty, flex_time. Free-text phrasings are
+               accepted and resolved semantically. Benefits topics
                (insurance, 401k, parental leave, EAP, tuition, disability) are
                NOT handled here -- they belong to the benefits agent.
 
@@ -304,7 +344,8 @@ def lookup_benefits(topic: str) -> dict:
         topic: A benefits topic -- health/dental/vision insurance, HSA,
                orthodontia, max out-of-pocket, 401k/retirement, parental and
                adoption leave, enrollment, EAP, tuition reimbursement, or
-               short-term disability. Common synonyms are accepted. Time-off
+               short-term disability. Free-text phrasings are accepted and
+               resolved semantically. Time-off
                and workplace topics (PTO, sick leave, remote work, expenses,
                holidays, bereavement, jury duty, flex time) are NOT handled
                here -- they belong to the policy agent.
@@ -343,17 +384,28 @@ def search_hr_handbook(query: str) -> dict:
     Returns:
         A dict with up to two partial handbook excerpts (topic + snippet).
     """
-    words = {w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) > 3}
+    prompt = (
+        "Select the HR topics relevant to the employee's question.\n\n"
+        f"Topic catalog:\n{_topic_catalog()}\n\n"
+        f"Employee question: {query!r}\n\n"
+        "Reply with up to two topic keys from the catalog (the part before "
+        "the colon), comma-separated, most relevant first, or NONE if no "
+        "listed topic is relevant."
+    )
+    try:
+        response = _client().models.generate_content(
+            model=_resolver_model(),
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.0),
+        )
+        answer = (response.text or "").strip().lower()
+    except Exception:
+        answer = "none"
 
-    scored = []
-    for key, value in COMPANY_POLICIES.items():
-        text = value.get("details", "") if isinstance(value, dict) else str(value)
-        overlap = sum(1 for w in words if w in text.lower())
-        if overlap:
-            scored.append((overlap, key, text))
-    scored.sort(key=lambda x: -x[0])
+    keys = [k.strip().strip("`'\"") for k in answer.split(",")]
+    matched = [k for k in keys if k in COMPANY_POLICIES][:2]
 
-    if not scored:
+    if not matched:
         return {
             "results": [],
             "note": (
@@ -365,7 +417,9 @@ def search_hr_handbook(query: str) -> dict:
     # Return only the first sentence of each match -- a partial excerpt. For
     # exact figures the caller should fall back to the lookup tools.
     results = []
-    for _, key, text in scored[:2]:
+    for key in matched:
+        value = COMPANY_POLICIES[key]
+        text = value.get("details", "") if isinstance(value, dict) else str(value)
         first = text.split(". ")[0].strip()
         if not first.endswith("."):
             first += "."

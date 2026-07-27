@@ -1,3 +1,2 @@
-measured: 2026-07-22 (run 2026-07-22_212221_demo_quick)
-exam: two_defect_test.json (55 questions)
-V0 ground-truth rate: 41.8%
+measured: 2026-07-24 (run 2026-07-24_224327_demo_quick), V0 ground-truth 40.0% on the 55q exam
+model=gemini-3.5-flash
