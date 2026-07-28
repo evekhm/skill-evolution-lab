@@ -59,6 +59,8 @@
 
 **TL;DR:** A multi-agent framework where an orchestrator agent observes user query failures, diagnoses bugs in specialized ADK agents, and autonomously opens a GitHub PR with `SKILL.md` patches to heal the system.
 
+> 🤖 **For AI Agents:** If you are an autonomous agent or coding assistant operating in this repository, please refer to the [Agent Reference Document](docs/README.agent.md) for your system runbooks, execution flows, and environment variables.
+
 A multi-agent system that **learns from its own execution traces** and
 evolves structured skill documents -- deployed end-to-end on Google
 Cloud, with the Skill Registry as the source of truth and every change
