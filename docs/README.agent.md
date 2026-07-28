@@ -28,6 +28,9 @@ Required environment configuration:
 Execute these commands from the repository root:
 
 **1. Local Python Setup:**
+> [!WARNING]
+> **Sandboxed Agent Constraint:** The dependency `a2a-sdk` required by this project is hosted in an internal private Google Artifact Registry. If you are an autonomous sandboxed agent running `uv sync` or `local_setup.sh` inside an isolated container, **it will fail** with a 401 Unauthorized error because you do not have the user's `gcert` LOAS keys. The user MUST run the dependency bootstrapping steps natively on their host CloudTop (where they are authenticated) or grant explicit `unsandboxed` permissions for the process.
+
 (Note to Agent: On Google internal hostnames, you must bypass the local config cache)
 ```bash
 UV_INDEX_URL="https://pypi.org/simple" UV_EXTRA_INDEX_URL="" PIP_CONFIG_FILE=/dev/null bash scripts/local/local_setup.sh
