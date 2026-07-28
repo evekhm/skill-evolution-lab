@@ -141,6 +141,8 @@
 #   --rounds <N>         Override number of evolution rounds (default: agent-decided).
 #   --candidates <N>     Override number of candidates per round.
 #   --min-failures <N>   Override minimum failure threshold for evolution.
+#   --github             Local runs only: publish the previewed PR for real
+#                        (push branch + gh pr create; needs Prereq step 4).
 #
 # ============================================================================
 # PREREQUISITES
@@ -185,6 +187,7 @@ MIN_FAILURES=""
 V0_ONLY=false
 EVOLVE_ONLY=false
 RESCORE_ONLY=false
+GITHUB_PUBLISH=false   # --github: publish the previewed PR for real (push branch + gh pr create)
 TEST_VERSION=""
 PERSONA=""
 QUESTIONS_OVERRIDE=""
@@ -199,7 +202,7 @@ HELDOUT_FRAC=0.6
 # Model used for ALL local agents during traffic generation (EVAL_MODEL_ID).
 # flash-lite is a weaker instruction-follower, which creates skill-fixable
 # headroom for evolution. Same model is used for V0 and V1 (clean attribution).
-EVAL_MODEL="${EVAL_MODEL_ID:-gemini-2.5-flash-lite}"
+EVAL_MODEL="${EVAL_MODEL_ID:-gemini-3.5-flash}"
 
 # V0 reference data (default for --reuse-v0 when no path given)
 V0_REFERENCE_DIR="$PROJECT_ROOT/eval/skill_evolution/reference_runs/v0_baseline_demo"
@@ -233,6 +236,7 @@ while [[ $# -gt 0 ]]; do
         --model)        EVAL_MODEL="$2"; shift 2 ;;
         --no-heldout)   HELDOUT=false; shift ;;
         --heldout-frac) HELDOUT_FRAC="$2"; shift 2 ;;
+        --github)       GITHUB_PUBLISH=true; shift ;;
         *)              echo "Unknown flag: $1"; exit 1 ;;
     esac
 done
@@ -673,7 +677,7 @@ fi
 # Held-out evolve/test split (Trace2Skill §2.1): patches + candidate scoring
 # use D_evolve; V0/V1 are reported on the disjoint D_test. Full mode only.
 TESTSET="$EVAL_DIR/data/questions/two_defect_test.json"
-# ONE exam for every profile: the same 25 unseen questions. Profiles
+# ONE exam for every profile: the same 55 unseen questions. Profiles
 # differ in how much they train (questions, rounds, agents) — the
 # final score is always comparable because the exam never changes.
 # Full trains on the complete 55-question evolve set (no split): its
@@ -794,16 +798,42 @@ if [ -n "$TESTSET" ]; then
     cp "$BENEFITS_SKILL/SKILL.md"   "$RUN_DIR/v1_benefits_skill.md"
     cp "$SUPERVISOR_SKILL/SKILL.md" "$RUN_DIR/v1_supervisor_skill.md"
     restore_v0
-    # V0's exam score is a constant while V0 and the exam are unchanged —
-    # reuse the committed reference instead of re-measuring (~13 min).
-    # FRESH_V0_EXAM=1 forces a fresh measurement.
+    # V0's exam score is a constant while the SYSTEM is unchanged — reuse
+    # the committed reference instead of re-measuring (~17 min). The guard
+    # covers EVERYTHING that shapes V0's score: the exam, the V0 skills,
+    # the tool layer, the local agent wiring, and the model id. Any change
+    # fails the guard, the run measures V0 fresh ONCE, and the fresh
+    # measurement immediately becomes the new reference — so the reference
+    # can never go silently stale and the cost is never paid twice.
+    # FRESH_V0_EXAM=1 forces a fresh measurement (which also re-baselines).
     REF_DIR="$EVAL_DIR/data/reference"
+    V0_REF_INPUTS=(
+        "eval/data/questions/two_defect_test.json"
+        "agents/enterprise/knowledge_supervisor/app/skill/SKILL.v0.md"
+        "agents/enterprise/policy_agent/skill/SKILL.v0.md"
+        "agents/enterprise/benefits_agent/skill/SKILL.v0.md"
+        "agents/enterprise/policy_agent/tools.py"
+        "agents/enterprise/hr_calculator/agent.py"
+        "agents/workflow/traffic_generator/main.py"
+    )
     if [ -z "${FRESH_V0_EXAM:-}" ] && [ -f "$REF_DIR/v0_exam_report.json" ] \
-        && sha256sum -c "$REF_DIR/v0_exam_checksums.txt" --status 2>/dev/null; then
+        && sha256sum -c "$REF_DIR/v0_exam_checksums.txt" --status 2>/dev/null \
+        && grep -q "model=${EVAL_MODEL}$" "$REF_DIR/v0_exam_meta.txt" 2>/dev/null; then
         cp "$REF_DIR/v0_exam_report.json" "$RUN_DIR/v0_test_report.json"
         echo "  V0 exam: reusing committed reference ($(head -1 "$REF_DIR/v0_exam_meta.txt"))"
     else
+        if [ -z "${FRESH_V0_EXAM:-}" ]; then
+            echo "  V0 exam: reference stale or missing (system changed) — measuring fresh and re-baselining"
+        fi
         score_testset "$TESTSET" v0_test
+        mkdir -p "$REF_DIR"
+        cp "$RUN_DIR/v0_test_report.json" "$REF_DIR/v0_exam_report.json"
+        {
+            echo "measured: $(date +%F) (run $(basename "$RUN_DIR")), V0 ground-truth $(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "n/a"' "$RUN_DIR/v0_test_report.json")% on the 55q exam"
+            echo "model=${EVAL_MODEL}"
+        } > "$REF_DIR/v0_exam_meta.txt"
+        sha256sum "${V0_REF_INPUTS[@]}" > "$REF_DIR/v0_exam_checksums.txt"
+        echo "  V0 exam: fresh measurement committed as the new reference"
     fi
     banner "HELD-OUT RESULT (disjoint D_test)"
     # Headline on the GROUND-TRUTH (golden-matched) rate, not the generic
@@ -845,12 +875,23 @@ for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
 done
 if [ -n "$BEST_V" ]; then
     step 4 "Review the PR" "the learning as a reviewable artifact: metrics, diff, regression cases"
-    banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
-    bash "$SCRIPT_DIR/create_evolution_pr.sh" \
-        --run-dir "$RUN_DIR" --version "$BEST_V" --local \
-        --agent "${EVOLVE_TARGET:-policy_agent}" \
-        --evolved-report "$BEST_REPORT" \
-        || echo "  (pr preview failed; see logs)"
+    if [ "$GITHUB_PUBLISH" = true ]; then
+        # --github: publish for real — push the branch and open the PR
+        # (requires the GitHub wiring from Prerequisites step 4 + gh auth).
+        banner "PR PUBLISH: $BEST_V at ${BEST_RATE}% (pushing branch + opening the PR)"
+        bash "$SCRIPT_DIR/create_evolution_pr.sh" \
+            --run-dir "$RUN_DIR" --version "$BEST_V" \
+            --agent "${EVOLVE_TARGET:-policy_agent}" \
+            --evolved-report "$BEST_REPORT" \
+            || echo "  (pr publish failed; see logs)"
+    else
+        banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
+        bash "$SCRIPT_DIR/create_evolution_pr.sh" \
+            --run-dir "$RUN_DIR" --version "$BEST_V" --local \
+            --agent "${EVOLVE_TARGET:-policy_agent}" \
+            --evolved-report "$BEST_REPORT" \
+            || echo "  (pr preview failed; see logs)"
+    fi
 fi
 
 step_close
@@ -893,6 +934,9 @@ step_close
     for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
              "$RUN_DIR"/candidate_*_report.json; do
         [ -f "$f" ] || continue
+        # Held-out exam reports have their own SUMMARY section — keep them
+        # out of the evolve-set quality table.
+        case "$(basename "$f")" in *_test_report.json) continue ;; esac
         n=$(basename "$f"); v=$(echo "$n" | grep -oE '^v[0-9]+' || echo "${n%_report.json}")
         [ "$v" = "v0" ] && continue
         row "$v" "$f"

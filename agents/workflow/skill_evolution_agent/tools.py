@@ -1665,7 +1665,6 @@ def extract_regression_cases(
                     q_category[item["question"]] = item.get("category", "")
         except Exception:
             continue
-    agent_for_category = {"benefits": "benefits_agent", "calc": "hr_calculator"}
 
     if os.getenv("EVOLUTION_PUBLISH", "1") == "0":
         # Local sandbox: regression artifacts belong to the run dir —
@@ -1684,12 +1683,20 @@ def extract_regression_cases(
         if len(answer) > 400:
             answer = answer[:400].rsplit(". ", 1)[0] + "."
         case_id = f"reg-{stamp}-{i:02d}"
-        new_eval_cases.append({
+        # The regression case must guard the behavior that RESOLVED the
+        # failure — the winner's actual route, not a category guess. A
+        # tool-first supervisor may legitimately answer directly; such a
+        # case gets NO routing assert (expected_agent omitted keeps it
+        # out of test_routing; its golden entry still guards content).
+        winner_route = (s.get("answered_by") or "").strip()
+        case = {
             "id": case_id,
             "question": q,
             "category": category or "regression",
-            "expected_agent": agent_for_category.get(category, "policy_agent"),
-        })
+        }
+        if winner_route in ("policy_agent", "benefits_agent", "hr_calculator"):
+            case["expected_agent"] = winner_route
+        new_eval_cases.append(case)
         new_golden.append({
             "id": case_id,
             "question": q,
@@ -2302,7 +2309,7 @@ def _golden_gate_check(
     cmd = [
         sys.executable, "-m", "pytest",
         os.path.join("eval", "tests", "test_eval.py"),
-        "-q", "--tb=no", "-p", "no:cacheprovider",
+        "-q", "--tb=no", "-rf", "-p", "no:cacheprovider",
     ]
     if select:
         cmd[3:3] = ["-k", select]
@@ -2330,6 +2337,14 @@ def _golden_gate_check(
     if "no tests ran" in tail or "error" in tail.lower() or " failed" not in tail:
         stderr_tail = (r.stderr or "").strip().split("\n")[-1][:120]
         return None, f"gate pre-check inconclusive ({tail or stderr_tail})"
+    # Name the failing tests in the refusal (-rf short summary lines),
+    # so a refused run is diagnosable from its log alone.
+    failed_names = [
+        ln.strip() for ln in (r.stdout or "").split("\n")
+        if ln.startswith("FAILED ")
+    ][:10]
+    if failed_names:
+        tail = f"{tail}; {'; '.join(failed_names)}"
     return False, tail
 
 
