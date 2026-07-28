@@ -426,9 +426,7 @@ deployed Agent Engine -- no custom frontend needed.
 
 **Needed only when a run publishes a real PR** — the deployed demo
 (its winner is pushed to the Skill Registry and opened as a GitHub
-PR) and local runs launched with `--github`. The default local run is
-a pure sandbox that publishes nothing, so for local-only use you can
-SKIP this step entirely.
+PR) and local runs launched with `--github`. 
 
 Follow **[GITHUB_APP_SETUP](docs/GITHUB_APP_SETUP.md)** (PR credential, optional bot identity, one setup-script run).
 
@@ -486,8 +484,8 @@ happens to the winning skill afterwards:
 |---|---|---|
 | Agents | the live stack (Agent Engine + Cloud Run) | Python processes on this machine |
 | Failures come from | BigQuery traces of the deployed agents | traffic generated during the run, auto-labeled `demo_run=<run-folder>` (its own BigQuery slice) |
-| Winning skill | pushed to the Skill Registry and opened as a PR | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed |
-| Safety | CI gate on the PR; a human merge activates it | none — it is a sandbox |
+| Winning skill | pushed to the Skill Registry and opened as a PR | written to the local `SKILL.md`; the PR is a local artifact by default (branch + `pr_preview.md`, nothing pushed) — `--github` opens it as a real PR |
+| Safety | CI gate on the PR; a human merge activates it | sandbox by default; with `--github`, the opened PR gets the same CI gate and merge flow |
 
 **Deployed** (the default) runs the profile as the Cloud Run job
 against the live stack — the same job and arguments the weekly
@@ -562,7 +560,7 @@ adds Agent Engine serve latency to the traffic and verify steps):
 | Held-out measurement | ~14 min | ~14 min | The final exam — the same 55 unseen questions for both profiles, taken live by the newly evolved skill. |
 | V0 baseline exam | reused (not run) | reused (not run) | V0 takes the same 55-question exam once, in a separate ~17-minute measurement. The result is committed as a checksum-guarded reference and reused by every run, so this time is not part of any run's end-to-end wall time. It is re-measured automatically (once) when the exam, the V0 skills, the tool code, or the model changes. |
 | Review the PR | <1 min | <1 min | Mechanics identical: local branch + `pr_preview.md` with the grounded metrics table, skill diff, and publish commands. Only the numbers inside differ — they come from that profile's own reports.                                                                                                                                                                                                                                                                                                                                                        |
-| Merge + verify | skipped | skipped | Local runs are a sandbox, so the activation steps have nothing to act on. Deployed runs replace this row with the real thing: the winner is pushed to the Skill Registry and opened as a PR (a human merge activates it), then the original deflection question is re-asked live to prove the fix.                                                                                                                                                                                                                                                        |
+| Merge + verify | sandbox: skipped; with `--github`: real | sandbox: skipped; with `--github`: real | A default local run has nothing to merge — its PR is a local artifact. A local run with `--github` opens a real PR, and merging it activates the skill through the deploy workflow (it re-seeds the registry from the merged `SKILL.md` and redeploys). Deployed runs always run this step: the winner is pushed to the Skill Registry and opened as a PR, a human merge activates it, and the original deflection question is re-asked live to confirm the fix. |
 | Roll back | <1s | <1s | Nothing — V0 files restored; every evolved skill stays snapshotted in the run dir as `vN_*_skill.md`.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **Total (measured)** | **~37 min** | **~6h 51m** | |
 
