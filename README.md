@@ -185,7 +185,7 @@ Should print `True`.
 
 #### Tools and auth
 
-- A Google Cloud project with Vertex AI API enabled
+- A Google Cloud project with **Vertex AI API** and **Vertex AI Agent Platform API** enabled.
 - `gcloud` CLI installed and authenticated:
   ```bash
   gcloud auth login
@@ -209,6 +209,13 @@ no manual editing. The rest of the defaults work out of the box.
 ```bash
 bash scripts/local/local_setup.sh
 ```
+
+> [!NOTE]
+> **Internal Google Users:** If you are running this on a Google corporate machine (e.g., gLinux or CloudTop) and your system is configured to use an internal Artifact Registry proxy (via `/etc/pip.conf`), `uv sync` may fail with `401 Unauthorized` or `403 Forbidden`. 
+> You can resolve this by either ensuring you have the correct authorization (e.g., running `gcert` and ensuring keyring is configured), or by bypassing the system config to fetch dependencies from public PyPI:
+> ```bash
+> UV_INDEX_URL="https://pypi.org/simple" UV_EXTRA_INDEX_URL="" PIP_CONFIG_FILE=/dev/null bash scripts/local/local_setup.sh
+> ```
 
 Syncs Python dependencies with `uv`, verifies GCP auth, and tests
 that all agent modules import correctly.
@@ -1107,37 +1114,18 @@ revision, and **GitHub** holds the review gate between the two.
 ### Serving path (what runs where)
 
 ```text
-  Gemini Enterprise chat UI              Traffic Generator
-    (optional frontend)             (simulated users, multi-turn)
-             |                                  |
-             +----------------+-----------------+
-                              v
-             +--------------------------------+
-             |      Knowledge Supervisor      |   Vertex AI Agent Engine
-             |  fan-out + synthesis (root)    |
-             |  SKILL.md from Skill Registry  |
-             |  BigQuery Analytics plugin     |
-             +-------+----------------+-------+
-                     |   AgentTool    |
-                     |   over A2A     |
-            +--------v-------+  +-----v------------+
-            |  Policy Agent  |  |  HR Calculator   |   Cloud Run
-            |  SKILL.md +    |  |  (deterministic  |
-            |  lookup tools  |  |   date/PTO math) |
-            +--------+-------+  +------------------+
-                     |
-            +--------+---------------+
-            |  Benefits Agent        |   skill-only today:
-            |  SKILL.md (in-process  |   in-process locally,
-            |  locally; Cloud Run    |   Cloud Run service
-            |  service = backlog)    |   pending
-            +--------+---------------+
-                     |
-                     v
-        +---------------------------+
-        |       Skill Registry      |   Gemini Enterprise Agent Platform
-        |  (append-only revisions)  |
-        +---------------------------+
+```mermaid
+flowchart TD
+    User([Gemini Enterprise chat UI<br><i>or Traffic Generator</i>]) -->|Query| Supervisor[Knowledge Supervisor<br>Vertex AI Agent Engine]
+    
+    Supervisor -->|AgentTool over A2A| PolicyAgent[Policy Agent<br>Cloud Run]
+    Supervisor -->|AgentTool over A2A| HrCalc[HR Calculator<br>Cloud Run]
+    Supervisor -->|Agent2Agent locally| BenefitsAgent[Benefits Agent<br><i>in-process locally</i>]
+    
+    Supervisor -.->|Log Traces| BQ[(BigQuery<br>agent_events)]
+    Supervisor -.->|Fetch SKILL.md| SkillRegistry[(Skill Registry)]
+    PolicyAgent -.->|Fetch SKILL.md| SkillRegistry
+    BenefitsAgent -.->|Fetch SKILL.md| SkillRegistry
 ```
 
 - The **supervisor** is the root agent on Vertex AI Agent Engine. It
@@ -1207,37 +1195,24 @@ rather than an agent that knows everything.
 
 ### The evolution loop (end to end)
 
-```text
- (1) traffic                     (2) traces
- users / simulator --> supervisor --> BigQuery agent_events
-                                      (tagged agent_version)
-                                              |
-                               (3) trigger: on-demand | issues | schedule
-                                              v
-                               +--------------------------+
-                               |   skill-evolution-agent  |  Cloud Run Job
-                               |   quality report from BQ |
-                               |   -> gate: enough fails? |
-                               |   -> bottleneck: which   |
-                               |      agent is at fault?  |
-                               |   -> analyst fleet       |
-                               |   -> best-of-N candidates|
-                               +------+-------------+-----+
-                          (4a) push   |             |  (4b) open PR
-                                      v             v
-                            Skill Registry       GitHub PR
-                            (new revision)          |
-                                       (5) CI: Eval & Load Test Gate
-                                           version-aware assertions
-                                                    |
-                                       (6) human reviews and merges
-                                                    v
-                                           deploy.yml (WIF auth)
-                                           registry sync + redeploy
-                                                    |
-                                                    v
-                                     (7) agents fetch merged revision
-                                         --> back to (1), next window
+```mermaid
+flowchart TD
+    Traffic([Users / Simulator]) -->|1. traffic| Supervisor[supervisor]
+    Supervisor -->|2. traces tagged w/<br>agent_version| BQ[(BigQuery<br>agent_events)]
+    
+    CRJ[skill-evolution-agent<br><i>Cloud Run Job</i>]
+    BQ -->|3. trigger: on-demand,<br>issues, or schedule| CRJ
+    
+    CRJ -.->|bottleneck analysis &<br>best-of-N candidate wins| CRJ
+    
+    CRJ -->|4a. push new revision| Registry[(Skill Registry)]
+    CRJ -->|4b. open PR| PR[GitHub PR]
+    
+    PR -->|5. CI: version-aware<br>Eval & Load Test| PR
+    PR -->|6. human merges| Deploy[deploy.yml<br>WIF auth]
+    
+    Deploy -->|re-seed & redeploy| Agents[Agents fetch<br>merged revision]
+    Agents -->|7. back to next window| Traffic
 ```
 
 1. **Traffic** -- real users (or the traffic generator's simulated
