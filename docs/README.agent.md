@@ -42,7 +42,7 @@ uv run pytest eval/tests/ -v
 **3. Local Evolution Run (Simulation):**
 Requires `.env` and `GITHUB_TOKEN`.
 ```bash
-bash scripts/local/local_demo.sh
+bash scripts/demo/skill_evolution/run_lite.sh --local
 ```
 
 **4. GCP Infrastructure Provisioning:**
