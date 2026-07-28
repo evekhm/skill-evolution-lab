@@ -63,6 +63,28 @@ bash scripts/deploy/deploy_gcp.sh
 3. `skill_evolution_agent` scrapes open GitHub Issues. It spawns independent sub-agents to trace the failure, mutates the candidate's `SKILL.md` and generates a GitHub Pull Request.
 4. CI Actions (`.github/workflows/eval.yml`) automatically test the new `SKILL.md` budget.
 
+## Code Conventions
+
+- Python scripts in `scripts/` must have `.sh` wrappers that source `.env`.
+- Always use LLM-as-judge for quality scoring, never string matching.
+- No `Co-Authored-By` lines in git commits.
+- All V2/skill-evolution changes must keep the V1 demo fully functional.
+- Run autoformat and tests before pushing.
+- Never push code without proving it works end-to-end locally first.
+- No inline `python3 -c` blocks in `.sh` files.
+
+## Output Discipline (long runs)
+
+Experiments, traffic generation, and demo runs produce verbose output:
+
+1. Redirect output to files, then tail the summary:
+   ```bash
+   command_here > eval/some_log.log 2>&1
+   tail -20 eval/some_log.log
+   ```
+2. Never echo raw HTTP/API logs into a conversation or PR — use `2>&1 | tail -N`.
+3. Report key results as numbers, not raw data dumps.
+
 ## Evolution Test Cycle (invoke with: "run evolution test cycle")
 
 When the user asks to run an evolution test cycle, follow this EXACT procedure.
