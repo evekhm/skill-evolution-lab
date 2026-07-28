@@ -141,6 +141,8 @@
 #   --rounds <N>         Override number of evolution rounds (default: agent-decided).
 #   --candidates <N>     Override number of candidates per round.
 #   --min-failures <N>   Override minimum failure threshold for evolution.
+#   --github             Local runs only: publish the previewed PR for real
+#                        (push branch + gh pr create; needs Prereq step 4).
 #
 # ============================================================================
 # PREREQUISITES
@@ -185,6 +187,7 @@ MIN_FAILURES=""
 V0_ONLY=false
 EVOLVE_ONLY=false
 RESCORE_ONLY=false
+GITHUB_PUBLISH=false   # --github: publish the previewed PR for real (push branch + gh pr create)
 TEST_VERSION=""
 PERSONA=""
 QUESTIONS_OVERRIDE=""
@@ -233,6 +236,7 @@ while [[ $# -gt 0 ]]; do
         --model)        EVAL_MODEL="$2"; shift 2 ;;
         --no-heldout)   HELDOUT=false; shift ;;
         --heldout-frac) HELDOUT_FRAC="$2"; shift 2 ;;
+        --github)       GITHUB_PUBLISH=true; shift ;;
         *)              echo "Unknown flag: $1"; exit 1 ;;
     esac
 done
@@ -871,12 +875,23 @@ for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
 done
 if [ -n "$BEST_V" ]; then
     step 4 "Review the PR" "the learning as a reviewable artifact: metrics, diff, regression cases"
-    banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
-    bash "$SCRIPT_DIR/create_evolution_pr.sh" \
-        --run-dir "$RUN_DIR" --version "$BEST_V" --local \
-        --agent "${EVOLVE_TARGET:-policy_agent}" \
-        --evolved-report "$BEST_REPORT" \
-        || echo "  (pr preview failed; see logs)"
+    if [ "$GITHUB_PUBLISH" = true ]; then
+        # --github: publish for real — push the branch and open the PR
+        # (requires the GitHub wiring from Prerequisites step 4 + gh auth).
+        banner "PR PUBLISH: $BEST_V at ${BEST_RATE}% (pushing branch + opening the PR)"
+        bash "$SCRIPT_DIR/create_evolution_pr.sh" \
+            --run-dir "$RUN_DIR" --version "$BEST_V" \
+            --agent "${EVOLVE_TARGET:-policy_agent}" \
+            --evolved-report "$BEST_REPORT" \
+            || echo "  (pr publish failed; see logs)"
+    else
+        banner "PR PREVIEW: $BEST_V at ${BEST_RATE}% (local branch + pr_preview.md, nothing pushed)"
+        bash "$SCRIPT_DIR/create_evolution_pr.sh" \
+            --run-dir "$RUN_DIR" --version "$BEST_V" --local \
+            --agent "${EVOLVE_TARGET:-policy_agent}" \
+            --evolved-report "$BEST_REPORT" \
+            || echo "  (pr preview failed; see logs)"
+    fi
 fi
 
 step_close
