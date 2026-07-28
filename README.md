@@ -504,39 +504,73 @@ winner goes live:
 | Winning skill | pushed to the Skill Registry and opened as a PR | written to the local `SKILL.md`; the PR is produced as a local artifact — branch + `pr_preview.md` in the run dir, nothing pushed |
 | Safety | CI gate on the PR; a human merge activates it | none — it is a sandbox |
 
-Independent of where it runs, pick one of three PROFILES. More
-compute does not buy more improvement — the seeded defect is one
-behavior and every profile cures it; the profiles differ in what
-they deliver:
+Independent of where it runs, pick one of two PROFILES. Both reach
+the same quality on this demo's seeded defect — they differ in SCOPE:
+what class of failure they can cure, and what evidence they produce.
 
-| | Lite | Standard | Full |
-|---|---|---|---|
-| Deliverable | see the loop work | reach the quality bar | evidence for a writeup or review |
-| Rounds | 1 | 2 — round 2 repeats the process from the round-1 winner, on the failures round 1 left | agent-decided, until a round stops improving |
-| Measured outcome — held-out (same 55-question exam for all) | 40.0% -> 100% (55/55) | 40.0% -> 100% (55/55) | being re-measured |
-| Measured outcome — evolve set (V0 -> winner on its training questions) | 30.8% -> 100% (13q) | 36.0% -> 100% (25q) | being re-measured |
-| Cost (measured, local) | 54m 7s incl. live V0 exam (~37 min when the committed V0 reference is reused) | 77m 0s (V0 reference reused) | being re-measured |
-| Run deployed (default) | `run_lite.sh` | `run_standard.sh` | `run_full.sh` |
-| Run local (sandbox) | `run_lite.sh --local` | `run_standard.sh --local` | `run_full.sh --local` |
-| Candidates per round | 2 | 3 | agent-decided (up to 5) |
-| Training questions | 13 (1 per category) | 25 (2 per category) | all 55 |
-| Evolved agent | supervisor only | supervisor only (`EVOLVE_TARGET` overrides) | agent-decided (any of the 3) |
-| Final score measured on | the SAME 55-question exam of unseen questions — identical for all three profiles, so the scores are directly comparable |||
-| Extra artifacts | SUMMARY + PR preview | SUMMARY + PR preview | + triage report, regression cases |
+| | Lite | Full |
+|---|---|---|
+| Deliverable | see the loop work, fast | the production run, at full breadth |
+| Cures which failures | supervisor-only (routing, deflection, answer style) | any agent — the system decides who needs to evolve |
+| Rounds | 1 | agent-decided, until a round stops improving |
+| Candidates per round | 2 | agent-decided (up to 5 per agent) |
+| Training questions | 13 (1 per category) | all 55 |
+| Measured outcome — held-out (same 55-question exam) | 40.0% -> 100% (55/55) | 40.0% -> 100% (55/55) |
+| Measured outcome — evolve set (V0 -> winner on its training questions) | 30.8% -> 100% (13q) | 40.0% -> 100% (55q) |
+| Cost (measured, local) | ~37 min (V0 exam reused from the committed reference; its one-off measurement took ~17 min) | ~6h 51m (V0 exam reused; evolved all 3 agents, stopped itself when failures hit 0) |
+| Run deployed (default) | `run_lite.sh` | `run_full.sh` |
+| Run local (sandbox) | `run_lite.sh --local` | `run_full.sh --local` |
+| Extra artifacts | SUMMARY + PR preview | + triage report, regression cases |
+
+Both profiles sit the SAME 55-question exam of unseen questions, so
+their scores are directly comparable.
+
+**When Lite is enough.** One agent owns the defect and you know which
+one. This demo's seeded defect is exactly that — a supervisor that
+deflects instead of answering — so Lite cures it completely: it trains
+on one question per category, writes two candidate skills for the
+supervisor only, and picks the winner. Under an hour, end to end.
+
+**When you need Full — and what it actually does differently:**
+
+- **You don't know who owns the failure.** Full starts with bottleneck
+  attribution: the evolution agent reads the judged failures and
+  decides WHICH of the three agents to evolve — supervisor, policy
+  specialist, benefits specialist, or several of them. Lite skips that
+  question entirely by fiat (supervisor only). In production you
+  rarely know the owner in advance; a routing fix cannot cure a
+  specialist that answers wrongly once correctly routed.
+- **One round may not be enough.** Full keeps running rounds until a
+  round stops improving — the plateau, not a fixed count, is the stop
+  signal. If round 1 leaves failures the winner still makes, round 2
+  trains on exactly those.
+- **It learns from everything.** All 55 training questions instead of
+  13 — more failure classes seen means patches for behaviors Lite's
+  small sample never surfaces.
+- **It produces the governance artifacts.** A triage report that
+  splits remaining failures by owner (skill-fixable -> next round;
+  tool bug -> engineering backlog; missing fact -> knowledge base;
+  out-of-scope -> product decision), and regression cases that feed
+  the CI gate — the paper trail a reviewer or an SRE actually needs.
+- **It is the production run.** `run_full.sh` uses the job's default
+  arguments — identical to what the weekly scheduler and
+  quality-issue triggers execute unattended. Running it locally is
+  the dress rehearsal for the deployed loop; Lite is a demo shortcut
+  that exists only for humans in a hurry.
 
 What each step costs per profile (measured on local runs; deployed
-adds Agent Engine serve latency to Steps 2 and 6):
+adds Agent Engine serve latency to the traffic and verify steps):
 
-| Step | Lite | Standard | Full | What differs |
-|---|---|---|---|---|
-| 1 Reset to the V0 baseline | <1s | <1s | <1s | Nothing — all profiles restore the same three V0 skill files and stamp a fresh run label. |
-| 2 Generate labeled traffic | ~5 min (13q, measured 302s) | being re-measured (25q) | being re-measured (55q) | Question count only — same 4-turn adversarial simulator, same judging. The count sets two things downstream: how many failures the analysts get to learn from, and how coarse the score is: the score is correct-answers divided by question count, so at 13 questions one answer moves it by 7.7 points, at 25 by 4 points — small sets move in big jumps. Full trains on the complete 55-question evolve set (no split). |
-| 3 Run the evolution job | ~17 min (measured 1044s) | being re-measured | being re-measured | After analyzing the failures, the system drafts several new versions of the skill and holds a tryout to pick the best. Lite and standard both improve ONE agent (the supervisor); lite writes 2 drafts, standard writes 3. Full may improve all three agents and lets the system decide the draft count (up to 5 per agent, over several rounds). Each draft is then measured the same way V0 was measured in Step 2: the full question set runs against it and every answer is graded. That measurement takes 5-8 minutes per draft, and it is what this step's time consists of: 2 drafts = ~14 min, 3 drafts = ~26 min, dozens (full) = hours. |
-| Held-out measurement | ~14 min | ~14 min | ~14 min | The final exam — the same 55 unseen questions for every profile. The new skill takes it live (measured: 832s); V0's score comes from the committed, checksum-guarded reference measurement (re-measuring V0 live adds ~17 min, measured 1030s). |
-| 4 Review the PR | <1 min | <1 min | <1 min | Mechanics identical: local branch + `pr_preview.md` with the grounded metrics table, skill diff, and publish commands. Only the numbers inside differ — they come from that profile's own reports. |
-| 5-6 Merge + verify | skipped | skipped | skipped | Local runs are a sandbox, so the activation steps have nothing to act on. Deployed runs replace this row with the real thing: the winner is pushed to the Skill Registry and opened as a PR (Step 5: a human merge activates it), then the Step-1 deflection question is re-asked live to prove the fix (Step 6). |
-| 7 Roll back | <1s | <1s | <1s | Nothing — V0 files restored; every evolved skill stays snapshotted in the run dir as `vN_*_skill.md`. |
-| **Total (measured)** | **54m 7s** (incl. 17 min live V0 exam) | **being re-measured** | **being re-measured** | |
+| Step | Lite | Full | What differs |
+|---|---|---|---|
+| Reset to the V0 baseline | <1s | <1s | Nothing — both profiles restore the same three V0 skill files and stamp a fresh run label. |
+| Generate labeled traffic | ~5 min (13q) | ~18 min (55q) | Question count only — same 4-turn adversarial simulator, same judging. The count sets two things downstream: how many failures the analysts get to learn from, and how coarse the score is: the score is correct-answers divided by question count, so at 13 questions one answer moves it by 7.7 points — small sets move in big jumps. Full trains on the complete 55-question evolve set (no split). |
+| Run the evolution job | ~17 min | ~6h 15m | After analyzing the failures, the system drafts several new versions of the skill and holds a tryout to pick the best. Lite improves ONE agent (the supervisor) with 2 drafts. Full may improve all three agents and lets the system decide the draft count (up to 5 per agent, over rounds that run until improvement plateaus). Each draft is then measured the same way V0 was measured during traffic generation: the full question set runs against it and every answer is graded — that per-draft measurement is what this step's time consists of. |
+| Held-out measurement | ~14 min | ~14 min | The final exam — the same 55 unseen questions for both profiles, taken live by the new skill. V0's exam score is REUSED from the committed, checksum-guarded reference; its one-off measurement took ~17 min and is only repeated when the system changes. |
+| Review the PR | <1 min | <1 min | Mechanics identical: local branch + `pr_preview.md` with the grounded metrics table, skill diff, and publish commands. Only the numbers inside differ — they come from that profile's own reports. |
+| Merge + verify | skipped | skipped | Local runs are a sandbox, so the activation steps have nothing to act on. Deployed runs replace this row with the real thing: the winner is pushed to the Skill Registry and opened as a PR (a human merge activates it), then the original deflection question is re-asked live to prove the fix. |
+| Roll back | <1s | <1s | Nothing — V0 files restored; every evolved skill stays snapshotted in the run dir as `vN_*_skill.md`. |
+| **Total (measured)** | **~37 min** | **~6h 51m** | V0's exam is not part of the run — it is reused from the reference (one-off ~17 min measurement). |
 
 All commands live in `scripts/demo/skill_evolution/`, e.g.:
 
@@ -553,7 +587,7 @@ deployed runs validate on the 25-question set.
 **Local** (`--local`) is a sandbox on this machine: agents run
 in-process (`--local --local-agents` on every traffic call — the
 deployed stack receives zero requests) and nothing is published.
-Extras pass through, e.g. `run_standard.sh --local --candidates 4`.
+Extras pass through, e.g. `run_lite.sh --local --candidates 3`.
 
 Reference results: V0 (55.1%) -> V1 (85.4%) on 205 multi-turn
 conversations locally (a second round held at 84.4% — the plateau
@@ -934,15 +968,35 @@ about what a local run produces and how to work with it.
 
 ### What to expect
 
-| Version | Meaningful Rate | What happened |
-|---------|----------------|---------------|
-| V0      | ~55%           | Baseline: minimal skill, agent redirects to HR for most questions |
-| V1      | ~85%           | Evolution adds keyword mappings, anti-hallucination rules, scope boundaries |
-| V2      | ~84%           | Plateau: refinement rounds stop adding — the loop's signal to stop |
+The numbers below are from the archived lite run in
+[sample_runs/lite_local](sample_runs/lite_local/) — real, unedited
+output you can compare your own run against. Its `SUMMARY.md` ends
+with exactly this:
 
-V0 -> V1 is the key jump. The evolved skill gains structured sections
-(Tool Usage, Anti-Patterns, Out-of-Scope, Keyword Mappings) that the
-V0 baseline lacks entirely.
+```text
+| Version     | Ground-truth rate | Judge rate | Matched |
+|-------------|-------------------|------------|---------|
+| V0 baseline | 30.8%             | 30.8%      | 13/13   |
+| candidate_1 | 100.0%            | 100.0%     | 13/13   |
+| candidate_2 | 100.0%            | 100.0%     | 13/13   |
+
+HELD-OUT RESULT — measured on unseen questions
+
+|                   | V0    | Winner | Gain     |
+|-------------------|-------|--------|----------|
+| Ground-truth rate | 40.0% | 100.0% | +60.0pp  |
+
+Quality gate: winner 100.0% MEETS the 95% threshold
+```
+
+Two measurements, two different jobs: the top table is the EVOLVE SET
+(the 13 questions the skill trains on — both candidates cured every
+failure they were trained on), the bottom is the HELD-OUT EXAM (55
+questions the skill never saw — the generalization proof). V0 deflects
+most questions to HR; the winner gains structured sections (tool
+usage, routing rules, anti-patterns, keyword guidance) that V0 lacks
+entirely — read the diff between `v0_supervisor_skill.md` and
+`v1_supervisor_skill.md` in the sample: that diff IS the learning.
 
 **Reusing the V0 baseline.** The demo's first phase measures how bad
 V0 is: send traffic at the V0 skill, judge every conversation,
@@ -974,8 +1028,10 @@ version the PR preview carries. From there:
 - `run.log` — everything the run printed, including the slice label
 - `v0_quality_report.md` — the judged baseline, failure by failure;
   these failures are the evolution's input
-- `_score_candidate_N_report.json` — each candidate's replay score;
+- `candidate_N_report.json` — each candidate's replay score;
   the best one becomes the next version
+- `v1_test_report.json/.md` — the held-out exam: the winner against
+  the 55 unseen questions, judged answer by answer
 - `vN_*_skill.md` — the evolved skill text per version. Read these:
   the diff against V0 IS the learning, in plain markdown
 - `pr_preview.md` — the PR as a local artifact: metrics table,
@@ -1416,8 +1472,8 @@ Golden Q&A feeds three consumers:
 
 | Variant | Command | Time | Use when |
 |---|---|---|---|
-| Local quick | `bash scripts/demo/skill_evolution/run_lite.sh` | ~37 min (~54 min with a live V0 exam) | First contact; no deployment (lite profile; run_standard.sh for steadier numbers) |
-| Local full | `bash scripts/demo/skill_evolution/run_full.sh` | being re-measured | Full local evaluation (trains on all 55 questions, same 55-question exam) |
+| Local quick | `bash scripts/demo/skill_evolution/run_lite.sh` | ~37 min | First contact; no deployment (lite profile) |
+| Local full | `bash scripts/demo/skill_evolution/run_full.sh` | ~7 h | Full local evaluation (trains on all 55 questions, same 55-question exam) |
 | GCP demo run | `gcloud run jobs execute skill-evolution-agent --region $REGION --wait --args="--full-loop,--mode,policy_agent,--rounds,1,--candidates,2,--quick"` | ~50-80 min (measured: lite job 50 min, standard job 75 min) | Live demo of the deployed loop, warm BigQuery window |
 | GCP full run | same, no `--args` (also what the scheduler ticks and quality issues trigger) | ~6 h (measured: 6h 14m) | Production cadence: agent-decided scope, full validation |
 
@@ -1755,7 +1811,7 @@ scripts/
   local/local_start.sh       Start all agents locally
   demo/skill_evolution/
     run_demo.sh              Full local E2E pipeline (--full/--quick/--reuse-v0)
-    run_lite.sh / run_standard.sh / run_full.sh   Profile wrappers (see Local-Only Demo)
+    run_lite.sh / run_full.sh                     Profile wrappers (see Local-Only Demo)
     rollback_demo.sh         One-command rollback to V0 (registry + redeploy)
     score.sh                 Score conversations with golden eval matching
   test/smoke_test_deployed.sh  End-to-end smoke test of the deployed stack
