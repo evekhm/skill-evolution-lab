@@ -60,6 +60,8 @@
 <!-- TOC -->
 # Skill Evolution Lab
 
+**TL;DR:** A multi-agent framework where an orchestrator agent observes user query failures, diagnoses bugs in specialized ADK agents, and autonomously opens a GitHub PR with `SKILL.md` patches to heal the system.
+
 A multi-agent system that **learns from its own execution traces** and
 evolves structured skill documents -- deployed end-to-end on Google
 Cloud, with the Skill Registry as the source of truth and every change
@@ -925,6 +927,9 @@ they serve V0 immediately, and prints the verification. Flags:
 `--baseline stub|two-defect` (default `two-defect`) and
 `--skip-redeploy` (agents pick up V0 on their next restart instead).
 
+<details>
+<summary><b>View Alternative Local-Only Demo (10+ min read)</b></summary>
+
 ## Alternative: Local-Only Demo (no deployment)
 
 Run the full skill evolution pipeline on your machine. No GCP
@@ -1103,6 +1108,8 @@ Repeat the traffic->score->evolve stages for a V2 round (the gate
 keeps V2 only when it beats V1). For a narrated walkthrough with
 pauses, see [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
 
+</details>
+
 ## Architecture
 
 The system has two layers: **enterprise agents** that serve end users,
@@ -1262,6 +1269,9 @@ evolved revisions stay in the append-only history.
 | Eval & Load Test Gate (`eval.yml`) | GitHub Actions | every PR and push to main |
 | Deploy to GCP (`deploy.yml`) | GitHub Actions (WIF) | merge to main |
 
+<details>
+<summary><b>View Detailed Actor Component Architecture</b></summary>
+
 ### Components in detail
 
 **Enterprise agents** (`agents/enterprise/`) — serve end users:
@@ -1339,6 +1349,8 @@ Every stage of the loop, who runs it, and how to watch it live:
 | Adjudicate | Eval & Load Test Gate (GitHub Actions) | the PR | repo skills at PR state | green/red checks; branch protection blocks red | `gh pr checks <n>` |
 | Activate | Deploy to GCP workflow (GitHub Actions, WIF) | PR merge | merged repo | registry sync + redeploy; agents fetch the new revision | `gcloud logging read 'textPayload:"Loaded skill from registry"'` |
 | Roll back | `rollback_demo.sh` | you | SKILL.v0 files | V0 as newest registry revision; agents restarted | script prints verification |
+
+</details>
 
 ### The one manual input: Golden Q&A
 
