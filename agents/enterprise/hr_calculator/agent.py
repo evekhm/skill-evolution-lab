@@ -36,8 +36,8 @@ _, project_id = google.auth.default()
 DATASET_ID = os.getenv('DATASET_ID')
 DATASET_LOCATION = os.getenv('DATASET_LOCATION')
 TABLE_ID = os.getenv('TABLE_ID')
-LOCATION = os.getenv('HR_CALCULATOR_LOCATION', os.getenv('PTO_AGENT_LOCATION', "us-central1"))
-MODEL_ID = os.getenv('HR_CALCULATOR_MODEL_ID', os.getenv('PTO_MODEL_ID', "gemini-2.5-flash"))
+LOCATION = os.getenv('MODEL_LOCATION') or os.getenv('GOOGLE_CLOUD_LOCATION') or "global"  # model endpoint: gemini-3.x is global-only
+MODEL_ID = os.getenv('HR_CALCULATOR_MODEL_ID', os.getenv('EVAL_MODEL_ID', "gemini-3.5-flash"))
 
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 os.environ["GOOGLE_CLOUD_LOCATION"] = LOCATION
@@ -268,7 +268,9 @@ def calculate_disability_pay(annual_salary: float, weeks_out: int) -> dict:
     Args:
         annual_salary: The employee's gross annual salary in dollars.
         weeks_out: Number of benefit weeks the employee expects to be on
-            disability (after the unpaid 7-day waiting period).
+            disability. When the user says they are "out for N weeks",
+            pass N directly -- NEVER subtract the 7-day waiting period
+            from it (the waiting period never reduces payable weeks).
 
     Returns:
         A dict with the weekly and total STD benefit, the covered weeks (capped

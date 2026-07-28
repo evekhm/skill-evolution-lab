@@ -72,7 +72,9 @@ MODEL_ID = os.getenv("SKILL_EVOLUTION_MODEL_ID", "gemini-2.5-pro")
 
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 os.environ["GOOGLE_CLOUD_PROJECT"] = os.getenv("PROJECT_ID", project_id or "")
-os.environ["GOOGLE_CLOUD_LOCATION"] = os.getenv("REGION", "us-central1")
+os.environ["GOOGLE_CLOUD_LOCATION"] = (
+    os.getenv("MODEL_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or "global"
+)  # model endpoint, not infra region: gemini-3.x is global-only
 
 # Load instruction from SKILL.md + references/
 _skill_dir = os.path.join(os.path.dirname(__file__), "skill")

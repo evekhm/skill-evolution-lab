@@ -99,3 +99,12 @@ Measured breakdown of a warm-BQ, policy-scoped, 3-candidate run
     same code at a flat ~6s. Next isolation step: variant deploy
     without the BQ plugin, then without telemetry env, to pin the
     blocking call.
+
+15. **Container PR creation broke after the 2026-07-22 image rebuild**
+    ("execution environment is not a git repository"): deployed lite
+    and standard executions (older image) opened PRs #47/#48 fine; the
+    full execution (image with eval/tests staging) pushed registry
+    revision 13 but failed create_evolution_issue/create_evolution_pr.
+    Diff the deploy.sh staging changes vs the container's git context
+    (likely the .git directory or clone step displaced by the new
+    copies) and re-verify with a scoped quick run.
