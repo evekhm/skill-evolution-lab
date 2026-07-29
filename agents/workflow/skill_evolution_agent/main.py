@@ -763,7 +763,19 @@ Examples:
         action="store_true",
         help="Test tools only, don't run the agent",
     )
+    parser.add_argument(
+        "--questions",
+        type=str,
+        default=None,
+        help="Question file for traffic, candidate scoring, and validation. "
+        "FORCES EVAL_QUESTIONS_FILE, beating the container's env default — "
+        "this is how a profile keeps deployed runs on the same question set "
+        "as its local runs.",
+    )
     args = parser.parse_args()
+
+    if args.questions:
+        os.environ["EVAL_QUESTIONS_FILE"] = args.questions
 
     # Make the scoping flags BINDING at the tool layer (the orchestrating
     # agent treats prompt overrides as hints; these env vars are enforced
@@ -792,9 +804,12 @@ Examples:
         # drift in turns 3-4 — ranking sees all of it.
         os.environ["EVAL_MAX_TURNS"] = "4"
         # Score on the SERVING model so candidate ranking measures what
-        # production will actually run (flash-lite lives on the global
-        # endpoint only).
-        os.environ["SUPERVISOR_MODEL_ID"] = "gemini-3.1-flash-lite"
+        # production will actually run. gemini-3.x is served from the
+        # global endpoint only.
+        os.environ.setdefault(
+            "SUPERVISOR_MODEL_ID",
+            os.environ.get("EVAL_MODEL_ID", "gemini-3.5-flash"),
+        )
         os.environ.setdefault("MODEL_LOCATION", "global")
         os.environ.setdefault("EVOLUTION_MAX_ANALYSTS", "30")
         # The agent's default threshold (30 failures) is sized for
