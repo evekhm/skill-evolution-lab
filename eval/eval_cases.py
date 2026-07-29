@@ -148,11 +148,18 @@ def extract_regression_cases(quality_report: dict) -> list[dict]:
             "id": case_id,
             "question": clean_q,
             "category": _infer_category(clean_q),
-            "expected_agent": session.get("answered_by", "policy_agent"),
             "source": "skill_evolution",
             "source_session_id": session_id,
             "verdict": category_verdict,
         }
+        # Routing is asserted only when a real specialist actually answered.
+        # These are FAILED sessions: their route is part of the failure, and
+        # 'knowledge_supervisor'/'unknown'/a default guess as expected_agent
+        # turns the CI gate into a test the winner cannot legitimately pass
+        # (a tool-first supervisor may answer directly and be correct).
+        answered_by = (session.get("answered_by") or "").strip()
+        if answered_by in ("policy_agent", "benefits_agent", "hr_calculator"):
+            case["expected_agent"] = answered_by
 
         justification = usefulness.get("justification", "")
         if justification:
