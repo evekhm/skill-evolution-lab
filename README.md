@@ -195,12 +195,6 @@ no manual editing. The rest of the defaults work out of the box.
 bash scripts/local/local_setup.sh
 ```
 
-> [!NOTE]
-> **Internal Google Users:** If you are running this on a Google corporate machine (e.g., gLinux or CloudTop) and your system is configured to use an internal Artifact Registry proxy (via `/etc/pip.conf`), `uv sync` may fail with `401 Unauthorized` or `403 Forbidden`. 
-> You can resolve this by either ensuring you have the correct authorization (e.g., running `gcert` and ensuring keyring is configured), or by bypassing the system config to fetch dependencies from public PyPI:
-> ```bash
-> UV_INDEX_URL="https://pypi.org/simple" UV_EXTRA_INDEX_URL="" PIP_CONFIG_FILE=/dev/null bash scripts/local/local_setup.sh
-> ```
 
 Syncs Python dependencies with `uv`, verifies GCP auth, and tests
 that all agent modules import correctly.
