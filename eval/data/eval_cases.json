@@ -55,13 +55,19 @@
       "id": "compound_meal_hsa",
       "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "compound_bereavement_parental",
       "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "oos_severance",
@@ -74,6 +80,105 @@
       "question": "Can I get a standing desk for my home office?",
       "category": "out_of_scope",
       "expected_behavior": "decline_gracefully"
+    },
+    {
+      "id": "regression_214502259737",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "source": "skill_evolution",
+      "source_session_id": "2145022597379653632",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly stated it did not have the information and directed the user to HR, failing to provide a substantive answer to an in-scope question."
+    },
+    {
+      "id": "regression_178473462719",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "1784734627190013952",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent explicitly stated it did not have the information and directed the user to HR, failing to provide a substantive answer to an in-scope question."
+    },
+    {
+      "id": "regression_155054744656",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "1550547446566748160",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent explicitly stated it did not have the information and directed the user to HR, even though it has a tool (`hr_calculator`) designed to compute short-term disability payouts."
+    },
+    {
+      "id": "regression_152014814908",
+      "question": "How many counseling visits does the EAP cover?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "1520148149081997312",
+      "verdict": "partial",
+      "failure_reason": "The agent failed to answer the initial question about EAP counseling visits, stating it did not have the information. However, it successfully answered a subsequent, different question about PTO days. Therefore, the session's overall usefulness is partial."
+    },
+    {
+      "id": "regression_338013479518",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "3380134795186012160",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information and directed the user to HR, which is not a substantive answer to the user's question."
+    },
+    {
+      "id": "regression_403255441494",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "403255441494114304",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent's final response states it does not have the information about core hours, even after the user provided the correct information. It directs the user to HR without independently verifying the user's correction or updating its knowledge."
+    },
+    {
+      "id": "regression_905917392530",
+      "question": "How many company-paid holidays are there?",
+      "category": "holidays",
+      "source": "skill_evolution",
+      "source_session_id": "9059173925300207616",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent explicitly stated it did not have the information about company-paid holidays and directed the user to HR, failing to provide a substantive answer to an in-scope question."
+    },
+    {
+      "id": "regression_790565009447",
+      "question": "Does the company pay me during jury duty, and is there a limit?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "790565009447976960",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly states it does not have the requested information and directs the user to HR, instead of using its available tools to answer in-scope questions."
+    },
+    {
+      "id": "regression_378095516202",
+      "question": "What portion of my pay does short-term disability replace?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "3780955162021986304",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent stated it did not have the information for an in-scope question and directed the user to HR, failing to use its available tools."
+    },
+    {
+      "id": "regression_829356198864",
+      "question": "How many sick days am I given annually?",
+      "category": "sick_leave",
+      "source": "skill_evolution",
+      "source_session_id": "8293561988647223296",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent's final response states it cannot verify the information and directs the user to HR, indicating it could not resolve the user's question about the doctor's note policy."
+    },
+    {
+      "id": "regression_572988790076",
+      "question": "How much will the company reimburse for tuition each year?",
+      "category": "expenses",
+      "source": "skill_evolution",
+      "source_session_id": "5729887900766568448",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent explicitly states it does not have the information and directs the user to HR, failing to provide a substantive answer to an in-scope question."
     }
   ]
 }
