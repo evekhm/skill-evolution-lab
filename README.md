@@ -603,9 +603,8 @@ Measured results, per run:
 | Run | Evolve set (V0 -> winner) | Held-out 55q exam (V0 -> winner) | Wall time | Artifacts |
 |---|---|---|---|---|
 | Lite, local | 30.8% -> 100% (13q) | 40.0% -> 100% (55/55) | ~37 min | [sample_runs/lite_local](sample_runs/lite_local/) |
-| Lite, deployed | 21.8% -> 100% on its BigQuery slice; publish gate 10/10, PR #51 checks all green | — (deployed runs validate on their slice) | ~91 min | [sample_runs/lite_deployed](sample_runs/lite_deployed/) |
+| Lite, deployed | 21.8% -> 100% on its BigQuery slice; publish gate 10/10, PR #51 checks all green | — (deployed runs validate on their slice) | ~91 min | [sample_runs/lite_deployed](sample_runs/lite_deployed/), PR #51 |
 | Full, local | 40.0% -> 100% (55q) | 40.0% -> 100% (55/55) | ~6h 51m | [sample_runs/full_local](sample_runs/full_local/) |
-| Lite, deployed | 21.8% -> 100% on its BigQuery slice; publish gate 10/10, PR checks green | — (deployed runs validate on their slice) | ~91 min | [sample_runs/lite_deployed](sample_runs/lite_deployed/), PR #51 |
 
 Earlier-generation runs (previous models and tools, kept for
 history): the deployed policy-agent loop reached 20.0% -> 96.0% on
