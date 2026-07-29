@@ -57,14 +57,14 @@
 <!-- TOC -->
 # Skill Evolution Lab
 
-**TL;DR:** A multi-agent framework where an orchestrator agent observes user query failures, diagnoses bugs in specialized ADK agents, and autonomously opens a GitHub PR with `SKILL.md` patches to heal the system.
+A multi-agent system that learns from its own execution traces:
+it observes failing conversations, diagnoses which agent's `SKILL.md`
+is responsible, evolves a replacement, and opens a GitHub pull
+request with the patch. Deployed end-to-end on Google Cloud, with
+the Skill Registry as the source of truth and every change flowing
+through a pull request.
 
 > 🤖 **For AI Agents:** If you are an autonomous agent or coding assistant operating in this repository, please refer to the [Agent Reference Document](docs/README.agent.md) for your system runbooks, execution flows, and environment variables.
-
-A multi-agent system that **learns from its own execution traces** and
-evolves structured skill documents -- deployed end-to-end on Google
-Cloud, with the Skill Registry as the source of truth and every change
-flowing through a pull request.
 
 > **Read the story first:**
 > [Your Agent Can Learn From Its Own Conversations](https://medium.com/@evekhm/your-agent-can-learn-from-its-own-conversations-26f7d46ac325)
