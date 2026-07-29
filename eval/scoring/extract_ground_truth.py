@@ -40,7 +40,9 @@ PROJECT_ID = os.getenv("PROJECT_ID", project_id)
 REGION = os.getenv("REGION", "us-central1")
 
 os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
-os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
+os.environ["GOOGLE_CLOUD_LOCATION"] = (
+    os.getenv("MODEL_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or "global"
+)  # model endpoint, not infra region: gemini-3.x is global-only
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 EXTRACTION_PROMPT = """\

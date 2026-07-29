@@ -30,7 +30,9 @@ if os.path.exists(env_path):
 
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = os.getenv("PROJECT_ID", project_id)
-os.environ["GOOGLE_CLOUD_LOCATION"] = os.getenv("REGION", "us-central1")
+os.environ["GOOGLE_CLOUD_LOCATION"] = (
+    os.getenv("MODEL_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or "global"
+)  # model endpoint, not infra region: gemini-3.x is global-only
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 from ensure_sdk import import_sdk_module  # noqa: E402
