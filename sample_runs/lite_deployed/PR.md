@@ -1,3 +1,8 @@
+# Evolve supervisor skill to v1 (21.8% -> 100.0%)
+
+State: CLOSED (closed as the demo sample after all checks passed)
+
+
 ## Skill Evolution: supervisor v1
 
 ### Quality Before Evolution
