@@ -57,6 +57,10 @@
 <!-- TOC -->
 # Skill Evolution Lab
 
+**TL;DR:** A multi-agent framework where an orchestrator agent observes user query failures, diagnoses bugs in specialized ADK agents, and autonomously opens a GitHub PR with `SKILL.md` patches to heal the system.
+
+> 🤖 **For AI Agents:** If you are an autonomous agent or coding assistant operating in this repository, please refer to the [Agent Reference Document](docs/README.agent.md) for your system runbooks, execution flows, and environment variables.
+
 A multi-agent system that **learns from its own execution traces** and
 evolves structured skill documents -- deployed end-to-end on Google
 Cloud, with the Skill Registry as the source of truth and every change
@@ -166,7 +170,7 @@ Should print `True`.
 
 #### Tools and auth
 
-- A Google Cloud project with Vertex AI API enabled
+- A Google Cloud project with the **Vertex AI API** (`aiplatform.googleapis.com`) enabled — `scripts/setup/setup_gcp.sh` enables it along with BigQuery and Cloud Run.
 - `gcloud` CLI installed and authenticated:
   ```bash
   gcloud auth login
@@ -190,6 +194,13 @@ no manual editing. The rest of the defaults work out of the box.
 ```bash
 bash scripts/local/local_setup.sh
 ```
+
+> [!NOTE]
+> **Internal Google Users:** If you are running this on a Google corporate machine (e.g., gLinux or CloudTop) and your system is configured to use an internal Artifact Registry proxy (via `/etc/pip.conf`), `uv sync` may fail with `401 Unauthorized` or `403 Forbidden`. 
+> You can resolve this by either ensuring you have the correct authorization (e.g., running `gcert` and ensuring keyring is configured), or by bypassing the system config to fetch dependencies from public PyPI:
+> ```bash
+> UV_INDEX_URL="https://pypi.org/simple" UV_EXTRA_INDEX_URL="" PIP_CONFIG_FILE=/dev/null bash scripts/local/local_setup.sh
+> ```
 
 Syncs Python dependencies with `uv`, verifies GCP auth, and tests
 that all agent modules import correctly.
@@ -963,6 +974,9 @@ exactly which traces taught it. This replaces per-round tables: one
 table, label-sliced, and longitudinal quality-by-version queries stay
 intact.
 
+<details>
+<summary><b>View Alternative Local-Only Demo (10+ min read)</b></summary>
+
 ## Alternative: Local-Only Demo (no deployment)
 
 Run the full skill evolution pipeline on your machine. No GCP
@@ -1164,6 +1178,8 @@ Repeat the traffic->score->evolve stages for a V2 round (the gate
 keeps V2 only when it beats V1). For a narrated walkthrough with
 pauses, see [Demo Script](docs/skill-evolution/DEMO_SCRIPT.md).
 
+</details>
+
 ## Architecture
 
 The system has two layers: **enterprise agents** that serve end users,
@@ -1174,38 +1190,18 @@ revision, and **GitHub** holds the review gate between the two.
 
 ### Serving path (what runs where)
 
-```text
-  Gemini Enterprise chat UI              Traffic Generator
-    (optional frontend)             (simulated users, multi-turn)
-             |                                  |
-             +----------------+-----------------+
-                              v
-             +--------------------------------+
-             |      Knowledge Supervisor      |   Vertex AI Agent Engine
-             |  fan-out + synthesis (root)    |
-             |  SKILL.md from Skill Registry  |
-             |  BigQuery Analytics plugin     |
-             +-------+----------------+-------+
-                     |   AgentTool    |
-                     |   over A2A     |
-            +--------v-------+  +-----v------------+
-            |  Policy Agent  |  |  HR Calculator   |   Cloud Run
-            |  SKILL.md +    |  |  (deterministic  |
-            |  lookup tools  |  |   date/PTO math) |
-            +--------+-------+  +------------------+
-                     |
-            +--------+---------------+
-            |  Benefits Agent        |   skill-only today:
-            |  SKILL.md (in-process  |   in-process locally,
-            |  locally; Cloud Run    |   Cloud Run service
-            |  service = backlog)    |   pending
-            +--------+---------------+
-                     |
-                     v
-        +---------------------------+
-        |       Skill Registry      |   Gemini Enterprise Agent Platform
-        |  (append-only revisions)  |
-        +---------------------------+
+```mermaid
+flowchart TD
+    User([Gemini Enterprise chat UI<br><i>or Traffic Generator</i>]) -->|Query| Supervisor[Knowledge Supervisor<br>Vertex AI Agent Engine]
+    
+    Supervisor -->|AgentTool over A2A| PolicyAgent[Policy Agent<br>Cloud Run]
+    Supervisor -->|AgentTool over A2A| HrCalc[HR Calculator<br>Cloud Run]
+    Supervisor -->|Agent2Agent locally| BenefitsAgent[Benefits Agent<br><i>in-process locally</i>]
+    
+    Supervisor -.->|Log Traces| BQ[(BigQuery<br>agent_events)]
+    Supervisor -.->|Fetch SKILL.md| SkillRegistry[(Skill Registry)]
+    PolicyAgent -.->|Fetch SKILL.md| SkillRegistry
+    BenefitsAgent -.->|Fetch SKILL.md| SkillRegistry
 ```
 
 - The **supervisor** is the root agent on Vertex AI Agent Engine. It
@@ -1275,37 +1271,24 @@ rather than an agent that knows everything.
 
 ### The evolution loop (end to end)
 
-```text
- (1) traffic                     (2) traces
- users / simulator --> supervisor --> BigQuery agent_events
-                                      (tagged agent_version)
-                                              |
-                               (3) trigger: on-demand | issues | schedule
-                                              v
-                               +--------------------------+
-                               |   skill-evolution-agent  |  Cloud Run Job
-                               |   quality report from BQ |
-                               |   -> gate: enough fails? |
-                               |   -> bottleneck: which   |
-                               |      agent is at fault?  |
-                               |   -> analyst fleet       |
-                               |   -> best-of-N candidates|
-                               +------+-------------+-----+
-                          (4a) push   |             |  (4b) open PR
-                                      v             v
-                            Skill Registry       GitHub PR
-                            (new revision)          |
-                                       (5) CI: Eval & Load Test Gate
-                                           version-aware assertions
-                                                    |
-                                       (6) human reviews and merges
-                                                    v
-                                           deploy.yml (WIF auth)
-                                           registry sync + redeploy
-                                                    |
-                                                    v
-                                     (7) agents fetch merged revision
-                                         --> back to (1), next window
+```mermaid
+flowchart TD
+    Traffic([Users / Simulator]) -->|1. traffic| Supervisor[supervisor]
+    Supervisor -->|2. traces tagged w/<br>agent_version| BQ[(BigQuery<br>agent_events)]
+    
+    CRJ[skill-evolution-agent<br><i>Cloud Run Job</i>]
+    BQ -->|3. trigger: on-demand,<br>issues, or schedule| CRJ
+    
+    CRJ -.->|bottleneck analysis &<br>best-of-N candidate wins| CRJ
+    
+    CRJ -->|4a. push new revision| Registry[(Skill Registry)]
+    CRJ -->|4b. open PR| PR[GitHub PR]
+    
+    PR -->|5. CI: version-aware<br>Eval & Load Test| PR
+    PR -->|6. human merges| Deploy[deploy.yml<br>WIF auth]
+    
+    Deploy -->|re-seed & redeploy| Agents[Agents fetch<br>merged revision]
+    Agents -->|7. back to next window| Traffic
 ```
 
 1. **Traffic** -- real users (or the traffic generator's simulated
@@ -1354,6 +1337,9 @@ evolved revisions stay in the append-only history.
 | skill_evolution_agent | Cloud Run Job | on-demand (`gcloud run jobs execute`), quality-issue threshold, or scheduled tick (default: weekly) |
 | Eval & Load Test Gate (`eval.yml`) | GitHub Actions | every PR and push to main |
 | Deploy to GCP (`deploy.yml`) | GitHub Actions (WIF) | merge to main |
+
+<details>
+<summary><b>View Detailed Actor Component Architecture</b></summary>
 
 ### Components in detail
 
@@ -1432,6 +1418,8 @@ Every stage of the loop, who runs it, and how to watch it live:
 | Adjudicate | Eval & Load Test Gate (GitHub Actions) | the PR | repo skills at PR state | green/red checks; branch protection blocks red | `gh pr checks <n>` |
 | Activate | Deploy to GCP workflow (GitHub Actions, WIF) | PR merge | merged repo | registry sync + redeploy; agents fetch the new revision | `gcloud logging read 'textPayload:"Loaded skill from registry"'` |
 | Roll back | `rollback_demo.sh` | you | SKILL.v0 files | V0 as newest registry revision; agents restarted | script prints verification |
+
+</details>
 
 ### The one manual input: Golden Q&A
 

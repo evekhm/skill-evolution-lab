@@ -460,6 +460,120 @@ deployed skill, preventing cross-version data contamination.
 | Sequential fixes (order matters) | Parallel analysis, consolidated simultaneously |
 | Quality Agent + Remediation Agent | Quality Agent (issues) + Skill Evolution Agent (fixes via SKILL.md evolution) |
 
+## Plug In Your Own Agent
+
+The skill evolution pipeline is agent-agnostic. To evolve skills for
+your own agent, you need three things: golden evals (expected Q&A
+pairs), a V0 skill (baseline instructions), and a registry entry.
+
+### Step 1: Create golden evals
+
+Create a JSON file with curated question-answer pairs that define
+your agent's expected behavior:
+
+```json
+{
+  "eval_cases": [
+    {
+      "id": "pto_01",
+      "question": "How many PTO days do I get per year?",
+      "expected_answer": "You receive 20 PTO days per year, accrued monthly at approximately 1.67 days per month.",
+      "topic": "pto"
+    },
+    {
+      "id": "scope_salary",
+      "question": "What is my salary?",
+      "expected_answer": "I cannot provide salary information.",
+      "topic": "out_of_scope"
+    }
+  ]
+}
+```
+
+- Each entry needs `id`, `question`, `expected_answer`, and `topic`
+- Use `"topic": "out_of_scope"` for questions the agent should decline
+- See `eval/data/golden_evals.json` for a complete example
+
+### Step 2: Create the V0 skill
+
+Create a minimal skill document in your agent's skill directory.
+This is the baseline that evolution will improve:
+
+```text
+your_agent/skill/
+  SKILL.md       # Live version (overwritten during evolution)
+  SKILL.v0.md    # Permanent backup (never modified)
+```
+
+Both files start with the same content:
+
+```markdown
+---
+name: my-agent
+description: |
+  Brief description of what the agent does.
+metadata:
+  version: "0"
+  author: human
+  evolvable: true
+---
+
+# My Agent
+
+You are a [role]. You have access to [tool_name].
+Use it when you need to verify specific details.
+Always base your answers on tool results, not assumptions.
+```
+
+Keep V0 deliberately minimal -- 3-5 sentences, no rules or edge
+cases. Evolution adds those from execution experience.
+
+### Step 3: Register the agent
+
+Add your agent to `eval/skill_evolution/agent_registry.json`:
+
+```json
+{
+  "agents": {
+    "my_agent": {
+      "skill_dir": "path/to/your_agent/skill",
+      "label": "My Agent"
+    }
+  }
+}
+```
+
+- `skill_dir`: relative path from repo root, must contain `SKILL.md`
+- `label`: human-readable name for logs and reports
+
+### Step 4: Extract ground truth
+
+Generate the scoring context from your golden evals:
+
+```bash
+python eval/scoring/extract_ground_truth.py \
+    --input path/to/your_golden_evals.json \
+    --update-config eval/data/agent_context.json
+```
+
+This extracts factual ground truth and scope boundaries for the
+LLM judge. Re-run whenever your golden evals change.
+
+### Step 5: Run evolution
+
+```bash
+bash scripts/demo/skill_evolution/run_lite.sh
+```
+
+Or run the six bootstrap stages one at a time against your agent —
+the exact commands are in
+[Alternative: Local-Only Demo -> Manual step-by-step](../../README.md#alternative-local-only-demo-no-deployment);
+swap the questions file for yours.
+
+For full input schemas and pipeline details, see
+[Inputs, Setup, and Pipeline](ALGORITHM.md#inputs-setup-and-pipeline)
+in the algorithm reference.
+
 ## Docs
 
 - [DEMO_SCRIPT.md](DEMO_SCRIPT.md) -- Full demo design with step-by-step flow
