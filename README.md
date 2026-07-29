@@ -597,8 +597,29 @@ Measured results, per run:
 | Run | Evolve set (V0 -> winner) | Held-out 55q exam (V0 -> winner) | Wall time | Artifacts |
 |---|---|---|---|---|
 | Lite, local | 30.8% -> 100% (13q) | 40.0% -> 100% (55/55) | ~37 min | [sample_runs/lite_local](sample_runs/lite_local/) |
-| Lite, deployed | 15.4% -> 100% on its 13-session slice; publish gate 10/10, PR #57 checks green | — (deployed runs validate on their slice) | ~39 min | [sample_runs/lite_deployed](sample_runs/lite_deployed/), PR #57 |
+| Lite, deployed | 7.4% (27 real BigQuery sessions) -> 76.9% on the 13-question set; publish gate 10/10 | — (deployed runs validate on their slice) | ~33 min | [sample_runs/lite_deployed](sample_runs/lite_deployed/), PR #58 |
 | Full, local | 40.0% -> 100% (55q) | 40.0% -> 100% (55/55) | ~6h 51m | [sample_runs/full_local](sample_runs/full_local/) |
+
+### Local vs deployed: configuration identity (lite profile)
+
+The lite profile runs the SAME configuration in both modes — this
+table is the verification record (deployed run: PR #58, archived in
+[sample_runs/lite_deployed](sample_runs/lite_deployed/)):
+
+| | Local lite | Deployed lite | Identical |
+|---|---|---|---|
+| Question set (evolution + candidate scoring) | `two_defect_lite.json`, 13 questions | same file, confirmed in the job's binding log | yes |
+| Evolution parameters | 1 round, 2 candidates | 1 round, 2 candidates | yes |
+| Supervisor model | gemini-3.5-flash | gemini-3.5-flash (Agent Engine) | yes |
+| Specialist models | gemini-3.5-flash | gemini-3.5-flash (verified on the Cloud Run services) | yes |
+| LLM judge (scoring) | gemini-3.5-flash, golden-matched scorer | same scorer, same model, in-container | yes |
+| Conversation depth | 4 turns, adversarial simulator | 4 turns, adversarial simulator | yes |
+| V0 baseline source | generated traffic on the 13 questions | REAL BigQuery traffic when available (production detection path); generated fallback otherwise | by design, different |
+| Serving path | in-process Python agents | Agent Engine + A2A to Cloud Run | by design, different |
+
+Measured consequence of the two by-design differences: ~23s vs ~48s
+per conversation (serve latency), and the deployed V0 baseline
+reflects live traffic rather than a fixed question set.
 
 Earlier-generation runs (previous models and tools, kept for
 history): the deployed policy-agent loop reached 20.0% -> 96.0% on

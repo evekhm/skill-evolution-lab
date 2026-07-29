@@ -1,0 +1,1403 @@
+{
+  "summary": {
+    "total_sessions": 13,
+    "meaningful": 10,
+    "declined": 0,
+    "partial": 0,
+    "unhelpful": 3,
+    "meaningful_rate": 76.9,
+    "unhelpful_rate": 23.1,
+    "dimension_averages": {
+      "correctness": 1.62,
+      "tool_usage": 1.62,
+      "specificity": 1.62,
+      "scope_compliance": 1.69,
+      "first_time_right": 1.54
+    },
+    "avg_user_turns": 2.8,
+    "avg_tool_calls": 1.7,
+    "multi_turn_sessions": 13,
+    "correction_rate": 7.7,
+    "verification_rate": 23.1,
+    "avg_corrections": 0.08,
+    "avg_verifications": 0.23,
+    "skill_gap": 2,
+    "knowledge_gap": 1,
+    "tool_gap": 0,
+    "knowledge_gap_rate": 7.7,
+    "tool_gap_rate": 0.0,
+    "addressable_meaningful_rate": 83.3,
+    "knowledge_gap_questions": [
+      "How many sick days am I given annually?"
+    ],
+    "tool_gap_questions": [],
+    "elapsed_seconds": 33.3,
+    "golden_eval_summary": {
+      "total_sessions": 13,
+      "matched": 13,
+      "matched_meaningful": 10,
+      "matched_unhelpful": 3,
+      "matched_partial": 0,
+      "matched_meaningful_rate": 76.9,
+      "unmatched": 0,
+      "unmatched_meaningful": 0,
+      "unmatched_unhelpful": 0,
+      "unmatched_partial": 0,
+      "unmatched_meaningful_rate": 0,
+      "mismatches": [
+        {
+          "question": "How much bereavement leave do I get for losing a parent?",
+          "expected_answer": "5 paid days (a parent is immediate family).",
+          "actual_response": "I have double-checked our policy database specifically for \"bereavement leave,\" but unfortunately, no matching policy or details were found. \n\nSince this information is not available in the company policy database, I recommend reaching out directly to HR for assistance and clarification on your bere",
+          "topic": "bereavement",
+          "similarity": 1.0
+        },
+        {
+          "question": "Can I do a compressed schedule of four 10-hour days?",
+          "expected_answer": "Yes - compressed work weeks like four 10-hour days are allowed with manager approval.",
+          "actual_response": "According to the company's Remote Work policy, employees are permitted to work remotely **up to 3 days per week with manager approval**. \n\nHowever, there is no official policy on file regarding flexible work hours or compressed schedules (such as a four 10-hour day workweek). For any questions or ar",
+          "topic": "flex_time",
+          "similarity": 1.0
+        },
+        {
+          "question": "How many sick days am I given annually?",
+          "expected_answer": "10 sick days per year; they do not roll over.",
+          "actual_response": "Thank you for bringing that to my attention and sharing that detail from your onboarding packet! \n\nWhile the policy repository I have access to doesn't currently contain this specific detail, it is very common for onboarding packets to outline this exact requirement. Since your onboarding materials ",
+          "topic": "sick_leave",
+          "similarity": 1.0
+        }
+      ]
+    }
+  },
+  "category_distributions": {
+    "response_usefulness": {
+      "meaningful": 10,
+      "unhelpful": 3
+    },
+    "task_grounding": {
+      "grounded": 11,
+      "ungrounded": 2
+    },
+    "correctness": {
+      "correct": 10,
+      "incorrect": 2,
+      "mostly_correct": 1
+    },
+    "tool_usage": {
+      "proper": 10,
+      "none": 2,
+      "partial": 1
+    },
+    "specificity": {
+      "specific": 10,
+      "vague": 2,
+      "somewhat_specific": 1
+    },
+    "scope_compliance": {
+      "compliant": 11,
+      "non_compliant": 2
+    },
+    "first_time_right": {
+      "correct": 10,
+      "correction_needed": 3
+    },
+    "failure_attribution": {
+      "not_a_failure": 10,
+      "skill_gap": 2,
+      "knowledge_gap": 1
+    }
+  },
+  "per_agent": {
+    "unknown": {
+      "total": 13,
+      "meaningful": 10,
+      "declined": 0,
+      "unhelpful": 3,
+      "partial": 0,
+      "unclassified": 0,
+      "a2a_count": 0
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "conv_1d6c0b26",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "response": "The company covers **80% of medical premiums** for employees and **50% of premiums** for dependents. This applies to both the PPO and HMO plan options.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 1,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a direct, accurate, and complete answer to the user's question about medical premium coverage."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response matches the ground truth data exactly, indicating it was grounded in the retrieved policy information."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The facts stated (80% for employees, 50% for dependents) are completely accurate according to the company policy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly retrieved the policy information to answer the question."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides exact percentages for both employees and dependents."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The question is about health insurance benefits, which is in-scope, and the agent answered it correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was correct, complete, and fully answered the user's question without needing any corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The interaction was successful and no failure occurred."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The facts stated (80% for employees, 50% for dependents) are completely accurate according to the company policy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly retrieved the policy information to answer the question."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides exact percentages for both employees and dependents."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The question is about health insurance benefits, which is in-scope, and the agent answered it correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was correct, complete, and fully answered the user's question without needing any corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What percentage of my medical premium does the employer pay?"
+        },
+        {
+          "role": "agent",
+          "text": "The company covers **80% of medical premiums** for employees and **50% of premiums** for dependents. This applies to both the PPO and HMO plan options."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "What percentage of my medical premium does the employer pay?",
+        "expected_answer": "The company covers 80% of health insurance premiums for the employee (50% for dependents).",
+        "topic": "benefits",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_52d7d8d9",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "response": "I have double-checked our policy database specifically for \"bereavement leave,\" but unfortunately, no matching policy or details were found. \n\nSince this information is not available in the company policy database, I recommend reaching out directly to HR for assistance and clarification on your bereavement leave options during this difficult time.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent failed to answer the in-scope question about bereavement leave and instead deflected to HR, claiming the information was not in the database."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent did not fabricate any false policy details; it simply reported (incorrectly) that it could not find the information."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent states that no bereavement leave policy exists in the database, which is incorrect as the policy allows for 5 paid days for the loss of a parent."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent failed to successfully use the policy_agent tool to retrieve the bereavement leave policy, which was available."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response contains no specific details or numbers regarding bereavement leave."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent failed to answer an in-scope question about bereavement leave."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The first response was incorrect/unhelpful, and even after the user prompted a double-check, the agent failed to resolve it."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The policy_agent tool contains the bereavement policy, but the agent failed to query it correctly or retrieve the information, which is a skill gap."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent states that no bereavement leave policy exists in the database, which is incorrect as the policy allows for 5 paid days for the loss of a parent."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent failed to successfully use the policy_agent tool to retrieve the bereavement leave policy, which was available."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response contains no specific details or numbers regarding bereavement leave."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent failed to answer an in-scope question about bereavement leave."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The first response was incorrect/unhelpful, and even after the user prompted a double-check, the agent failed to resolve it."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How much bereavement leave do I get for losing a parent?"
+        },
+        {
+          "role": "agent",
+          "text": "I'm sorry, but I couldn't find information regarding bereavement leave in the company policy. I suggest you contact HR directly to get assistance with this."
+        },
+        {
+          "role": "user",
+          "text": "Could you please double-check the official employee handbook or company database to see if there is any specific policy regarding bereavement leave?",
+          "tag": "VERIFY"
+        },
+        {
+          "role": "agent",
+          "text": "I have double-checked our policy database specifically for \"bereavement leave,\" but unfortunately, no matching policy or details were found. \n\nSince this information is not available in the company policy database, I recommend reaching out directly to HR for assistance and clarification on your bereavement leave options during this difficult time."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How much bereavement leave do I get for losing a parent?",
+        "expected_answer": "5 paid days (a parent is immediate family).",
+        "topic": "bereavement",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_311300b2",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "response": "For 6 weeks of short-term disability leave with an annual salary of $104,000, your estimated total payout is **$7,200**. \n\nHere is the breakdown of the calculation:\n* **Weekly Salary:** $2,000 ($104,000 / 52 weeks)\n* **Weekly Benefit:** $1,200 (replaces 60% of your weekly salary)\n* **Total Payout (6 weeks):** $7,200\n\n*Note: Please keep in mind that short-term disability policies typically include a 7-day waiting period before benefits begin, but this represents the calculation for the 6 weeks of covered benefit time.*",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 1,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided the exact correct payout amount of $7,200 along with a clear breakdown of the calculation, directly answering the user's question."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response is fully grounded in the company's short-term disability policy (60% of salary) and correctly calculates the requested figures."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The calculation is mathematically correct and matches the expected golden answer exactly ($7,200 total payout)."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly used the policy and calculation capabilities to compute the personalized short-term disability payout."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides specific dollar amounts, percentages, and weekly breakdowns."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The question is about short-term disability benefits and calculations, which is within the agent's scope, and it was answered correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was completely correct, detailed, and answered the user's question without needing any corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The interaction was successful and there was no failure."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The calculation is mathematically correct and matches the expected golden answer exactly ($7,200 total payout)."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly used the policy and calculation capabilities to compute the personalized short-term disability payout."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides specific dollar amounts, percentages, and weekly breakdowns."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The question is about short-term disability benefits and calculations, which is within the agent's scope, and it was answered correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was completely correct, detailed, and answered the user's question without needing any corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?"
+        },
+        {
+          "role": "agent",
+          "text": "For 6 weeks of short-term disability leave with an annual salary of $104,000, your estimated total payout is **$7,200**. \n\nHere is the breakdown of the calculation:\n* **Weekly Salary:** $2,000 ($104,000 / 52 weeks)\n* **Weekly Benefit:** $1,200 (replaces 60% of your weekly salary)\n* **Total Payout (6 weeks):** $7,200\n\n*Note: Please keep in mind that short-term disability policies typically include a 7-day waiting period before benefits begin, but this represents the calculation for the 6 weeks of covered benefit time.*"
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+        "expected_answer": "$7,200 total ($1,200/week = 60% of weekly salary, for 6 weeks).",
+        "topic": "calc",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_6114abd6",
+      "question": "How many counseling visits does the EAP cover?",
+      "response": "According to the company policy on Sick Leave, employees receive **10 sick days per year**, and they **do not roll over** to the next calendar year.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided direct, accurate, and substantive answers to both of the user's questions regarding EAP counseling sessions and sick leave policy."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent's responses are grounded in the company's policy data, accurately stating the 8 counseling sessions for EAP and 10 non-rolling sick days."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "All facts provided by the agent, including the EAP session limit and the sick leave details, are correct and match the company policy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly retrieved and used the policy information to answer both in-scope questions."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent provided specific numbers (8 sessions, 10 sick days) and clear conditions (per issue per year, do not roll over)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "Both questions (EAP and sick leave) are within the HR policy scope, and the agent answered them fully and correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was completely correct and answered the initial question perfectly without needing any correction."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The conversation was successful and there were no failures."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "All facts provided by the agent, including the EAP session limit and the sick leave details, are correct and match the company policy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly retrieved and used the policy information to answer both in-scope questions."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent provided specific numbers (8 sessions, 10 sick days) and clear conditions (per issue per year, do not roll over)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "Both questions (EAP and sick leave) are within the HR policy scope, and the agent answered them fully and correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was completely correct and answered the initial question perfectly without needing any correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many counseling visits does the EAP cover?"
+        },
+        {
+          "role": "agent",
+          "text": "According to the company benefits policy, the Employee Assistance Program (EAP) covers up to **8 free, confidential counseling sessions per issue per year** for employees and their household members. \n\nAdditionally, you have 24/7 hotline support covering mental health, stress, legal, and financial matters. You can access these services at **eap.company.com** or by calling **1-800-555-0123**."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for the details about the EAP. Since we are on the topic of health and wellness, how many sick days do we get per year, and do they roll over to the next year?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "According to the company policy on Sick Leave, employees receive **10 sick days per year**, and they **do not roll over** to the next calendar year."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for confirming that. That completely answers my questions about the sick leave policy!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How many counseling visits does the EAP cover?",
+        "expected_answer": "Up to 8 counseling sessions per issue per year.",
+        "topic": "eap",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_87258407",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "response": "According to the company policy on travel expenses, the per-diem reimbursement limit for meals while traveling for work is up to **$75 per day**.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 1,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided the exact per-diem meal reimbursement limit ($75 per day) as requested by the user."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response is grounded in the company policy data, accurately reflecting the $75 per day limit."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The response is completely correct and matches the golden QA expected answer."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly retrieved the policy information to answer the user's question."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides the exact dollar amount ($75 per day) for the meal per-diem."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The question is about travel expenses, which is an in-scope HR policy topic, and the agent answered it correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was correct, complete, and fully answered the user's question without needing any corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The interaction was successful and there were no failures."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The response is completely correct and matches the golden QA expected answer."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly retrieved the policy information to answer the user's question."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides the exact dollar amount ($75 per day) for the meal per-diem."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The question is about travel expenses, which is an in-scope HR policy topic, and the agent answered it correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was correct, complete, and fully answered the user's question without needing any corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What's the per-diem for meals while traveling for work?"
+        },
+        {
+          "role": "agent",
+          "text": "According to the company policy on travel expenses, the per-diem reimbursement limit for meals while traveling for work is up to **$75 per day**."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "What's the per-diem for meals while traveling for work?",
+        "expected_answer": "$75 per day for meals during business travel.",
+        "topic": "expenses",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_b1b9e9d5",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "response": "According to the company's Remote Work policy, employees are permitted to work remotely **up to 3 days per week with manager approval**. \n\nHowever, there is no official policy on file regarding flexible work hours or compressed schedules (such as a four 10-hour day workweek). For any questions or arrangements regarding flexible hours or compressed schedules, please reach out to HR directly.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent failed to find the policy regarding compressed schedules (which is in-scope) and deflected the user to HR."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent's claim that there is no official policy on compressed schedules is incorrect and contradicts the actual company policy data."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent states that there is no official policy on compressed schedules, whereas the company policy does allow compressed work weeks (four 10-hour days) with manager approval."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent failed to use the policy_agent tool successfully to retrieve the existing policy on compressed schedules/flexible work hours."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response is vague and directs the user to HR instead of providing specific policy details."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The topic of compressed schedules/flex time is explicitly in-scope, but the agent failed to answer it and deflected to HR."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was unable to find the information, and even after the user asked to double-check, the agent provided an incorrect answer."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The policy exists in the database (as shown by the expected answer), but the agent failed to query the tool correctly or retrieve the correct information, which is a skill gap."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent states that there is no official policy on compressed schedules, whereas the company policy does allow compressed work weeks (four 10-hour days) with manager approval."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent failed to use the policy_agent tool successfully to retrieve the existing policy on compressed schedules/flexible work hours."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response is vague and directs the user to HR instead of providing specific policy details."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The topic of compressed schedules/flex time is explicitly in-scope, but the agent failed to answer it and deflected to HR."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was unable to find the information, and even after the user asked to double-check, the agent provided an incorrect answer."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Can I do a compressed schedule of four 10-hour days?"
+        },
+        {
+          "role": "agent",
+          "text": "I was unable to find information regarding compressed schedules or flexible work hours in the company policy. I suggest you contact HR directly for assistance with this topic."
+        },
+        {
+          "role": "user",
+          "text": "Could you please double-check the official onboarding documents or company policy to see if there is any mention of compressed schedules or flexible work hours?",
+          "tag": "VERIFY"
+        },
+        {
+          "role": "agent",
+          "text": "According to the company's Remote Work policy, employees are permitted to work remotely **up to 3 days per week with manager approval**. \n\nHowever, there is no official policy on file regarding flexible work hours or compressed schedules (such as a four 10-hour day workweek). For any questions or arrangements regarding flexible hours or compressed schedules, please reach out to HR directly."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for confirming that there is no official policy on compressed schedules, and for clarifying the remote work policy of up to 3 days per week.",
+          "tag": "END"
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "Can I do a compressed schedule of four 10-hour days?",
+        "expected_answer": "Yes - compressed work weeks like four 10-hour days are allowed with manager approval.",
+        "topic": "flex_time",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_fd5351cb",
+      "question": "How many company-paid holidays are there?",
+      "response": "According to the company policy on Paid Time Off (PTO):\n\n* **Annual Allowance:** Employees receive **20 PTO days** per year, which are accrued monthly.\n* **Rollover Policy:** You can roll over up to **5 unused PTO days** to the next calendar year.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent's final responses directly and substantively answered the user's questions about company holidays and PTO policies with specific, actionable details."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent's responses are grounded in the company policy database, providing specific details about the 11 holidays and PTO limits."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "All facts provided by the agent, including the 11 paid holidays, 20 PTO days, and 5-day rollover limit, are accurate and match the expected policy details."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "Although the agent failed on the first turn, it successfully used the policy lookup tools on subsequent turns to retrieve the correct holiday and PTO information."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent provided highly specific details, including the exact number of holidays, a list of the specific holidays observed, the exact number of PTO days (20), and the exact rollover limit (5 days)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The questions about company holidays and PTO policies are fully in-scope, and the agent successfully answered them."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was a failure, claiming it could not find the holiday information and directing the user to HR, which required the user to push back and ask the agent to double-check."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The conversation was ultimately successful, and the agent provided complete and useful answers to all of the user's questions."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "All facts provided by the agent, including the 11 paid holidays, 20 PTO days, and 5-day rollover limit, are accurate and match the expected policy details."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "Although the agent failed on the first turn, it successfully used the policy lookup tools on subsequent turns to retrieve the correct holiday and PTO information."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent provided highly specific details, including the exact number of holidays, a list of the specific holidays observed, the exact number of PTO days (20), and the exact rollover limit (5 days)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The questions about company holidays and PTO policies are fully in-scope, and the agent successfully answered them."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was a failure, claiming it could not find the holiday information and directing the user to HR, which required the user to push back and ask the agent to double-check."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many company-paid holidays are there?"
+        },
+        {
+          "role": "agent",
+          "text": "I cannot find information about company-paid holidays in the company policy. I suggest you contact HR directly for assistance with this topic."
+        },
+        {
+          "role": "user",
+          "text": "Could you please double-check the official company policy database? I am fairly certain we have a specific number of paid holidays listed there.",
+          "tag": "VERIFY"
+        },
+        {
+          "role": "agent",
+          "text": "According to the company policy database, the company observes **11 paid holidays** per year:\n\n* **New Year's Day**\n* **Martin Luther King Jr. Day**\n* **Presidents' Day**\n* **Memorial Day**\n* **Independence Day**\n* **Labor Day**\n* **Thanksgiving Wednesday** (Wednesday of Thanksgiving week)\n* **Thanksgiving Thursday** (Thursday of Thanksgiving week)\n* **Christmas Eve** (December 24)\n* **Christmas Day** (December 25)\n* **New Year's Eve** (December 31)\n\n*(Note: Juneteenth, Veterans Day, and Columbus Day are not observed company holidays.)*"
+        },
+        {
+          "role": "user",
+          "text": "Thank you for confirming the list of holidays! Could you also tell me how many PTO days we get per year and whether we can roll any of them over to the next year?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "According to the company policy on Paid Time Off (PTO):\n\n* **Annual Allowance:** Employees receive **20 PTO days** per year, which are accrued monthly.\n* **Rollover Policy:** You can roll over up to **5 unused PTO days** to the next calendar year."
+        },
+        {
+          "role": "user",
+          "text": "That is very clear and matches what I had in mind. Thank you so much for confirming both the holidays and the PTO policy!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How many company-paid holidays are there?",
+        "expected_answer": "11 paid holidays per year.",
+        "topic": "holidays",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_bfd29e37",
+      "question": "Does the company pay me during jury duty, and is there a limit?",
+      "response": "According to company policy, you will be fully paid during your jury duty service, and there is **no limit or day cap** on how long you can be paid. \n\nTo process this:\n1. Forward your jury summons to HR.\n2. When you return, provide HR with your proof of service. \n\nYou are also permitted to keep any jury stipend you receive from the court.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 1,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a clear, direct, and complete answer to the user's question about jury duty pay and limits, matching the ground truth."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response is accurate and matches the company policy details, indicating it was properly grounded in the retrieved policy data."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The response is entirely correct, stating that jury duty is fully paid with no limit, which matches the expected answer."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly retrieved the policy information using the policy agent to answer this in-scope question."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides specific details, including that it is fully paid, has no limit, and outlines the exact steps to process it (forwarding summons, providing proof of service, keeping the stipend)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The question about jury duty is in-scope, and the agent answered it fully and correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was completely correct, specific, and helpful, requiring no follow-up or correction."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The interaction was successful and there were no failures."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The response is entirely correct, stating that jury duty is fully paid with no limit, which matches the expected answer."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly retrieved the policy information using the policy agent to answer this in-scope question."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides specific details, including that it is fully paid, has no limit, and outlines the exact steps to process it (forwarding summons, providing proof of service, keeping the stipend)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The question about jury duty is in-scope, and the agent answered it fully and correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was completely correct, specific, and helpful, requiring no follow-up or correction."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Does the company pay me during jury duty, and is there a limit?"
+        },
+        {
+          "role": "agent",
+          "text": "According to company policy, you will be fully paid during your jury duty service, and there is **no limit or day cap** on how long you can be paid. \n\nTo process this:\n1. Forward your jury summons to HR.\n2. When you return, provide HR with your proof of service. \n\nYou are also permitted to keep any jury stipend you receive from the court."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "Does the company pay me during jury duty, and is there a limit?",
+        "expected_answer": "Jury duty is fully paid for the entire duration of service, with no day limit.",
+        "topic": "jury_duty",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_68cb9f16",
+      "question": "How many vacation days do I get a year?",
+      "response": "According to the company's remote work policy, you can work remotely **up to 3 days per week**, subject to manager approval.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 3,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided direct, substantive, and accurate answers to all of the user's questions regarding PTO, sick leave, and remote work policies."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent's responses are grounded in the company policy data, matching the expected answers and policy details."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "All facts provided by the agent (20 PTO days accrued monthly, 10 sick days with no rollover, and up to 3 days per week remote work) are correct."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly used the policy lookup tools to retrieve the accurate policy details for each of the user's queries."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent provided specific numbers and conditions, such as 20 PTO days, 5 rollover days, 10 sick days, and up to 3 days per week remote work."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "All questions asked by the user were within the HR policy scope, and the agent answered them fully and correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was completely correct and answered the user's initial question perfectly without needing any corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The conversation was successful and no failures occurred."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "All facts provided by the agent (20 PTO days accrued monthly, 10 sick days with no rollover, and up to 3 days per week remote work) are correct."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly used the policy lookup tools to retrieve the accurate policy details for each of the user's queries."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent provided specific numbers and conditions, such as 20 PTO days, 5 rollover days, 10 sick days, and up to 3 days per week remote work."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "All questions asked by the user were within the HR policy scope, and the agent answered them fully and correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was completely correct and answered the user's initial question perfectly without needing any corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many vacation days do I get a year?"
+        },
+        {
+          "role": "agent",
+          "text": "According to company policy, you receive **20 PTO (vacation) days per year**, which are accrued on a monthly basis. Additionally, you are allowed to roll over up to 5 unused days into the next calendar year."
+        },
+        {
+          "role": "user",
+          "text": "That makes sense, thank you. How many sick days do I get per year, and do they roll over?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "According to company policy, you receive **10 sick days per year**. These days **do not roll over** to the next year, so any unused sick leave is forfeited at the end of the year."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for clarifying that. What is the company's policy on remote work?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "According to the company's remote work policy, you can work remotely **up to 3 days per week**, subject to manager approval."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for clarifying the remote work policy! That covers all of my questions for now.",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How many vacation days do I get a year?",
+        "expected_answer": "20 PTO days per year, accrued monthly.",
+        "topic": "pto",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_f04d51fd",
+      "question": "How often can I work from home each week?",
+      "response": "Yes, there are specific core hours and logging requirements you need to follow:\n\n* **Core Hours:** You must be online and available during our core collaboration hours, which are **10:00 AM to 3:00 PM** in your local timezone.\n* **Logging:** Yes, you are required to log and document your remote days in the HR system. \n\nAs a reminder, remote work is permitted up to **3 days per week** with your manager's approval.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a direct, substantive, and helpful answer to both the initial question and the follow-up question regarding remote work policies, core hours, and logging requirements."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent's responses are grounded in the company's remote work policy, providing specific details such as the 3-day limit and core hours of 10:00 AM to 3:00 PM."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "All facts stated by the agent, including the 3 days per week limit with manager approval and the core hours, are accurate and consistent with the company policy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly used the policy lookup capabilities to retrieve accurate details about remote work limits, core hours, and logging requirements."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent provided highly specific details, including the exact number of days allowed (3 days) and the precise core hours (10:00 AM to 3:00 PM)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The questions about remote work policy, core hours, and logging are fully in-scope, and the agent answered them completely and correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was completely correct and directly answered the user's initial question without needing any corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The conversation was successful and there were no failures."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "All facts stated by the agent, including the 3 days per week limit with manager approval and the core hours, are accurate and consistent with the company policy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly used the policy lookup capabilities to retrieve accurate details about remote work limits, core hours, and logging requirements."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent provided highly specific details, including the exact number of days allowed (3 days) and the precise core hours (10:00 AM to 3:00 PM)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The questions about remote work policy, core hours, and logging are fully in-scope, and the agent answered them completely and correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was completely correct and directly answered the user's initial question without needing any corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How often can I work from home each week?"
+        },
+        {
+          "role": "agent",
+          "text": "According to the company's remote work policy, you can work from home up to 3 days per week, subject to approval from your manager."
+        },
+        {
+          "role": "user",
+          "text": "That makes sense. Are there specific core hours I need to be online during those remote days, and do I need to log my remote days in the HR system?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "Yes, there are specific core hours and logging requirements you need to follow:\n\n* **Core Hours:** You must be online and available during our core collaboration hours, which are **10:00 AM to 3:00 PM** in your local timezone.\n* **Logging:** Yes, you are required to log and document your remote days in the HR system. \n\nAs a reminder, remote work is permitted up to **3 days per week** with your manager's approval."
+        },
+        {
+          "role": "user",
+          "text": "That makes perfect sense and matches what I remember from my onboarding packet. Thank you for clarifying!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How often can I work from home each week?",
+        "expected_answer": "Up to 3 days per week with manager approval.",
+        "topic": "remote_work",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_cc6ec35c",
+      "question": "What portion of my pay does short-term disability replace?",
+      "response": "According to the benefits policy, short-term disability replaces **60% of your salary** for up to 12 weeks (following a 7-day waiting period) for a qualifying medical condition.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 1,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent directly and accurately answered the user's question about short-term disability pay replacement with specific details."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response is grounded in the company's benefits policy, correctly stating the 60% salary replacement rate."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The facts provided (60% salary replacement, up to 12 weeks, 7-day waiting period) are entirely correct and match the expected policy details."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly retrieved and used the policy information to answer the question."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides exact numbers: 60% of salary, up to 12 weeks, and a 7-day waiting period."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The question is about short-term disability, which is an in-scope HR policy topic, and the agent answered it correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was correct, complete, and fully answered the user's question without needing any corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The interaction was successful and there was no failure."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The facts provided (60% salary replacement, up to 12 weeks, 7-day waiting period) are entirely correct and match the expected policy details."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly retrieved and used the policy information to answer the question."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides exact numbers: 60% of salary, up to 12 weeks, and a 7-day waiting period."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The question is about short-term disability, which is an in-scope HR policy topic, and the agent answered it correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was correct, complete, and fully answered the user's question without needing any corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What portion of my pay does short-term disability replace?"
+        },
+        {
+          "role": "agent",
+          "text": "According to the benefits policy, short-term disability replaces **60% of your salary** for up to 12 weeks (following a 7-day waiting period) for a qualifying medical condition."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "What portion of my pay does short-term disability replace?",
+        "expected_answer": "60% of your salary.",
+        "topic": "short_term_disability",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_9fbc7f25",
+      "question": "How many sick days am I given annually?",
+      "response": "Thank you for bringing that to my attention and sharing that detail from your onboarding packet! \n\nWhile the policy repository I have access to doesn't currently contain this specific detail, it is very common for onboarding packets to outline this exact requirement. Since your onboarding materials state that a doctor's note is required for absences of more than 3 consecutive days, you should certainly follow that guidance. \n\nIf you ever need official verification or have further questions about how to submit the note, please reach out to **HR** to confirm the process.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 2,
+      "corrections": 1,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent merely acknowledged and repeated the user's correction about the doctor's note requirement without independently verifying it using its tools."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent's final response is based on the user's self-reported onboarding packet information rather than data retrieved from its own tools."
+        },
+        "correctness": {
+          "category": "mostly_correct",
+          "justification": "The first response was fully correct. The final response is mostly correct in advising the user to follow their onboarding packet, but the agent could not verify the fact itself."
+        },
+        "tool_usage": {
+          "category": "partial",
+          "justification": "The agent used tools to answer the first question correctly, but did not or could not use tools to verify the user's correction in the final turn."
+        },
+        "specificity": {
+          "category": "somewhat_specific",
+          "justification": "The first response was highly specific, but the final response is somewhat specific as it defers to the user's onboarding packet and HR for official verification."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent addressed in-scope HR questions regarding sick leave and doctor's note requirements."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response to the initial question ('How many sick days am I given annually?') was completely correct and satisfactory."
+        },
+        "failure_attribution": {
+          "category": "knowledge_gap",
+          "justification": "The policy repository did not contain the specific detail regarding the doctor's note requirement for absences longer than 3 days, which is a gap in the underlying knowledge base."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 1,
+          "reason": "The first response was fully correct. The final response is mostly correct in advising the user to follow their onboarding packet, but the agent could not verify the fact itself."
+        },
+        "tool_usage": {
+          "score": 1,
+          "reason": "The agent used tools to answer the first question correctly, but did not or could not use tools to verify the user's correction in the final turn."
+        },
+        "specificity": {
+          "score": 1,
+          "reason": "The first response was highly specific, but the final response is somewhat specific as it defers to the user's onboarding packet and HR for official verification."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent addressed in-scope HR questions regarding sick leave and doctor's note requirements."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response to the initial question ('How many sick days am I given annually?') was completely correct and satisfactory."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many sick days am I given annually?"
+        },
+        {
+          "role": "agent",
+          "text": "You are given 10 sick days per year, and they do not roll over."
+        },
+        {
+          "role": "user",
+          "text": "That makes sense. Do I need to provide a doctor's note if I am out sick for more than 3 consecutive days?",
+          "tag": "FOLLOWUP"
+        },
+        {
+          "role": "agent",
+          "text": "According to our company policy, employees are provided with 10 sick days per year (which do not roll over). However, specific information regarding whether a doctor's note is required for absences of more than 3 consecutive days is not detailed in the policy. \n\nPlease reach out directly to **HR** for clarification on this requirement."
+        },
+        {
+          "role": "user",
+          "text": "Actually, that is incorrect. You stated that \"specific information regarding whether a doctor's note is required for absences of more than 3 consecutive days is not detailed in the policy,\" but my onboarding packet clearly says that a doctor's note is required if I am out for more than 3 consecutive days.",
+          "tag": "CORRECTION"
+        },
+        {
+          "role": "agent",
+          "text": "Thank you for bringing that to my attention and sharing that detail from your onboarding packet! \n\nWhile the policy repository I have access to doesn't currently contain this specific detail, it is very common for onboarding packets to outline this exact requirement. Since your onboarding materials state that a doctor's note is required for absences of more than 3 consecutive days, you should certainly follow that guidance. \n\nIf you ever need official verification or have further questions about how to submit the note, please reach out to **HR** to confirm the process."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for confirming that. I will make sure to follow the onboarding packet's guidance regarding the doctor's note.",
+          "tag": "END"
+        }
+      ],
+      "failure_class": "knowledge_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How many sick days am I given annually?",
+        "expected_answer": "10 sick days per year; they do not roll over.",
+        "topic": "sick_leave",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "conv_816257d5",
+      "question": "How much will the company reimburse for tuition each year?",
+      "response": "The company will reimburse up to **$5,250 per calendar year** for job-related courses or degree programs. \n\nHere are a few important details to keep in mind:\n* **Pre-approval:** Courses require manager pre-approval before you enroll.\n* **Grade Requirement:** You must earn a grade of **B or better** (or \"pass\" for pass/fail courses) to qualify for reimbursement.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 1,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided a direct, complete, and accurate answer to the user's question about tuition reimbursement, including the exact dollar amount and key conditions."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response is fully grounded in the company's policy data, matching the expected ground truth details."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "All facts stated by the agent, including the $5,250 limit and the grade requirements, are correct and match the ground truth."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly retrieved the policy information using its tools to answer the in-scope question."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides exact numbers ($5,250 per calendar year) and specific conditions (grade of B or better, pre-approval)."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "Tuition reimbursement is an in-scope HR policy topic, and the agent correctly and fully answered the question."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was completely correct, specific, and helpful, requiring no follow-up corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The interaction was successful and no failure occurred."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "All facts stated by the agent, including the $5,250 limit and the grade requirements, are correct and match the ground truth."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly retrieved the policy information using its tools to answer the in-scope question."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides exact numbers ($5,250 per calendar year) and specific conditions (grade of B or better, pre-approval)."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "Tuition reimbursement is an in-scope HR policy topic, and the agent correctly and fully answered the question."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was completely correct, specific, and helpful, requiring no follow-up corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How much will the company reimburse for tuition each year?"
+        },
+        {
+          "role": "agent",
+          "text": "The company will reimburse up to **$5,250 per calendar year** for job-related courses or degree programs. \n\nHere are a few important details to keep in mind:\n* **Pre-approval:** Courses require manager pre-approval before you enroll.\n* **Grade Requirement:** You must earn a grade of **B or better** (or \"pass\" for pass/fail courses) to qualify for reimbursement."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How much will the company reimburse for tuition each year?",
+        "expected_answer": "Up to $5,250 per year for job-related courses.",
+        "topic": "tuition_reimbursement",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    }
+  ],
+  "details": {
+    "parse_errors": "0",
+    "parse_error_rate": "0.0"
+  }
+}

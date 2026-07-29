@@ -1,35 +1,34 @@
-# Deployed Lite Run Summary — PR #57 (2026-07-29, aligned)
+# Deployed Lite Run Summary — PR #58 (2026-07-29, fully aligned)
 
-This run uses the SAME 13-question set as the local lite profile at
-every stage (the question-set alignment fix in PR #56).
+Every component matches the local lite profile: the same 13-question
+set (`two_defect_lite.json`) for evolution and candidate scoring, the
+same evolution parameters (1 round, 2 candidates), and
+`gemini-3.5-flash` for the supervisor, both specialists, the analyst
+fleet, and the LLM judge.
 
-- Cloud Run job execution span: **39m 05s** (18:32:39 -> 19:11:44 UTC)
-- Result: V0 15.4% -> winner 100.0% on the run's 13-session slice
-- Publish gate: 10 passed, 0 failed (full CI-equivalent suite,
-  in-container) -> registry push -> PR #57 opened by the job
-- PR checks: Golden Eval, Load Test — green
-- Outcome: PR closed as the demo sample; registry rolled back to V0
+- Cloud Run job execution span: **32m 52s** (22:59:19 -> 23:32:11 UTC)
+- Pre-flight baseline: V0 7.4% on 27 REAL BigQuery sessions (a 6-hour
+  window of live traffic — the production detection path; earlier
+  sample runs fell back to generated traffic when the window was empty)
+- Candidate scoring (13-question set, same judge as local):
+  candidate_1 38.5%, candidate_2 76.9% -> winner 76.9%
+- Publish gate: 10 passed, 0 failed -> registry push -> PR #58 opened
+  by the job
 
 ## Where the time goes (from the job log timestamps)
 
 | Stage | Duration |
 |---|---|
-| Container provisioning + start | ~45s |
-| Pre-flight traffic (13 sessions against deployed V0, via Agent Engine) | 10m 17s |
-| Pre-flight scoring (LLM judge) | 55s |
-| Evolution: analyst fleet + candidate generation + candidate scoring | ~13m |
-| Winner re-validation + snapshots + version compare | ~12m |
-| Publish gate (full golden suite) | 1m 20s |
-| Registry push + PR creation | ~30s |
+| Container provisioning + start | ~1m 13s |
+| Pre-flight (judge 27 BigQuery sessions — no traffic generation) | ~2m 45s |
+| Evolution: analyst fleet + candidates + scoring on 13 questions | ~26m |
+| Publish gate (full golden suite) | 1m 50s |
+| Registry push + PR creation | ~25s |
 
-Comparison with the pre-alignment run (PR #51): 91m 27s total on
-55-session batches. Alignment brings deployed lite to roughly local
-lite's wall time (~37 min); the residual gap is Agent Engine serve
-latency on every conversation turn (~48s vs ~23s per conversation —
-small batches use the concurrency budget less efficiently).
+## Why these numbers are credible
 
-Note on baselines: the deployed pre-flight judge scores whole 4-turn
-sessions without golden-answer matching (a known SDK limitation on
-the BigQuery path), so its V0 percentage is stricter than the local
-golden-matched scorer's and the two baselines are not directly
-comparable. The winner percentages are comparable (both saturate).
+The judge scores real spreads now (38.5% vs 76.9% between candidates,
+rates summing to 100%) instead of the saturated or zeroed values seen
+while the scoring endpoint and judge model were misaligned. The
+winner's 76.9% is a same-instrument number: the identical scorer,
+model, and question set that local runs use.
