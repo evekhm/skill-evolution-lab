@@ -22,7 +22,9 @@ Required environment configuration:
 - `PROJECT_ID`: GCP Project ID.
 - `REGION`: GCP Region (default: `us-central1`).
 - `DATASET_ID`: BigQuery dataset for agent logs.
-- `GITHUB_TOKEN`: Requires `repo` and `pull_request` scopes for issue/PR creation.
+- GitHub credential for issue/PR creation (`repo` scope): `GITHUB_TOKEN` or
+  `GH_TOKEN` env var, or the `github-pat` Secret Manager secret — the code
+  accepts any of the three. Not part of `.env.example`.
 
 ## Core Execution Commands
 Execute these commands from the repository root:
@@ -61,7 +63,7 @@ bash scripts/deploy/deploy_gcp.sh
 ```
 
 ## Evolution Loop Subsystem
-1. Logs are written to BigQuery `agent_analytics` dataset continuously.
+1. Logs are written continuously to the BigQuery `agent_logs` dataset (`agent_events` table).
 2. `quality_agent` queries BigQuery, scoring traces against `eval/data/golden_evals.json`. If grade < threshold, files a GitHub Issue containing the trace payload.
 3. `skill_evolution_agent` scrapes open GitHub Issues. It spawns independent sub-agents to trace the failure, mutates the candidate's `SKILL.md` and generates a GitHub Pull Request.
 4. CI Actions (`.github/workflows/eval.yml`) automatically test the new `SKILL.md` budget.

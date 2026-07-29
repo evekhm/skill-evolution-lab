@@ -170,7 +170,7 @@ Should print `True`.
 
 #### Tools and auth
 
-- A Google Cloud project with **Vertex AI API** and **Vertex AI Agent Platform API** enabled.
+- A Google Cloud project with the **Vertex AI API** (`aiplatform.googleapis.com`) enabled — `scripts/setup/setup_gcp.sh` enables it along with BigQuery and Cloud Run.
 - `gcloud` CLI installed and authenticated:
   ```bash
   gcloud auth login
@@ -1190,7 +1190,6 @@ revision, and **GitHub** holds the review gate between the two.
 
 ### Serving path (what runs where)
 
-```text
 ```mermaid
 flowchart TD
     User([Gemini Enterprise chat UI<br><i>or Traffic Generator</i>]) -->|Query| Supervisor[Knowledge Supervisor<br>Vertex AI Agent Engine]
