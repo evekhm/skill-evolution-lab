@@ -690,6 +690,364 @@ The agent queries BigQuery for sessions tagged with the current
 `agent_version`, scores them, evolves the skill, and creates a PR
 -- all autonomously.
 
+## Deployed Walkthrough (Steps 1-7)
+
+Steps 1-7 run the evolution loop by hand against the deployed stack,
+one stage at a time, each with its own verification. The one-command
+equivalents live in the repo README under "Run the Demo".
+
+### Step 1 — Reset to the V0 baseline
+
+The BigQuery table holds every conversation from every source — old
+demo runs, scheduled traffic, other experiments — and is never
+cleaned. Isolation comes from labels instead: Step 2 stamps
+`$DEMO_LABEL` on every conversation it generates, and each later
+stage selects sessions by that label, so the rest of the table is
+invisible to your run. Local runs carry the label inside each
+trace's `custom_tags`; deployed runs record it in the `run_labels`
+side table; every selector matches both.
+
+1. **Pick the demo label** (one choice, threads the whole demo):
+
+   ```bash
+   source .env
+   export DEMO_LABEL="experiment=round1"   # any k=v you like
+   ```
+
+2. **V0 skills everywhere** — files, registry latest revision, and the
+   live agents (this restarts policy + supervisor):
+
+   ```bash
+   bash scripts/demo/skill_evolution/rollback_demo.sh
+   ```
+
+   Fetch the skill the agents now serve straight from the Skill
+   Registry and display it:
+
+   ```bash
+   uv run python eval/skill_evolution/registry_sync.py verify-read --agent policy_agent
+   ```
+   Expected output:
+
+   ```text
+   OK: GetSkill(ks-policy-agent) revision=<id> SKILL.md=~800 chars
+   --- SKILL.md head ---
+   ...
+   metadata:
+     version: "0"
+   ```
+
+   `version: "1"` here means an evolved revision is still newest —
+   re-run the rollback.
+
+
+3.  **Verify the starting point:**
+
+Check what is in BigQuery for the provided label. The label is new,
+so its slice must be empty — 0 sessions confirms a clean starting point,
+no matter what else the table holds:
+
+```bash
+EVOLUTION_TRACE_LABELS=$DEMO_LABEL bash scripts/test/show_traces.sh
+```
+
+Expected output:
+```text
++----------+--------+----------+--------+
+| sessions | events | earliest | latest |
++----------+--------+----------+--------+
+|        0 |      0 |     NULL |   NULL |
++----------+--------+----------+--------+
+```
+
+Ping the H&R Agent directly via the HTTP end point:
+
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+```
+
+Expect V0 defect behavior: a deflection ("contact HR"). A grounded
+$75/day answer means an evolved revision is live — re-run the
+rollback.
+
+
+**Reset the slice.** To delete everything recorded under the current
+label — its BigQuery events plus `run_labels` rows, nothing else:
+
+```bash
+bash scripts/demo/skill_evolution/cleanup_label.sh $DEMO_LABEL
+```
+
+### Step 2 — Generate labeled traffic
+
+Send labeled conversations (amount controlled by `limit` argument) to the deployed V0 supervisor — the
+same endpoint real users hit. Their failures are the raw material
+the evolution job learns from in Step 3:
+
+```bash
+bash scripts/demo/generate_traffic.sh \
+  --from-file eval/data/questions/two_defect_evolve.json \
+  --limit 8 --label $DEMO_LABEL --concurrency 5
+```
+- Targets the deployed Agent Engine supervisor by default; add
+  `--local` to run the identical demo on the in-process local runner.
+- `--from-file` — the set of
+  [`55 questions`](../../eval/data/questions/two_defect_evolve.json) to read from.
+- `--limit 8` — run only the first 8 questions. One question = one
+  conversation = one BigQuery session. Omitted, all 55 run.
+- `--label $DEMO_LABEL` — stamps every conversation to create a
+  labeled slice: deployed runs record it in the `run_labels` side
+  table, local runs carry it inside each trace's `custom_tags`;
+  every selector matches both.
+
+While the run streams you'll see each simulated user turn logged
+with a strategy tag, e.g. `Simulator [CORRECTION]: Actually, my
+onboarding packet says...`:
+
+- The tags — `FOLLOWUP` (next question), `SPECIFICS` (press for
+  exact numbers), `VERIFY` (ask to check the policy), `CORRECTION`
+  (push back with a golden fact), `END` (done) — are the simulator's
+  own per-turn decisions; `END` is what closes a conversation.
+- Because the simulator must decide its strategy anyway, the tag is
+  ground truth and costs nothing; the `correction_rate` /
+  `verify_rate` printed at the end of the run come straight from it.
+- The quality report can also tag turns with an LLM pass
+  (`--tag-turns`). That is inference — one judge call per turn, and
+  it can misread a polite correction — but it works on organic
+  traffic that arrives untagged. Rule of thumb: generated traffic
+  keeps its generator tags; real user traffic gets report-side
+  tagging; when comparing the two on one dashboard, tag both with
+  the report path so the bias is uniform.
+
+Expected in the log — the label confirmed at start, the side-table
+write at the end:
+
+```text
+=== Batch Traffic (remote (deployed)) ===
+  Questions:   eval/data/questions/two_defect_evolve.json (limit: 8)
+  Concurrency: 5
+  Max turns:   4
+  Labels:      experiment=round1
+  Output:      eval/runs/2026-07-20_205629/traffic.json
+...
+
+============================================================
+Q: How often can I work from home each week?
+   Flow: FOLLOWUP → CORRECTION → END
+   Turns: 4, Tools: 1, Corrections: 1, Verifications: 0
+   👤: How often can I work from home each week?
+   🤖: You can work remotely up to 3 days per week with manager approval.
+   👤 [FOLLOWUP]: That's clear, thank you! What are the core hours I need to be available when working remotely?
+   🤖: I do not have information about core hours. Please contact HR for details on this.
+   👤 [CORRECTION]: I know that core hours are 10am-3pm. Can you confirm this information?
+   🤖: I cannot confirm this information. As I mentioned, I do not have information about core hours. Please contact HR for details on this.
+   👤 [END]: Thanks, that helps!
+
+============================================================
+  MULTI-TURN CONVERSATION RESULTS
+============================================================
+  Conversations:     8
+  Duration:          107.6s
+  Avg user turns:    2.8
+  Avg tool calls:    0.5
+  Corrections:       2 (25.0% of conversations)
+  Verifications:     2 (25.0% of conversations)
+  Errors:            0
+============================================================
+20:58:28 [INFO] Recorded labels for 8 deployed sessions in skill-evolution-lab.agent_logs.run_labels: {'run_id': '20260720-205631', 'traffic_source': 'generator', 'experiment': 'round1'}
+20:58:28 [INFO] Results saved to eval/runs/2026-07-20_205629/traffic.json
+```
+
+To retrieve the new traces:
+```bash
+bash scripts/test/show_traces.sh                      
+EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
+  bash scripts/test/show_traces.sh         
+```
+
+
+### Step 3 — Run the evolution job
+
+```bash
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,$DEMO_LABEL,--mode,policy_agent,--rounds,1,--candidates,2,--quick"
+```
+
+- `--full-loop` — the whole pipeline in one execution: fetch traces,
+  judge, analysts, candidates, registry push + PR.
+- `--trace-labels $DEMO_LABEL` — binding: evolve ONLY on your labeled
+  slice; the selector lands in `trace_selector.json` and the PR body.
+- `--mode policy_agent` — evolve just this agent, and skip the ~5-min
+  bottleneck classification (you already named the target).
+- `--rounds 1` — one evolution round, no agent-decided round 2.
+- `--candidates 2` — two competing skills, best one wins. Each extra
+  candidate costs a full validation replay (several minutes); 2 is
+  the lightweight demo setting, 3+ buys better odds.
+- `--quick` — the lite profile's reduced settings (13-question
+  training set, proportionate failure threshold); conversation depth
+  (4 turns) and models stay production-grade.
+- `--wait` — stream until the job finishes; drop it to run async.
+
+Drop all args for the full agent-decided run (hours — what the weekly
+tick and the issue-threshold dispatcher execute; cadence is set via
+`EVOLUTION_SCHEDULE`).
+
+Inside one run:
+
+| Stage | What happens | Verify |
+|-------|--------------|--------|
+| Pre-flight | Builds a quality report from real BigQuery traces (`QUALITY_SOURCE=bigquery`); falls back to generated traffic below `MIN_SESSIONS` | before the run, `bash scripts/test/show_traces.sh` previews the slice; job log: `Pre-flight quality report from BigQuery: N sessions` |
+| Gate | Proceeds only when there are enough failures to learn from | log: `should_evolve: True, failures: N` |
+| Bottleneck | Classifies each failure by source agent and picks which skill(s) to evolve | log: `Skipped classification: EVOLUTION_TARGET_AGENTS=...` when `--mode` names the target |
+| Evolution | Error analysts study the failures, propose patches, and best-of-N candidate skills are scored on the evolve set | log: `[k/N] [error] ... -> patch`, `Best-of-N complete`, `Candidate k scored X% meaningful` |
+| Publish | The winning skills are pushed to the Skill Registry as new revisions — only after passing the full CI-equivalent golden suite in-container (`refused_by_gate` otherwise) | `registry_sync.py revisions --agent supervisor` |
+| Regression gate | Failures the winning skill RESOLVED are extracted into `eval_cases.json` + `golden_evals.json` (capped, deduped) — the CI gate grows each cycle, so a future skill that re-breaks them cannot merge | log: `Extracted N regression case(s)` |
+| PR | A pull request with the evolved `SKILL.md` AND the new regression cases opens on the repo (token-cloned inside the job container) | `gh pr list` — the title carries baseline% -> evolved% |
+
+### Step 4 — Review the PR
+
+The PR body carries the baseline quality numbers; the diff is the
+evolved skill plus any regression cases extracted from failures this
+skill resolved (they parametrize straight into the gate tests, so the
+PR's own CI run already exercises them). CI runs the Eval & Load Test Gate on it, and the
+gate is version-aware: skills at version 0 are held to baseline
+expectations, while an evolved skill (version >= 1) must pass the full
+routing, fan-out, and quality assertions.
+
+The gate rejects real candidates. In live runs, evolved supervisor skills repeatedly
+scored 78-86% on the evolve set by copying observed facts into their
+own summary and answering directly -- which broke the routing contract,
+so the gate refused them. A refused candidate stays in the registry
+history and in the PR record; the next evolution round learns from a
+wider window.
+
+**What a refusal looks like on GitHub.** The Actions tab shows a red
+"Eval & Load Test Gate" run on the PR's `skill-evolution/*` branch, and
+branch protection blocks the merge. That red run is
+the audit record of why a skill was denied deployment. Close the PR to
+retire it (the red run stays in history), or fix and push to the PR
+branch to re-adjudicate. Red on main, by contrast, always indicates a real
+problem -- with one caveat: the gate shares the project's model quota
+with deploys and evolution jobs, so a gate run that overlaps one can
+fail on RESOURCE_EXHAUSTED; re-run it once the project is quiet.
+
+**Two layers keep refused-class skills in check:**
+
+- **In-run pre-check** -- when the evolution job scores a supervisor
+  candidate, it runs the same routing/fan-out asserts the gate will run
+  on the PR (`score_candidate` -> `_golden_gate_check`). A candidate
+  that fails has its score zeroed, so best-of-N selection drops it
+  before a PR ever opens.
+- **CI gate on the PR** -- the independent adjudication, version-aware:
+  evolved skills (version >= 1) face the full hard assertions.
+
+**Scoping flags are enforced, not advisory.** `--mode <agent>`, `--rounds N`, and
+`--candidates N` are enforced at the tool layer (env vars
+`EVOLUTION_TARGET_AGENTS`, `EVOLUTION_MAX_ROUNDS`,
+`EVOLUTION_CANDIDATES`), so the orchestrating agent can neither widen
+the target set, add rounds, nor grow the candidate pool beyond what
+you asked for.
+
+### Step 5 — Merge to activate
+
+```bash
+gh pr merge <PR_NUMBER> --merge
+
+# 1. CI ran and is green
+gh run list --workflow "Deploy to GCP" --limit 1
+# 2. Registry sync reconciled the merged skill (SKIP = job already pushed it)
+gh run view <run-id> --log | grep -E "SKIP|UPDATE|CREATE"
+# 3. Agents serve the merged revision
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+# 4. A question V0 deflected now gets a grounded answer
+bash scripts/test/smoke_test_deployed.sh
+```
+
+Merging triggers `deploy.yml`: it re-seeds the registry from the merged
+`SKILL.md` (normally a SKIP, because the job already pushed that exact
+revision -- the SKIP is the git-registry reconciliation proof), then
+redeploys the agents, which fetch the merged revision at startup.
+
+### Step 6 — Verify the fix
+
+The question that deflected in Step 1 now gets the grounded answer:
+
+```bash
+bash scripts/test/smoke_test_deployed.sh -q "What is the meal reimbursement limit?"
+# Step 1 (V0): "...please contact HR"
+# Now (v1):    "$75/day during business travel..."
+```
+
+Also confirm the agents fetched the merged revision:
+
+```bash
+gcloud logging read 'textPayload:"Loaded skill from registry"' \
+  --project=$PROJECT_ID --freshness=15m --limit=4
+```
+
+### Step 7 — Roll back
+
+```bash
+bash scripts/demo/skill_evolution/rollback_demo.sh
+```
+
+Resets the `SKILL.md` files to V0, republishes V0 to the Skill Registry
+as the newest revision (the registry is append-only, so the evolved
+revisions stay in history), restarts the policy agent and supervisor so
+they serve V0 immediately, and prints the verification. Flags:
+`--baseline stub|two-defect` (default `two-defect`) and
+`--skip-redeploy` (agents pick up V0 on their next restart instead).
+
+### Choosing which traces to evolve on (labels)
+
+Every BigQuery event carries `custom_tags` — but WHO stamps them
+depends on who logs the event, because plugin tags are fixed at agent
+startup:
+
+- **Deployed traffic** (through Agent Engine) is logged by the
+  *agents'* plugins: `agent_version` (skill frontmatter) +
+  `sw_version` (git sha) + whatever `TRACE_LABELS` the deploy set.
+  Per-run labels cannot be attached from the outside; slice deployed
+  traffic by version + time window (or redeploy with a label).
+- **Local-runner traffic** (`--local`, also used by candidate scoring)
+  is logged by the *generator's* plugin, which adds
+  `traffic_source=generator` and a per-invocation `run_id`
+  (verified live: seed -> `run_id` queryable in BigQuery ->
+  `--trace-labels run_id=...` selects exactly that slice). Add your
+  own with `TRACE_LABELS="k=v,k2=v2"`.
+
+The evolution job selects its input slice with the same vocabulary:
+
+```bash
+# Re-run the scheduled job on demand (default selector: current version)
+gcloud scheduler jobs run skill-evolution-weekly --location $REGION
+
+# Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
+uv run python -m agents.workflow.traffic_generator.main \
+  --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
+# (the run prints its run_id label)
+gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+  --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
+```
+
+**Verify before you evolve** — preview exactly what the pre-flight
+will fetch (same env vars the job reads), or see the label
+distribution of everything in the table:
+
+```bash
+bash scripts/test/show_traces.sh                # label distribution
+EVOLUTION_TRACE_LABELS=run_id=<id> EVAL_TIME_PERIOD=24h \
+  bash scripts/test/show_traces.sh   # the exact slice, with sample sessions
+```
+
+The selector (window, version, labels, app) is written to the run
+directory and printed in the PR body, so every evolved skill records
+exactly which traces taught it. This replaces per-round tables: one
+table, label-sliced, and longitudinal quality-by-version queries stay
+intact.
+
 ## Key Artifacts
 
 | Artifact | Path |

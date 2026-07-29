@@ -106,23 +106,38 @@ full narrative with diagrams.
 
 ## 2. Architecture
 
+```mermaid
+flowchart TD
+    User([Gemini Enterprise chat UI<br><i>or Traffic Generator</i>]) -->|Query| Supervisor[Knowledge Supervisor<br>Vertex AI Agent Engine]
+
+    Supervisor -->|AgentTool over A2A| PolicyAgent[Policy Agent<br>Cloud Run]
+    Supervisor -->|AgentTool over A2A| HrCalc[HR Calculator<br>Cloud Run]
+    Supervisor -->|Agent2Agent locally| BenefitsAgent[Benefits Agent<br><i>in-process locally</i>]
+
+    Supervisor -.->|Log Traces| BQ[(BigQuery<br>agent_events)]
+    Supervisor -.->|Fetch SKILL.md| SkillRegistry[(Skill Registry)]
+    PolicyAgent -.->|Fetch SKILL.md| SkillRegistry
+    BenefitsAgent -.->|Fetch SKILL.md| SkillRegistry
 ```
-                        User / Load Test
-                              |
-                    +---------v----------+
-                    | Knowledge Supervisor|  <- Agent Engine
-                    |  (routes queries)   |
-                    |  + BQ Analytics     |
-                    +--------+-----------+
-                             |
-                    A2A      |      A2A
-               +-------------+-------------+
-               |                           |
-      +--------v--------+       +---------v---------+
-      |  Policy Agent   |       |   HR Calculator   |  <- Cloud Run
-      | (company policy)|       | (dates, balances) |
-      +-----------------+       +-------------------+
-```
+
+- The **supervisor** is the root agent on Vertex AI Agent Engine. It
+  wraps each specialist as an `AgentTool`, so a compound question fans
+  out to several specialists in one turn and the answers are
+  synthesized into a single response.
+- **Policy Agent** answers company-policy questions on Cloud Run behind
+  an A2A endpoint, using tool-based lookups. Its `SKILL.md` is the main
+  evolution target. A **Benefits Agent** skill is seeded in the registry
+  and joins the topology when its service is deployed.
+- **HR Calculator** computes PTO balances and working days with
+  deterministic tools; it has no skill to evolve.
+- Skill-bearing agents call the **Skill Registry** at startup
+  (`GetSkill`, newest revision) and fall back to the packaged file on
+  any failure. The startup log line
+  `Loaded skill from registry <id> (revision <sha>)` is the live proof
+  of which revision serves traffic.
+- The supervisor's **BigQuery Agent Analytics plugin** logs every event
+  to the `agent_events` table, tagged with the skill version from the
+  SKILL.md frontmatter (`custom_tags.agent_version`).
 
 ### Production Agents
 
@@ -148,6 +163,167 @@ full narrative with diagrams.
 | BigQuery Conversational Analytics | Natural language queries over session history (regression detection, similar query lookup) |
 | Traffic Generator | Generate + run synthetic traffic (Cloud Run Job / local) |
 | Cloud Scheduler | Triggers Quality Agent daily at 08:00 UTC |
+
+### How a question flows (Agent Engine, AgentTool, A2A)
+
+Three pieces of vocabulary, then the lifecycle:
+
+- **Vertex AI Agent Engine** is the managed runtime hosting the root
+  agent: it owns sessions (multi-turn memory), scaling, and the
+  `stream_query` API that clients call. The supervisor lives here so
+  conversations survive across turns without any server of our own.
+- **A2A (Agent2Agent protocol)** is the open HTTP protocol agents use
+  to call each other. Each specialist is an independent Cloud Run
+  service exposing an A2A endpoint with an agent card describing what
+  it can do — the supervisor talks to specialists the same way any
+  external agent could.
+- **AgentTool** is the ADK wrapper that presents a whole remote agent
+  to the supervisor's LLM as a callable tool. Routing is therefore implemented as
+  tool-calling: the model picks specialists the way it picks any tool,
+  which lets it call several in a single turn.
+
+Lifecycle of one compound question ("Compare my meal limit with the
+HSA contribution"):
+
+1. The client calls the supervisor's Agent Engine endpoint
+   (`stream_query`) inside a session.
+2. `knowledge_supervisor`'s LLM reads its `SKILL.md` (fetched from the
+   Skill Registry at startup) and plans: this needs `policy_agent`
+   (meal limit) AND `benefits_agent` (HSA).
+3. It emits two AgentTool calls. Each becomes an A2A HTTP request to
+   that specialist's Cloud Run service.
+4. Each specialist is a full ADK agent of its own: it loads its own
+   `SKILL.md`, runs its own LLM turn, calls its own tools
+   (`lookup_company_policy`, calculators), and returns its answer over
+   A2A.
+5. The supervisor synthesizes the specialist answers into one response
+   and streams it back.
+6. Every hop — supervisor turns, tool calls, specialist sessions — is
+   logged to BigQuery by the analytics plugins, version- and
+   label-tagged. This trace is what the quality and evolution agents
+   read.
+
+Why this topology: specialists deploy, scale, and **evolve
+independently** (each has its own SKILL.md and registry entry);
+failures surface at an ownership boundary (the bottleneck stage
+attributes each failure to supervisor routing vs a specialist's
+knowledge); and the supervisor stays thin — a router with conventions
+rather than an agent that knows everything.
+
+### The evolution loop, stage by stage
+
+1. **Traffic** -- real users (or the traffic generator's simulated
+   users) talk to the deployed supervisor; specialists answer through
+   it.
+2. **Traces** -- every turn lands in BigQuery, version-tagged, so each
+   evolution round analyzes only traffic from the currently deployed
+   skill.
+3. **Scheduled analysis** -- Cloud Scheduler fires the evolution job.
+   It builds a quality report from the BigQuery window
+   (`QUALITY_SOURCE=bigquery`), proceeds only past a failure-count
+   gate, attributes failures to the responsible agent, runs the
+   analyst fleet, and scores best-of-N candidate skills on the evolve
+   set.
+4. **Publish** -- winning skills are pushed to the Skill Registry as
+   new revisions, and a pull request with the evolved `SKILL.md` opens
+   on this repo (the job token-clones the repo inside its container).
+5. **CI adjudicates** -- the Eval & Load Test Gate runs golden evals
+   and a load test on the PR. The gate is version-aware: baseline V0
+   skills are held to baseline expectations, while an evolved skill
+   (version >= 1) must pass the full routing, fan-out, and quality
+   assertions. A candidate that gamed its evolve-set score is rejected here,
+   in the PR record, before it ever serves traffic.
+6. **Merge activates** -- merging triggers `deploy.yml`: it re-seeds
+   the registry from the merged `SKILL.md` (normally a SKIP because
+   the job already pushed that exact revision -- the SKIP is the
+   git-to-registry reconciliation proof), then redeploys the agents.
+7. **The loop closes** -- restarted agents fetch the merged revision,
+   the next traffic window measures the new version under its own
+   `agent_version` tag, and the next scheduled run starts from clean
+   data.
+
+Rollback is one command
+(`scripts/demo/skill_evolution/rollback_demo.sh`): V0 is republished as
+the newest registry revision and the agents restart onto it, while the
+evolved revisions stay in the append-only history.
+
+### Components in detail
+
+**Enterprise agents** (`agents/enterprise/`) — serve end users:
+
+- **knowledge_supervisor** — the root agent on Vertex AI Agent Engine.
+  Receives every user question, fans out to specialists as `AgentTool`
+  calls, and synthesizes one answer. Its thin `SKILL.md` holds routing
+  conventions. The BigQuery Analytics plugin rides here, logging every
+  event. Key files: `app/agent.py`, `app/skill/SKILL.md`.
+- **policy_agent** — company-policy specialist on Cloud Run behind an
+  A2A endpoint. Answers PTO, sick leave, remote work, expenses, and
+  holiday questions with the `lookup_company_policy` tool over the
+  policy corpus. Its `SKILL.md` is the primary evolution target — the
+  V0 baseline deliberately blocks the tool (baked facts + defer-to-HR)
+  and parrots corrections. Key files: `agent.py`, `tools.py`,
+  `skill_loader.py`, `skill/SKILL.md`.
+- **hr_calculator** — deterministic math specialist on Cloud Run:
+  PTO balances, working days for date ranges, disability pay. Pure
+  tools, no skill to evolve. Key file: `agent.py`.
+- **benefits_agent** — benefits specialist defined by its skill
+  (`skill/SKILL.md`). Runs in-process in the local topology and is
+  seeded into the Skill Registry; joins the deployed topology when a
+  service for it exists.
+
+**Workflow agents** (`agents/workflow/`) — test, monitor, and evolve
+the stack:
+
+- **traffic_generator** — produces synthetic traffic: single-turn
+  question sets, scripted multi-turn corrections (the user pushes back
+  with a wrong figure), and a Golden-Q&A-aware adversarial user
+  simulator. Targets the local supervisor or the deployed Agent Engine.
+  Key files: `main.py`, `user_simulator.py`.
+- **quality_agent** — the daily sentinel (Cloud Run Job + Scheduler).
+  Pulls recent BigQuery sessions filtered by `agent_version`, scores
+  them with the LLM judge against Golden Q&A, and files GitHub issues
+  for failures. Key files: `main.py`, `tools.py`, `quality_report.py`.
+- **skill_evolution_agent** — the healer (Cloud Run Job; triggered
+  on demand, by quality-issue threshold, or by its scheduled tick —
+  weekly by default). One run: quality report from BigQuery → failure-count
+  gate → bottleneck attribution (which agent caused each failure) →
+  agentic analysts investigate each failure with tool access → patch
+  scoring and consolidation → best-of-N candidate skills scored on the
+  evolve set → winners pushed to the Skill Registry → PR opened. Key
+  files: `evolve.py` (core pipeline), `coevolve.py` (multi-agent
+  orchestration), `bottleneck.py`, `agentic_analyst.py`,
+  `patch_scoring.py`, `tools.py` (registry push + PR), `main.py` (CLI).
+
+**Supporting pieces:**
+
+- **`skill_loader.py`** — loads `SKILL.md` from the Skill Registry
+  (newest revision) or the packaged file; exposes the frontmatter
+  version that tags BigQuery events and drives the version-aware gate.
+- **`eval/skill_evolution/registry_sync.py`** — Skill Registry CLI:
+  `seed` (idempotent V0 publish), `push`, `revisions`, `verify-read`.
+- **`eval/scoring/`** — `score_conversations.py` (SDK scorer: turn
+  tagging, golden matching, quality report), `llm_judge.py` (the gate
+  and load-test judge), `triage_report.py` (failure taxonomy + owner
+  routing), `extract_ground_truth.py`.
+- **`eval/tests/`** — the CI gate: `test_eval.py` (routing, compound
+  fan-out, out-of-scope) and `test_load.py` (fresh-traffic quality,
+  error rate, latency budgets), both version-aware via
+  `skill_is_baseline()`.
+
+### The full cycle, actor by actor
+
+Every stage of the loop, who runs it, and how to watch it live:
+
+| Stage | Actor (code) | Trigger | Reads | Writes | Watch it |
+|---|---|---|---|---|---|
+| Serve | `knowledge_supervisor` (Agent Engine) + `policy_agent`/`hr_calculator` (Cloud Run, A2A) | user / API call | Skill Registry (SKILL.md at startup), tools | the answer | `bash scripts/test/smoke_test_deployed.sh` |
+| Observe | BigQuery Analytics plugins (in each agent) | every event | — | `agent_logs.agent_events`, tagged version + labels | `bash scripts/test/show_traces.sh` (label distribution / selector preview) |
+| Detect | `quality_agent` (Cloud Run Job) | daily 08:00 UTC scheduler, or `gcloud run jobs execute quality-agent` | BQ window, golden eval spec | quality report (GCS) + labeled GitHub issues | `gh issue list`; job logs |
+| Learn | `skill_evolution_agent` (Cloud Run Job) | on demand / issue threshold / weekly tick | BQ traces (selector), golden spec | evolved SKILL.md candidates, scores, regression cases | the "Inside one run" table in [Step 3 of the deployed walkthrough](skill-evolution/DEMO_SCRIPT.md#step-3--run-the-evolution-job) |
+| Propose | same job, final stage | end of a successful run | run artifacts | Skill Registry revision + the PR (skill + eval cases + selector) | `gh pr list` |
+| Adjudicate | Eval & Load Test Gate (GitHub Actions) | the PR | repo skills at PR state | green/red checks; branch protection blocks red | `gh pr checks <n>` |
+| Activate | Deploy to GCP workflow (GitHub Actions, WIF) | PR merge | merged repo | registry sync + redeploy; agents fetch the new revision | `gcloud logging read 'textPayload:"Loaded skill from registry"'` |
+| Roll back | `rollback_demo.sh` | you | SKILL.v0 files | V0 as newest registry revision; agents restarted | script prints verification |
 
 ---
 
@@ -787,6 +963,31 @@ pairs covering all expected topics. Three consumers:
 
 **Eval cases** (`eval/data/eval_cases.json`) -- the CI regression gate.
 Starts small, grows from production failures and human feedback.
+
+### How the judge matches sessions to golden entries
+
+When the judge scores a conversation, every session question and every
+golden question is embedded, and each session is matched to its
+nearest golden entry by cosine similarity (threshold 0.92 — high on
+purpose, so only true paraphrases match: "How many vacation days do I
+get?" matches the PTO entry; a novel question matches nothing). Three
+outcomes:
+
+1. **Matched, in scope** — the golden `expected_answer` is injected
+   into the judge's prompt, and the response is graded against that
+   ground truth. This is what makes correctness scores trustworthy:
+   the judge compares against the known-right answer instead of its
+   own opinion.
+2. **Matched, decline entry** — the judge is told a polite refusal is
+   the correct outcome, so out-of-scope questions score as `declined`
+   when handled right rather than being punished as unhelpful.
+3. **No match (the question is absent from the list)** — the judge
+   still scores the session, but as an ungrounded LLM estimate, and
+   the report says so explicitly ("LLM estimates WITHOUT ground
+   truth"). These sessions also feed the `new-topic` flow: the quality
+   agent surfaces questions with no golden coverage and no history as
+   issues for a human decision — add a golden entry (and the
+   capability) or mark the topic out-of-scope.
 
 ### Growth
 
