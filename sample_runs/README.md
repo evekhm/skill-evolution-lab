@@ -11,7 +11,7 @@ run opened one.
 |---|---|---|---|---|
 | [lite_local](lite_local/) | 13q, 1 round, 2 candidates, local sandbox | ~54 min (~37 min of run + one-off live V0 exam) | 30.8% -> 100% (13q) | 40.0% -> 100% (55/55, +60.0pp) |
 | [full_local](full_local/) | all 55q, agent-decided scope (evolved all 3 agents, stopped itself at 0 failures) | ~6h 51m | 40.0% -> 100% (55q) | 40.0% -> 100% (55/55, +60.0pp) |
-| [lite_deployed](lite_deployed/) | Cloud Run job vs the live stack, BigQuery slice | ~91 min | PR #51: 21.8% -> 100.0%; in-container publish gate 10/10, PR checks all green; closed as sample, registry rolled back to V0 | — (deployed runs validate on their slice) |
+| [lite_deployed](lite_deployed/) | Cloud Run job vs the live stack, 13-question set (same as local lite) | ~39 min | PR #57: 15.4% -> 100.0%; in-container publish gate 10/10, PR checks green; closed as sample, registry rolled back to V0 | — (deployed runs validate on their slice) |
 | [full_deployed](full_deployed/) | 55-session slice, agent-decided | ~6h 14m | 16.4% -> 61.8% (+45.4pp); PR step failed (job container git bug); registry push rolled back to V0 | — |
 | [deployed_incumbent_refusal](deployed_incumbent_refusal/) | unscoped window (safety behavior) | ~54 min | evolved 58.2% < baseline 72.0%: NO PR opened — the loop refuses regressions | — |
 
