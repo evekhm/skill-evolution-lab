@@ -55,13 +55,19 @@
       "id": "compound_meal_hsa",
       "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "compound_bereavement_parental",
       "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "oos_severance",
@@ -74,6 +80,231 @@
       "question": "Can I get a standing desk for my home office?",
       "category": "out_of_scope",
       "expected_behavior": "decline_gracefully"
+    },
+    {
+      "id": "regression_842444785281",
+      "question": "What is the meal reimbursement limit?",
+      "category": "expenses",
+      "source": "skill_evolution",
+      "source_session_id": "8424447852817678336",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected to HR instead of using its tools to answer an in-scope question about meal reimbursement limits."
+    },
+    {
+      "id": "regression_790565009447",
+      "question": "Understood, thank you for checking. Since you don't have information on jury duty, could you tell me how many paid holidays we get each year?",
+      "category": "holidays",
+      "source": "skill_evolution",
+      "source_session_id": "790565009447976960",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly deflected to HR and claimed it did not have access to the policy database, failing to answer the user's in-scope questions about jury duty and paid holidays."
+    },
+    {
+      "id": "regression_155054744656",
+      "question": "Could you please check the official policy database to see if there are any specific guidelines or calculations for short-term disability payouts?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "1550547446566748160",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the user's question about short-term disability payout, repeatedly stating it did not have the information and deflecting to HR."
+    },
+    {
+      "id": "regression_829356198864",
+      "question": "Could you please double-check the official onboarding packet or employee handbook? I am certain that the requirement for a doctor's note after more than 3 consecutive sick days is part of the standard company policy.",
+      "category": "sick_leave",
+      "source": "skill_evolution",
+      "source_session_id": "8293561988647223296",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the user's question about the doctor's note policy and instead deflected, claiming it did not have access to the documents and suggesting the user contact HR."
+    },
+    {
+      "id": "regression_572988790076",
+      "question": "Could you please check the official policy database to see if there is any mention of tuition reimbursement?",
+      "category": "expenses",
+      "source": "skill_evolution",
+      "source_session_id": "5729887900766568448",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the question and directed the user to HR instead of using its available tools to look up the tuition reimbursement policy."
+    },
+    {
+      "id": "regression_403255441494",
+      "question": "Actually, you should have that information. The onboarding packet states that core hours are 10am to 3pm regardless of whether you are remote or in-office.",
+      "category": "remote_work",
+      "source": "skill_evolution",
+      "source_session_id": "403255441494114304",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the user's questions about compressed schedules and core hours to HR, claiming it did not have the information, rather than using its tools to look up the policy."
+    },
+    {
+      "id": "regression_152014814908",
+      "question": "Understood, I will contact HR directly for that. On a different note, could you tell me how many days of PTO we get per year?",
+      "category": "pto",
+      "source": "skill_evolution",
+      "source_session_id": "1520148149081997312",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to use its tools to look up the PTO policy and instead fabricated an answer from its internal knowledge, which is ungrounded and not genuinely useful."
+    },
+    {
+      "id": "regression_178473462719",
+      "question": "Could you please double-check the official company policy database or employee handbook to see if there is any specific information regarding bereavement leave?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "1784734627190013952",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer an in-scope question about bereavement leave and deflected to HR without using its tools."
+    },
+    {
+      "id": "regression_214502259737",
+      "question": "Could you please check the actual company policy documents to see if the employer medical premium contribution percentage is listed there?",
+      "category": "benefits",
+      "source": "skill_evolution",
+      "source_session_id": "2145022597379653632",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the question and deflected to HR instead of using its available tools to look up the company policy."
+    },
+    {
+      "id": "regression_905917392530",
+      "question": "Could you please check the actual policy? I am fairly certain we have a specific number of paid holidays per year.",
+      "category": "holidays",
+      "source": "skill_evolution",
+      "source_session_id": "9059173925300207616",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the question about company-paid holidays, which is an in-scope topic, and instead deflected the user to HR."
+    },
+    {
+      "id": "regression_616223346499",
+      "question": "Thanks for confirming. Do any unused PTO days roll over to the next year?",
+      "category": "pto",
+      "source": "skill_evolution",
+      "source_session_id": "6162233464994136064",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent answered the user's questions about PTO and rollover limits without calling any tools to retrieve the actual company policy, making the response untrustworthy and ungrounded."
+    },
+    {
+      "id": "regression_540225102787",
+      "question": "How often can I work from home each week?",
+      "category": "remote_work",
+      "source": "skill_evolution",
+      "source_session_id": "5402251027875364864",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent provided an answer without querying its tools, making the response untrustworthy and potentially incorrect."
+    },
+    {
+      "id": "regression_338013479518",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "3380134795186012160",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected to HR instead of using its tools to look up the company's travel expense policy."
+    },
+    {
+      "id": "regression_762801440621",
+      "question": "Could you please double-check the official company policy database to see if there are any specific details regarding short-term disability payouts?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "7628014406214877184",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the question and deflected to HR, claiming it did not have the information, instead of routing the request to the hr_calculator tool."
+    },
+    {
+      "id": "regression_857771097763",
+      "question": "Could you please double-check the official policy database to see if there is any information regarding meal per-diems for business travel?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "8577710977636630528",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the question and deflected to HR instead of using its available tools to look up the travel expense policy."
+    },
+    {
+      "id": "regression_170746974608",
+      "question": "Could you please check the actual policy on this? I am fairly certain there is a specific guideline regarding doctor's notes for consecutive sick days.",
+      "category": "sick_leave",
+      "source": "skill_evolution",
+      "source_session_id": "1707469746082938880",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the user's question about the doctor's note policy to HR, claiming it did not have access to the information, instead of using its available tools to look up the policy."
+    },
+    {
+      "id": "regression_888845935192",
+      "question": "How much will the company reimburse for tuition each year?",
+      "category": "expenses",
+      "source": "skill_evolution",
+      "source_session_id": "8888459351925194752",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected to HR instead of using its tools to look up the tuition reimbursement policy, which is an in-scope topic."
+    },
+    {
+      "id": "regression_859572537614",
+      "question": "Could you please check the official company policy documents to see if there is any specific information regarding the short-term disability pay replacement percentage?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "8595725376146112512",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to provide the requested short-term disability pay replacement percentage, stating it did not have the information and directing the user to HR."
+    },
+    {
+      "id": "regression_396602495920",
+      "question": "Actually, you stated that company-paid holidays are not covered, but my onboarding packet clearly says we have 11 paid holidays per year.",
+      "category": "holidays",
+      "source": "skill_evolution",
+      "source_session_id": "3966024959209242624",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent repeatedly deflected the user's question to HR and claimed it did not have access to the policy database, failing to provide any useful information."
+    },
+    {
+      "id": "regression_774679684638",
+      "question": "Since compressed schedules aren't covered, can you tell me about the remote work policy? How many days a week am I allowed to work remotely?",
+      "category": "remote_work",
+      "source": "skill_evolution",
+      "source_session_id": "7746796846386774016",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to use its tools to look up the policies for both compressed schedules and remote work, resulting in a deflection for the first question and a completely hallucinated/ungrounded answer for the second."
+    },
+    {
+      "id": "regression_662540053917",
+      "question": "Actually, that is incorrect. The company policy summary does contain this information: core hours are 10am to 3pm regardless of whether you are remote or in-office.",
+      "category": "remote_work",
+      "source": "skill_evolution",
+      "source_session_id": "6625400539171520512",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent did not use its tools to look up the policy and instead deflected the user to HR, claiming it did not have the information."
+    },
+    {
+      "id": "regression_830524320018",
+      "question": "Could you please double-check the actual policy database? I am fairly certain the onboarding materials contain details on what happens to those extra accrued days.",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "8305243200180715520",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the question about PTO rollover policy, stating it did not have the information and deflecting the user to HR."
+    },
+    {
+      "id": "regression_506715506810",
+      "question": "Could you please check the official policy documents or the employee handbook to see if there is any specific information regarding EAP counseling visits?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "5067155068101328896",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the question to HR and claimed it did not have access to the information, instead of using its available tools to look up the EAP policy."
+    },
+    {
+      "id": "regression_122783638576",
+      "question": "Could you please check the actual company policy database to see if there is any official information regarding jury duty pay?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "1227836385767981056",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to provide the requested policy information, stating it could not access the database and suggesting the user contact HR."
+    },
+    {
+      "id": "regression_201371452074",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "2013714520744132608",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected to HR instead of using its tools to answer an in-scope question about bereavement leave."
     }
   ]
 }
