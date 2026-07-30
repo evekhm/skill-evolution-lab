@@ -244,3 +244,47 @@ guessed-routing-assert bug existed in two separate extraction paths.)
 - Never push to main directly; work goes through a branch and PR.
 - Pushing, publishing, or activating anything requires the owner's
   explicit word each time; prior approvals do not carry over.
+
+## Reporting and Documentation Conventions
+
+- Results tables ALWAYS show two measurements per run: the evolve set
+  (V0 -> winner on its training questions) and the held-out exam
+  (V0 -> winner on the shared 55-question set). One without the other
+  is half the story. Deployed runs have no held-out exam — mark the
+  column "—".
+- Findings and status reports are tables; timestamps in Pacific time.
+- Docs and tables carry MEASURED values only, with the source
+  artifact nameable. Write "being re-measured" rather than an
+  estimate or a stale number.
+- Writing style: plain declarative sentences. No aphorisms, no
+  "X is the Y" reveals, no bolded dramatic openers, no rhetorical
+  pivots. Never transplant the owner's chat phrasing into docs. No
+  unexplained jargon or internal codenames — define on first use.
+- When an instruction is ambiguous — especially if the action deletes
+  or rewrites something — state your interpretation in one sentence
+  and confirm, or take the minimal reading that satisfies the literal
+  words. Never resolve ambiguity toward your own preference.
+
+## Archiving Sample Runs
+
+Every archived run in `sample_runs/` must be sanitized before commit:
+
+```bash
+sed -i -E 's|/home/[a-zA-Z_]+|~|g; s|<PROJECT_NUMBER>|<project-id>|g;
+           s|<service-hash>-uc\.a\.run\.app|<service-hash>|g;
+           s|reasoningEngines/[0-9]+|reasoningEngines/<engine-id>|g' <files>
+```
+
+Replace the real project number with the project id, scrub home paths
+INCLUDING truncated forms (`/home/user_na...` inside cut-off dict
+reprs), service URL hashes, and reasoning-engine ids. Then verify:
+`grep -rl '<project number>\|<home dir>\|<service hash>' <folder>`
+must return nothing. Index rows in `sample_runs/README.md` must equal
+the archive's own SUMMARY numbers exactly.
+
+## Session State
+
+`STATUS.md` at the repo root is a private session handover document.
+It is kept in a LOCAL-ONLY commit at the top of the local branch and
+is never pushed to the public repository. Uncommit it before public
+pushes; re-commit after.
