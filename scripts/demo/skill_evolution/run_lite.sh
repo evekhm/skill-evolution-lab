@@ -15,6 +15,13 @@ esac; done
 if [ "$TARGET" = deployed ]; then
     set -a; source .env; set +a
     echo "MODE: DEPLOYED — Cloud Run job 'skill-evolution-agent' in project ${PROJECT_ID} (winner -> Skill Registry + real PR)"
+    # Guarantee the baseline: the deployed supervisor serves whatever the
+    # registry's newest revision is. A previous run's evolved push (kept
+    # while its PR awaits review) would silently replace V0 in the "V0
+    # baseline" traffic and poison both the baseline and the training
+    # signal. Roll back to content-verified V0 before every run.
+    echo "Ensuring registry + agents serve V0 (rollback with content verification)..."
+    bash "$(dirname "${BASH_SOURCE[0]}")/rollback_demo.sh"
     # --questions keeps the deployed run on the SAME 13-question lite set as
     # the local run (it forces EVAL_QUESTIONS_FILE past the container's
     # env default, which points at the full 55-question evolve set).
