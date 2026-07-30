@@ -87,7 +87,14 @@ Experiments, traffic generation, and demo runs produce verbose output:
    tail -20 eval/some_log.log
    ```
 2. Never echo raw HTTP/API logs into a conversation or PR — use `2>&1 | tail -N`.
-3. Report key results as numbers, not raw data dumps.
+3. Report key results as numbers, not raw data dumps. The required
+   shape for any evolution run report is:
+   - a percentage per skill version — V0, V1 (and V2… when present),
+     each with its question set and session count named
+   - the elapsed time of EVERY pipeline step (traffic, scoring,
+     evolution, validation, gate, registry/PR), plus the total
+   - one line per anomaly investigated — no unexplained 0%, 100%,
+     or missing steps
 
 ## Evolution Test Cycle (invoke with: "run evolution test cycle")
 
