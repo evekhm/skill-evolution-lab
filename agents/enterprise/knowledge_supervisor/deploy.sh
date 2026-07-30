@@ -174,9 +174,20 @@ fi
 rm -f "${ENV_TMP}"
 
 if [ $ADK_EXIT -ne 0 ] || grep -q "Deploy failed" "${ADK_LOG}"; then
-    rm -f "${ADK_LOG}"
-    echo "ERROR: ADK deployment failed!"
-    exit 1
+    # One known false negative: the ADK CLI sometimes reports
+    # "Deploy failed: [Errno 2] ... app_tmp<ts>" about its own
+    # already-removed temp folder AFTER the engine update succeeded.
+    # Treat that as success when the success marker is present; fail
+    # on every other "Deploy failed".
+    if grep -qE "(Updated|Created) agent engine" "${ADK_LOG}" \
+       && grep -qE "Deploy failed: \[Errno 2\].*app_tmp" "${ADK_LOG}" \
+       && [ "$(grep -c "Deploy failed" "${ADK_LOG}")" -eq 1 ]; then
+        echo "NOTE: engine updated; ignoring ADK's post-success temp-folder cleanup error."
+    else
+        rm -f "${ADK_LOG}"
+        echo "ERROR: ADK deployment failed!"
+        exit 1
+    fi
 fi
 rm -f "${ADK_LOG}"
 
