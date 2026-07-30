@@ -55,13 +55,19 @@
       "id": "compound_meal_hsa",
       "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "compound_bereavement_parental",
       "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "oos_severance",
@@ -74,6 +80,67 @@
       "question": "Can I get a standing desk for my home office?",
       "category": "out_of_scope",
       "expected_behavior": "decline_gracefully"
+    },
+    {
+      "id": "regression_conv_defa9e4",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "source": "skill_evolution",
+      "source_session_id": "conv_defa9e4f",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to find the holiday policy, and when the user provided the correction (11 days), the agent merely repeated and acknowledged the user's correction without independently verifying it via its tools."
+    },
+    {
+      "id": "regression_conv_b739e8a",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "conv_b739e8a9",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer an in-scope question about bereavement leave, claiming it did not have the information and directing the user to HR."
+    },
+    {
+      "id": "regression_conv_1daaed3",
+      "question": "How many company-paid holidays are there?",
+      "category": "holidays",
+      "source": "skill_evolution",
+      "source_session_id": "conv_1daaed3a",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to find the information in its database, deflected to HR, and merely agreed with the user's correction without independent verification."
+    },
+    {
+      "id": "regression_conv_f3daa68",
+      "question": "Does the company pay me during jury duty, and is there a limit?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "conv_f3daa682",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to provide the requested information about jury duty, which is an in-scope topic, and instead deflected the user to HR."
+    },
+    {
+      "id": "reg-20260730-01",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "calc"
+    },
+    {
+      "id": "reg-20260730-02",
+      "question": "How many counseling visits does the EAP cover?",
+      "category": "eap"
+    },
+    {
+      "id": "reg-20260730-03",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "expenses"
+    },
+    {
+      "id": "reg-20260730-04",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "category": "flex_time"
+    },
+    {
+      "id": "reg-20260730-05",
+      "question": "How often can I work from home each week?",
+      "category": "remote_work"
     }
   ]
 }
