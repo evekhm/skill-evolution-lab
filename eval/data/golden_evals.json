@@ -1,7 +1,7 @@
 {
   "eval_set_id": "golden_evals_hr_policy",
   "name": "Golden Eval Set: HR Policy Q&A",
-  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact — what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
+  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact \u2014 what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
   "version": "1.0",
   "eval_cases": [
     {
@@ -150,7 +150,7 @@
       "question": "Is Juneteenth a company holiday?",
       "expected_answer": "No, Juneteenth is not a company holiday.",
       "topic": "holidays",
-      "notes": "Tests hallucination resistance — agent must not assume"
+      "notes": "Tests hallucination resistance \u2014 agent must not assume"
     },
     {
       "id": "holiday_03",
@@ -197,30 +197,30 @@
     {
       "id": "scope_01",
       "question": "What are the salary bands for senior engineers?",
-      "expected_answer": "DECLINE — salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_02",
       "question": "How do I get promoted?",
-      "expected_answer": "DECLINE — promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_03",
       "question": "Can you help me set up my laptop?",
-      "expected_answer": "DECLINE — IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_04",
       "question": "What's the dress code?",
-      "expected_answer": "DECLINE — dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "compound_01",
-      "question": "Compare PTO and sick leave — what rolls over and what doesn't?",
+      "question": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?",
       "expected_answer": "PTO: 20 days/year, up to 5 days roll over. Sick leave: 10 days/year, no rollover.",
       "topic": "multi_topic",
       "notes": "Tests multi-topic handling with comparison"
@@ -231,6 +231,30 @@
       "expected_answer": "PTO: 20 days/year. Sick leave: 10 days/year. Parental leave: 16 weeks (primary) or 8 weeks (secondary). 11 paid holidays/year.",
       "topic": "multi_topic",
       "notes": "Tests comprehensive multi-topic response"
+    },
+    {
+      "id": "reg-20260730-01",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "expected_answer": "You receive **10 sick days** per calendar year. Please note that these sick days **do not roll over** to the next year (they are \"use-it-or-lose-it\" and will reset at the start of each year).",
+      "topic": "calc"
+    },
+    {
+      "id": "reg-20260730-02",
+      "question": "How many counseling visits does the EAP cover?",
+      "expected_answer": "Yes, a doctor's note is required if you are absent for **longer than 3 consecutive days** due to illness. If you anticipate being out for more than 3 consecutive workdays, please ensure you obtain a note from your healthcare provider to submit to HR upon your return.",
+      "topic": "eap"
+    },
+    {
+      "id": "reg-20260730-03",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "expected_answer": "Yes, you can work a compressed schedule of four 10-hour days (known as a compressed-week arrangement), subject to approval from your manager. In addition to compressed weeks, the company offers a Flexible Scheduling policy: * **Core Hours:** You must cover the core business hours of 10:00 AM to 3:00 PM.",
+      "topic": "flex_time"
+    },
+    {
+      "id": "reg-20260730-04",
+      "question": "Does the company pay me during jury duty, and is there a limit?",
+      "expected_answer": "Yes, the company provides full pay during jury duty for the entire duration of your service, and there is no limit or cap on the number of days. To coordinate your time off for jury duty, please follow these steps: 1. **Submit Summons:** Forward a copy of your jury summons to Human Resources (HR) as soon as you receive it. 2.",
+      "topic": "jury_duty"
     }
   ]
 }
