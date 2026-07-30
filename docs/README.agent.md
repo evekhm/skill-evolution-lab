@@ -171,3 +171,76 @@ ground truth, turn tagging, trajectory sampling, and quality scoring in a single
 - Blog & docs: `docs/skill-evolution/`
 - Skills (V0 baseline): `agents/enterprise/*/skill/SKILL.md`
 - V0 baselines: `agents/enterprise/*/skill/SKILL.v0.md` (next to SKILL.md)
+
+## Verification Contract (MANDATORY before reporting anything)
+
+Every rule below exists because its violation produced a wrong result
+in this repo. Do not report a number, claim, or "done" that has not
+passed the applicable checks.
+
+### Before reporting any metric
+
+1. Trace it to an artifact (report JSON, run log, PR title). If you
+   cannot name the file, you do not have the number.
+2. Open the underlying conversations when a number is 0%, 100%, or
+   surprising. Check for error-shaped answers:
+   `grep -c "ERROR:" <traffic.json>` — a judge scores error strings
+   as unhelpful without complaint (this produced a fake 0% twice).
+3. Sanity-check the judge output: meaningful + unhelpful + partial
+   must account for all sessions. `0.0 meaningful AND 0.0 unhelpful`
+   means scoring FAILED, not that candidates are bad.
+4. Name the instrument. A percentage is meaningless without: which
+   scorer, which judge model, which question set. Numbers from
+   different instruments never share a comparison row uncaveated.
+5. Confirm the question set from the run's own binding log
+   (`Binding overrides` line), never from the profile's intent.
+
+### Before claiming two configurations are aligned
+
+Verify EVERY component from live state, not from memory or docs:
+question file (binding log), evolution parameters (job args), each
+agent's model (`gcloud run services describe <svc>` env, Agent Engine
+config), judge model and scorer module, conversation depth. In this
+repo a claimed-identical setup was wrong three times in one day
+(specialist models, judge model, baseline traffic source).
+
+### Demo-specific facts that override intuition
+
+- There is NO real traffic in this project. BigQuery contains residue
+  from earlier test runs only. Deployed demo baselines are GENERATED
+  (`--quality-source synthetic`) on the profile's question set,
+  identically to local runs.
+- V0's held-out exam score is REUSED from the committed reference
+  (`eval/data/reference/`, checksum-guarded, auto-rebaselines when
+  the system changes). Never re-measure it per run.
+- gemini-3.x models are served from the GLOBAL endpoint only. Never
+  assign an infra region to `GOOGLE_CLOUD_LOCATION`; use the
+  MODEL_LOCATION-or-global pattern already present in every module.
+
+### When fixing a bug
+
+Fix the CLASS, not the instance: grep the whole repo for the pattern
+before declaring it fixed, and list every occurrence in the commit
+message. (The same env-stomp bug was fixed six times in five files
+because the first five fixes stopped at the instance; the same
+guessed-routing-assert bug existed in two separate extraction paths.)
+
+### Runs and processes
+
+- Never edit a script while a run executes (bash reads lazily —
+  edits corrupt the running process).
+- Killing a demo run means killing `run_demo.sh` AND its python
+  children (`skill_evolution_agent/main.py`,
+  `traffic_generator/main.py`), then verifying with `ps`. Orphans
+  keep evolving and DEPLOYING skills after the parent dies.
+- After any kill: verify all three `SKILL.md` files are `version: "0"`.
+- Two agents/sessions must never share one checkout or branch.
+
+### Authority (the repository owner decides, not the agent)
+
+- Never close, merge, or reopen ANY pull request without the owner's
+  explicit instruction — including PRs you created, including the
+  demo flow's "close the evolution PR as a sample" step.
+- Never push to main directly; work goes through a branch and PR.
+- Pushing, publishing, or activating anything requires the owner's
+  explicit word each time; prior approvals do not carry over.
