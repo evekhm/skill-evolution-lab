@@ -18,7 +18,7 @@ if [ "$TARGET" = deployed ]; then
     # --questions keeps the deployed run on the SAME 13-question lite set as
     # the local run (it forces EVAL_QUESTIONS_FILE past the container's
     # env default, which points at the full 55-question evolve set).
-    JOB_ARGS="--full-loop,--mode,supervisor,--rounds,1,--candidates,2,--quick,--questions,/app/eval/data/questions/two_defect_lite.json"
+    JOB_ARGS="--full-loop,--mode,supervisor,--rounds,1,--candidates,2,--quick,--questions,/app/eval/data/questions/two_defect_lite.json,--quality-source,synthetic"
     for a in ${ARGS[@]+"${ARGS[@]}"}; do [ -n "$a" ] && JOB_ARGS="$JOB_ARGS,$a"; done
     exec gcloud run jobs execute skill-evolution-agent \
         --region "$REGION" --wait --args="$JOB_ARGS"

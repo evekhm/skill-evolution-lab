@@ -614,12 +614,11 @@ table is the verification record (deployed run: PR #58, archived in
 | Specialist models | gemini-3.5-flash | gemini-3.5-flash (verified on the Cloud Run services) | yes |
 | LLM judge (scoring) | gemini-3.5-flash, golden-matched scorer | same scorer, same model, in-container | yes |
 | Conversation depth | 4 turns, adversarial simulator | 4 turns, adversarial simulator | yes |
-| V0 baseline source | generated traffic on the 13 questions | REAL BigQuery traffic when available (production detection path); generated fallback otherwise | by design, different |
+| V0 baseline source | generated traffic on the 13 questions | generated the same way (`--quality-source synthetic` — the demo project has no real traffic; BigQuery only holds residue from earlier test runs) | yes |
 | Serving path | in-process Python agents | Agent Engine + A2A to Cloud Run | by design, different |
 
-Measured consequence of the two by-design differences: ~23s vs ~48s
-per conversation (serve latency), and the deployed V0 baseline
-reflects live traffic rather than a fixed question set.
+Measured consequence of the one by-design difference: ~23s vs ~48s
+per conversation (Agent Engine serve latency).
 
 Earlier-generation runs (previous models and tools, kept for
 history): the deployed policy-agent loop reached 20.0% -> 96.0% on

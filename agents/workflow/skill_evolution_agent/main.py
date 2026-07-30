@@ -772,10 +772,23 @@ Examples:
         "this is how a profile keeps deployed runs on the same question set "
         "as its local runs.",
     )
+    parser.add_argument(
+        "--quality-source",
+        type=str,
+        choices=["bigquery", "synthetic"],
+        default=None,
+        help="Pre-flight baseline source. FORCES QUALITY_SOURCE past the "
+        "container's env default. Demo profiles pass 'synthetic' so the V0 "
+        "baseline is generated on the profile's question set exactly like a "
+        "local run — the demo project has no real traffic, and BigQuery only "
+        "holds residue from previous test runs.",
+    )
     args = parser.parse_args()
 
     if args.questions:
         os.environ["EVAL_QUESTIONS_FILE"] = args.questions
+    if args.quality_source:
+        os.environ["QUALITY_SOURCE"] = args.quality_source
 
     # Make the scoping flags BINDING at the tool layer (the orchestrating
     # agent treats prompt overrides as hints; these env vars are enforced
