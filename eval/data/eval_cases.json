@@ -55,13 +55,19 @@
       "id": "compound_meal_hsa",
       "question": "Compare my expense meal limit with what the company contributes to my HSA each year.",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "compound_bereavement_parental",
       "question": "Compare our bereavement leave with parental leave - which is longer and how do I request each?",
       "category": "compound_xdomain",
-      "expected_agents": ["policy_agent", "benefits_agent"]
+      "expected_agents": [
+        "policy_agent",
+        "benefits_agent"
+      ]
     },
     {
       "id": "oos_severance",
@@ -74,6 +80,105 @@
       "question": "Can I get a standing desk for my home office?",
       "category": "out_of_scope",
       "expected_behavior": "decline_gracefully"
+    },
+    {
+      "id": "regression_656441722624",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "category": "benefits",
+      "source": "skill_evolution",
+      "source_session_id": "6564417226248552448",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer an in-scope question about medical premium coverage, claiming it did not have the information and directing the user to HR."
+    },
+    {
+      "id": "regression_195273120782",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "1952731207821164544",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the user to HR for an in-scope topic (bereavement leave) instead of using its tools to find the answer."
+    },
+    {
+      "id": "regression_425857421703",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "4258574217034858496",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the user's question about short-term disability payouts and instead deflected to HR, stating it did not have the information."
+    },
+    {
+      "id": "regression_847732116797",
+      "question": "How many counseling visits does the EAP cover?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "8477321167974170624",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer an in-scope question about EAP counseling visits and deflected the user to HR, despite the information being available in the company policy."
+    },
+    {
+      "id": "regression_496789115834",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "4967891158345711616",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the question by stating it did not have the information and directing the user to HR, instead of using the policy_agent tool to look up the travel expense policy."
+    },
+    {
+      "id": "regression_594292047767",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "5942920477671424000",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the user's first question about compressed schedules and the third question about core hours, incorrectly claiming it did not have the information and deflecting to HR."
+    },
+    {
+      "id": "regression_498815735666",
+      "question": "How many company-paid holidays are there?",
+      "category": "holidays",
+      "source": "skill_evolution",
+      "source_session_id": "4988157356668878848",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the user to HR and claimed it did not have access to the information, failing to answer an in-scope question about company holidays."
+    },
+    {
+      "id": "regression_481139107129",
+      "question": "Does the company pay me during jury duty, and is there a limit?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "4811391071294586880",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the user to HR instead of using its tools to look up the company's jury duty policy, which is fully in-scope."
+    },
+    {
+      "id": "regression_808816902469",
+      "question": "What portion of my pay does short-term disability replace?",
+      "category": "general",
+      "source": "skill_evolution",
+      "source_session_id": "808816902469058560",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the question about short-term disability pay replacement, claiming it did not have the information and directing the user to HR."
+    },
+    {
+      "id": "regression_314055560954",
+      "question": "How many sick days am I given annually?",
+      "category": "sick_leave",
+      "source": "skill_evolution",
+      "source_session_id": "3140555609540132864",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent failed to answer the user's follow-up question about doctor's notes, claiming it did not have the information and deflecting the user to HR."
+    },
+    {
+      "id": "regression_929288192501",
+      "question": "How much will the company reimburse for tuition each year?",
+      "category": "expenses",
+      "source": "skill_evolution",
+      "source_session_id": "929288192501219328",
+      "verdict": "unhelpful",
+      "failure_reason": "The agent deflected the user to HR and claimed it did not have the information, which is an in-scope topic that should have been answered using the policy_agent tool."
     }
   ]
 }
