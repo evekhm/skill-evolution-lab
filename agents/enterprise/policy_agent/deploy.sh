@@ -55,7 +55,7 @@ SDK_ROOT="${SDK_DIR:-$REPO_ROOT/.sdk/BigQuery-Agent-Analytics-SDK}"
 SKILL_REGISTRY_SRC="$SDK_ROOT/examples/skill_evolution_lab/agent/skill_registry.py"
 if [ ! -f "$SKILL_REGISTRY_SRC" ]; then
     echo "ERROR: skill_registry.py not found at $SKILL_REGISTRY_SRC"
-    echo "Set SDK_DIR to a BigQuery-Agent-Analytics-SDK clone (branch fix/md-scorecards)."
+    echo "Set SDK_DIR to a BigQuery-Agent-Analytics-SDK clone (branch main)."
     exit 1
 fi
 cp "$SKILL_REGISTRY_SRC" "$SCRIPT_DIR/skill_registry.py"
