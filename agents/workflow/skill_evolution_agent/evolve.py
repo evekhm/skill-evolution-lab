@@ -223,6 +223,67 @@ def format_trajectory(session: dict) -> str:
     )
 
 
+_toolbox_cache: dict[str, str] = {}
+
+
+def _derive_toolbox(agent: str | None = None) -> str:
+    """The target agent's toolbox, DERIVED from its live definition.
+
+    Introspects the same in-process agent objects candidate scoring
+    builds: AgentTools contribute the sub-agent's name and description,
+    function tools their name and docstring first line. Nothing is
+    hand-maintained — the block always matches the code that runs.
+    Analysts previously had to infer the toolbox from trajectories, so
+    baselines whose conversations showed few tool calls (deployed serve
+    paths suppress discretionary tool use) produced vague, weak skills.
+    Returns "" when the agent cannot be introspected.
+    """
+    agent = (agent or os.getenv("EVOLUTION_TARGET_AGENTS", "supervisor")
+             ).split(",")[0].strip()
+    if agent in _toolbox_cache:
+        return _toolbox_cache[agent]
+    try:
+        from agents.workflow.traffic_generator.main import _build_local_supervisor
+        root = _build_local_supervisor(local_agents=True)
+        if agent in ("supervisor", root.name):
+            target = root
+        else:
+            target = next(
+                (getattr(t, "agent", None) for t in root.tools
+                 if getattr(getattr(t, "agent", None), "name", None) == agent),
+                None,
+            )
+        if target is None:
+            _toolbox_cache[agent] = ""
+            return ""
+        lines = []
+        for t in target.tools:
+            sub = getattr(t, "agent", None)
+            if sub is not None:
+                desc = " ".join((sub.description or "").split())
+                lines.append(f"- `{sub.name}` (callable as a tool): {desc}")
+            else:
+                name = getattr(t, "__name__", None) or getattr(t, "name", str(t))
+                doc = ((getattr(t, "__doc__", "") or "").strip().split("\n") or [""])[0]
+                lines.append(f"- `{name}`: {doc}")
+        block = (
+            "<agent_toolbox>\n"
+            "The agent HAS these callable tools (read from its live "
+            "definition; true even when the trajectories show few or no "
+            "tool calls — a failing baseline under-using its tools IS the "
+            "defect, not the toolbox):\n"
+            + "\n".join(lines) + "\n"
+            "An evolved skill should direct the agent to use these tools "
+            "BY NAME wherever they resolve the observed failures.\n"
+            "</agent_toolbox>\n\n"
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Toolbox derivation failed for %s: %s", agent, e)
+        block = ""
+    _toolbox_cache[agent] = block
+    return block
+
+
 def run_analyst(
     client: genai.Client,
     model_id: str,
@@ -233,6 +294,7 @@ def run_analyst(
     """Run a single analyst on one trajectory. Returns patch text or None."""
     trajectory = format_trajectory(session)
     prompt = (
+        f"{_derive_toolbox()}"
         f"<current_skill>\n{current_skill}\n</current_skill>\n\n"
         f"<trajectory>\n{trajectory}\n</trajectory>\n\n"
         f"Analyze this trajectory and propose your patch."
@@ -435,6 +497,7 @@ def run_consolidator(
     )
     prevalence = compute_prevalence_summary(patches)
     prompt = (
+        f"{_derive_toolbox()}"
         f"<base_skill>\n{current_skill}\n</base_skill>\n\n"
         f"The base_skill above is your STARTING POINT. Merge the analyst "
         f"patches INTO it as a semantic union. Keep every existing section "
@@ -734,6 +797,10 @@ def collect_patches(
         "Dispatching analyst fleet (%d error + %d success analysts, mode=%s, agentic=%s)...",
         len(failures_to_use), len(successes_to_use), analyst_mode, agentic,
     )
+    # Warm the toolbox cache before the pool: derivation imports
+    # traffic_generator.main, whose import must happen predictably in
+    # THIS thread, and one derivation serves every analyst.
+    _derive_toolbox()
     patches = []
     analyst_count = 0
 

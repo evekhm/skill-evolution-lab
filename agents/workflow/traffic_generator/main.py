@@ -43,6 +43,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 import uuid
 
@@ -1120,8 +1121,12 @@ def handle_sigterm(signum, frame):
     shutdown_requested = True
 
 
-signal.signal(signal.SIGTERM, handle_sigterm)
-signal.signal(signal.SIGINT, handle_sigterm)
+# Only the main thread may install signal handlers. This module is also
+# imported from analyst worker threads (evolve._derive_toolbox), where
+# signal.signal() raises ValueError.
+if threading.current_thread() is threading.main_thread():
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    signal.signal(signal.SIGINT, handle_sigterm)
 
 
 async def run_deployed(

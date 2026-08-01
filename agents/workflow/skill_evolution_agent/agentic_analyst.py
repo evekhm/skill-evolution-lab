@@ -37,7 +37,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..
 sys.path.insert(0, PROJECT_ROOT)
 
 from agents.enterprise.policy_agent.tools import get_current_date, lookup_company_policy
-from agents.workflow.skill_evolution_agent.evolve import format_trajectory
+from agents.workflow.skill_evolution_agent.evolve import _derive_toolbox, format_trajectory
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +182,7 @@ def run_agentic_analyst(
             role="user",
             parts=[types.Part.from_text(
                 text=(
+                    f"{_derive_toolbox()}"
                     f"<current_skill>\n{current_skill}\n</current_skill>\n\n"
                     f"<trajectory>\n{trajectory}\n</trajectory>\n\n"
                     "Investigate this failure. Use the tools to verify your "
