@@ -1,8 +1,8 @@
-# Demo Run Summary — 2026-07-24_224327_demo_quick
+# Demo Run Summary — 2026-07-31_235257_demo_quick
 
-- Wall time: 54m 7s
-- BigQuery slice: `demo_run=2026-07-24_224327_demo_quick`
-  (`EVOLUTION_TRACE_LABELS=demo_run=2026-07-24_224327_demo_quick bash scripts/test/show_traces.sh`)
+- Wall time: 60m 25s
+- BigQuery slice: `demo_run=2026-07-31_235257_demo_quick`
+  (`EVOLUTION_TRACE_LABELS=demo_run=2026-07-31_235257_demo_quick bash scripts/test/show_traces.sh`)
 - Published anywhere: NO (sandbox — registry/PR/issue disabled)
 - Agents: LOCAL in-process; zero requests to the deployed stack
 - Live skills: restored to V0; evolved versions snapshotted here as vN_*_skill.md
@@ -11,7 +11,7 @@
 
 | Version | Ground-truth rate | Judge rate | Matched |
 |---|---|---|---|
-| V0 baseline | 30.8% | 30.8% | 13/13 |
+| V0 baseline | 38.5% | 38.5% | 13/13 |
 | v1 | 100.0% | 100.0% | 13/13 |
 | v1 | 100.0% | 100.0% | 13/13 |
 | candidate_1 | 100.0% | 100.0% | 13/13 |
@@ -21,7 +21,7 @@
 
 | | V0 | Winner | Gain |
 |---|---|---|---|
-| Ground-truth rate | 40.0% | 100.0% | +60.0pp |
+| Ground-truth rate | 38.2% | 98.2% | +60.0pp |
 
 Winner previewed as PR: **v1 (100.0%)** -> pr_preview.md
 Quality gate: winner 100.0% MEETS the 95% threshold

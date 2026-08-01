@@ -1,6 +1,6 @@
-# Evolve supervisor skill to v1 (7.4% -> 76.9%)
+# Evolve supervisor skill to v1 (23.1% -> 69.2%)
 
-State: OPEN (adjudication pending — the demo flow closes evolution PRs as samples on the owner's word)
+PR: https://github.com/evekhm/skill-evolution-lab/pull/63
 
 ## Skill Evolution: supervisor v1
 
@@ -8,20 +8,18 @@ State: OPEN (adjudication pending — the demo flow closes evolution PRs as samp
 
 | Metric | Value |
 |--------|-------|
-| Meaningful rate | 7.4% |
-| Unhelpful rate | 92.6% |
+| Meaningful rate | 23.1% |
+| Unhelpful rate | 76.9% |
 
 ### Candidate Eval Scores
 
 | Metric | Baseline (v0) | Evolved (v1) |
 |--------|:------------:|:-------------------:|
-| Meaningful rate | 7.4% | 76.9% |
-| Unhelpful rate | 92.6% | 23.1% |
-| Skill size | | 2821 chars |
+| Meaningful rate | 23.1% | 69.2% |
+| Unhelpful rate | 76.9% | 30.8% |
+| Skill size | | 2984 chars |
 
-### Trace Selector (reproducibility)
+Run: `2026-07-31_224330_evolution`
 
-Evolved from BigQuery traces where: app=`knowledge_supervisor`, agent_version=`any`, labels: (none), window: 6h
 
-Run: `2026-07-29_230035_evolution`
-
+Fixes #62

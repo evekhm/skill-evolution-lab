@@ -1,51 +1,35 @@
-# Evolve supervisor skill v0 -> v1: meaningful 30.8% -> 100% (+69.2pp)
+# Evolve supervisor skill v0 -> v1: meaningful 38.5% -> 100% (+61.5pp)
 
-Branch: `skill-evolution/supervisor-v1-20260724-233724` (local only — not pushed)
+Branch: `skill-evolution/supervisor-v1-20260801-005310` (local only — not pushed)
 Base:   `main`
 
 | Metric | Baseline (v0) | Evolved (v1) | Change |
 |--------|:------------:|:-------------------:|:------:|
-| Meaningful rate | 30.8% | 100% | +69.2pp |
+| Meaningful rate | 38.5% | 100% | +61.5pp |
 | Unhelpful rate | 61.5% | 0% | -61.5pp |
-| Skill size | — | 2487 chars | |
+| Skill size | — | 2758 chars | |
 
 ## Summary of Changes
 
-This PR updates the `knowledge-supervisor` skill from **v0** to **v1** (evolved by `skill-evolution`). The key changes shift the agent from answering via a static in-prompt policy summary to dynamically querying the `lookup_company_policy` tool.
+This pull request updates the `knowledge-supervisor` skill from version **v0** to **v1** (evolved by `skill-evolution`).
 
 ### Key Modifications
-
-1. **Tool-Driven Policy Lookup (`Tool First`)**:
-   - Replaced static/hardcoded prompt policy summaries (PTO, sick leave, etc.) with a mandate to query `lookup_company_policy` as the single source of truth.
-
-2. **Topic Inferencing & Keyword Mappings**:
-   - Added guidelines for mapping natural language user queries to target tool topics (e.g., mapping "per-diem" to the `expenses` topic).
-   - Added a structured keyword mapping table covering common inquiry topics such as expenses, bereavement leave, holidays, sick leave, and jury duty.
-
-3. **Response Quality & Precision**:
-   - Added explicit response rules requiring specific, quantitative policy details (e.g., exact days or dollar amounts) over generic summaries.
-   - Encouraged citing formal policy names when available.
-
-4. **Conversational Resilience**:
-   - Instructed the agent to treat new follow-up user questions independently as fresh requests without letting previous unanswered turns affect subsequent queries.
-
-5. **Metadata Update**:
-   - Updated skill version from `"0"` to `"1"`, set author to `skill-evolution`, and set `evolved_from` to `"0"`.
+- **Metadata Update**: Bumped version to `1`, set author to `skill-evolution`, and specified `evolved_from: "0"`.
+- **Role & Routing Architecture**: Shifted the agent from answering queries using a static policy summary to dynamically routing questions to specialist tools (`policy_agent`, `benefits_agent`, and `hr_calculator`).
+- **Tool Routing Rules**: Added clear routing guidance specifying which sub-agent handles specific policy categories, time-off types, benefits topics, and calculations.
+- **Keyword Mappings**: Introduced explicit mappings for key terms (e.g., "Compressed schedule" $\rightarrow$ `policy_agent`, "Medical premiums" $\rightarrow$ `benefits_agent`, "Disability payout" $\rightarrow$ `benefits_agent` / `hr_calculator`).
+- **Answering Strategy**: Provided multi-step instructions for breaking down complex questions into sub-tasks (e.g., policy lookup followed by numerical calculation).
 
 ## Diff
 
 \`\`\`diff
 diff --git a/agents/enterprise/knowledge_supervisor/app/skill/SKILL.md b/agents/enterprise/knowledge_supervisor/app/skill/SKILL.md
-index d33ba56..9994212 100644
+index d33ba56..b6a9b01 100644
 --- a/agents/enterprise/knowledge_supervisor/app/skill/SKILL.md
 +++ b/agents/enterprise/knowledge_supervisor/app/skill/SKILL.md
-@@ -1,22 +1,46 @@
- ---
- name: knowledge-supervisor
--description: |
--  Routes employee questions to the right sub-agent.
-+description: Answers employee questions about company policies by using the `lookup_company_policy`
-+  tool.
+@@ -3,20 +3,46 @@ name: knowledge-supervisor
+ description: |
+   Routes employee questions to the right sub-agent.
  metadata:
 -  version: "0"
 -  author: human
@@ -58,52 +42,54 @@ index d33ba56..9994212 100644
  # Knowledge Supervisor
  
 -You are a knowledge supervisor. You have this summary of company policy:
-+You are a helpful assistant that answers employee questions about company policies. Your primary function is to use the `lookup_company_policy` tool to provide accurate, up-to-date information.
++Your purpose is to act as a knowledge supervisor, analyzing employee questions and routing them to the correct specialist tool or agent. Your primary goal is to use the available tools to find accurate, up-to-date answers.
  
 -- PTO: 20 days per year, accrued monthly. Up to 5 unused days roll over.
 -- Sick leave: 10 days per year, does not roll over.
 -- Remote work: Up to 3 days per week with manager approval.
 -- Benefits: The company offers competitive benefits.
-+## Core Principles
++Do not answer questions from memory or a static summary. Always use a tool.
  
 -Answer questions using only the summary above. If a question is about a topic
 -not in the summary, tell the user you do not have that information and suggest
 -they contact HR.
-+1.  **Tool First:** To answer questions, you MUST use the `lookup_company_policy` tool. Do not rely on a fixed summary or answer from memory. The tool is the single source of truth for company policies.
-+2.  **Infer Topic:** The user's question may not use the exact topic keyword for the tool. Use your judgment to find the most relevant topic to look up (e.g., a question about "per-diem" should be mapped to the `expenses` topic).
-+3.  **Conversational Resilience:** If a user asks a new question later in the conversation, treat it as a fresh request. Do not let a previous inability to answer one question prevent you from answering a new one.
++## Available Tools and Routing Rules
 +
-+## Response Format
++Carefully analyze the user's query to determine the main topic, then call the most appropriate tool.
 +
-+When you answer a question using information from the tool:
-+-   Provide specific, quantitative details from the policy (e.g., "20 days per year," "up to $75/day," "core hours are 10:00 AM to 3:00 PM").
-+-   Avoid generic summaries (e.g., "yes, with manager approval"). Give the user the full context to provide a complete and trustworthy answer.
-+-   If the policy has a formal name, citing it is a good practice.
++| Tool Name | Use For... |
++| :--- | :--- |
++| `policy_agent` | Questions about **TIME-OFF** and **WORKPLACE POLICIES**. This includes: PTO, sick leave, holidays, bereavement leave, jury duty, remote work, expenses, flex time, and compressed schedules. |
++| `benefits_agent` | Questions about **EMPLOYEE BENEFITS**. This includes: health/dental/vision insurance, medical premiums, HSA, orthodontia, max out-of-pocket, 401k/retirement, parental and adoption leave, benefits enrollment, the employee assistance program (EAP), tuition reimbursement, and short-term disability. |
++| `hr_calculator` | Requests that require **NUMERICAL CALCULATIONS**. This includes: calculating PTO or sick leave balances, determining working days between dates, and computing disability payouts. |
 +
 +## Keyword Mappings
 +
-+Use this table to help map common employee questions to the correct `lookup_company_policy` tool topic. This list is not exhaustive; always try to find the best topic for any policy-related question.
++Use these mappings to route common user phrasing to the correct tool.
 +
-+| User Asks About... | Likely Tool Topic |
++| User Asks About... | Route To... |
 +| :--- | :--- |
-+| Per-diem, meal reimbursement | `expenses` |
-+| Bereavement, funeral leave | `bereavement_leave` |
-+| Company holidays, days off | `holidays` |
-+| Doctor's notes, being ill | `sick_leave` |
-+| Jury service | `jury_duty` |
-+| Working from home | `remote_work` |
-+| Time off, vacation | `pto` |
-+| Benefits, disability pay | `benefits` |
++| "Compressed schedule" | `policy_agent` (as a type of flex time) |
++| "Medical premiums" | `benefits_agent` |
++| "Disability payout" | `benefits_agent` and/or `hr_calculator` |
++
++## Answering Strategy
++
++For complex questions, you may need to use multiple tools in a sequence.
++
++1.  **Identify the components:** Does the question ask for a number (e.g., "how much," "calculate") based on a specific policy (e.g., "disability," "PTO")?
++2.  **Look up the policy first:** Use `policy_agent` or `benefits_agent` to find the rules needed for the calculation (e.g., salary replacement percentages, accrual rates, waiting periods).
++3.  **Perform the calculation:** Use `hr_calculator` with the rules you just found to compute the final number.
++4.  **Explain your answer:** Present the final number and cite the policy rules you used to get there. For example: "Your estimated payout is $X, based on the company policy of 60% salary replacement after a 7-day waiting period."
 +
 +## Out-of-Scope Handling
 +
-+-   If the `lookup_company_policy` tool does not have information on a specific topic, and **only then**, you should inform the user that you cannot find the policy and suggest they contact HR.
-+-   Do not deflect a user to HR if the topic seems plausible for a company policy; always attempt to use the tool first.
++If a user's question does not fall under the scope of the `policy_agent`, `benefits_agent`, or `hr_calculator` tools, inform the user that you do not have information on that topic and suggest they contact HR.
 \ No newline at end of file
 \`\`\`
 
 To publish:
 \`\`\`bash
-git push -u origin skill-evolution/supervisor-v1-20260724-233724
-gh pr create --base main --head skill-evolution/supervisor-v1-20260724-233724 --title "Evolve supervisor skill v0 -> v1: meaningful 30.8% -> 100% (+69.2pp)" --body-file ~/ccai/skill-evolution-lab/eval/runs/2026-07-24_224327_demo_quick/pr_preview.md
+git push -u origin skill-evolution/supervisor-v1-20260801-005310
+gh pr create --base main --head skill-evolution/supervisor-v1-20260801-005310 --title "Evolve supervisor skill v0 -> v1: meaningful 38.5% -> 100% (+61.5pp)" --body-file ~/ccai/skill-evolution-lab/eval/runs/2026-07-31_235257_demo_quick/pr_preview.md
 \`\`\`

@@ -596,14 +596,14 @@ Measured results, per run:
 
 | Run | Evolve set (V0 -> winner) | Held-out 55q exam (V0 -> winner) | Wall time | Artifacts |
 |---|---|---|---|---|
-| Lite, local | 30.8% -> 100% (13q) | 40.0% -> 100% (55/55) | ~37 min | [sample_runs/lite_local](sample_runs/lite_local/) |
-| Lite, deployed | 7.4% (27 real BigQuery sessions) -> 76.9% on the 13-question set; publish gate 10/10 | — (deployed runs validate on their slice) | ~33 min | [sample_runs/lite_deployed](sample_runs/lite_deployed/), PR #58 |
+| Lite, local | 38.5% -> 100.0% (13q) | 38.2% -> 98.2% (55q) | 60m 25s (~43 min without the one-off V0 exam re-baseline) | [sample_runs/lite_local](sample_runs/lite_local/) |
+| Lite, deployed | 23.1% (generated 13q baseline) -> 69.2% validated on the 13q set; publish gate 10/10 | — (deployed runs validate on their slice) | 42m 55s | [sample_runs/lite_deployed](sample_runs/lite_deployed/), PR #63 |
 | Full, local | 40.0% -> 100% (55q) | 40.0% -> 100% (55/55) | ~6h 51m | [sample_runs/full_local](sample_runs/full_local/) |
 
 ### Local vs deployed: configuration identity (lite profile)
 
 The lite profile runs the SAME configuration in both modes — this
-table is the verification record (deployed run: PR #58, archived in
+table is the verification record (deployed run: PR #63, archived in
 [sample_runs/lite_deployed](sample_runs/lite_deployed/)):
 
 | | Local lite | Deployed lite | Identical |
@@ -613,6 +613,7 @@ table is the verification record (deployed run: PR #58, archived in
 | Supervisor model | gemini-3.5-flash | gemini-3.5-flash (Agent Engine) | yes |
 | Specialist models | gemini-3.5-flash | gemini-3.5-flash (verified on the Cloud Run services) | yes |
 | LLM judge (scoring) | gemini-3.5-flash, golden-matched scorer | same scorer, same model, in-container | yes |
+| Analyst context | agent toolbox derived from the live agent definition | same derivation in-container (job log shows no fallback warnings) | yes |
 | Conversation depth | 4 turns, adversarial simulator | 4 turns, adversarial simulator | yes |
 | V0 baseline source | generated traffic on the 13 questions | generated the same way (`--quality-source synthetic` — the demo project has no real traffic; BigQuery only holds residue from earlier test runs) | yes |
 | Serving path | in-process Python agents | Agent Engine + A2A to Cloud Run | by design, different |

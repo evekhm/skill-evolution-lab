@@ -1,2 +1,2 @@
-measured: 2026-07-24 (run 2026-07-24_224327_demo_quick), V0 ground-truth 40.0% on the 55q exam
+measured: 2026-08-01 (run 2026-07-31_235257_demo_quick), V0 ground-truth 38.2% on the 55q exam
 model=gemini-3.5-flash
