@@ -97,6 +97,24 @@ def find_sdk_scripts_dir():
         if os.path.isdir(scripts):
             _sdk_scripts_dir = os.path.abspath(scripts)
             logger.info("Using SDK from SDK_DIR env var: %s", _sdk_scripts_dir)
+            # SDK_DIR wins over the SDK_REPO/SDK_BRANCH pin. A profile-level
+            # SDK_DIR export pointing at a clone on some other branch has
+            # silently bypassed the pin before — make the override loud.
+            if _SDK_BRANCH:
+                try:
+                    current = subprocess.check_output(
+                        ["git", "-C", env_dir, "branch", "--show-current"],
+                        text=True, stderr=subprocess.DEVNULL,
+                    ).strip()
+                    if current and current != _SDK_BRANCH:
+                        logger.warning(
+                            "SDK_DIR overrides the SDK_BRANCH pin: using "
+                            "branch %r from %s, but SDK_BRANCH=%r. Unset "
+                            "SDK_DIR (env -u SDK_DIR) to honor the pin.",
+                            current, env_dir, _SDK_BRANCH,
+                        )
+                except (subprocess.CalledProcessError, OSError):
+                    pass  # not a git checkout — nothing to compare
             return _sdk_scripts_dir
 
     # 2. Sibling repo
