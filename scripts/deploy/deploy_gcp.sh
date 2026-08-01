@@ -15,13 +15,14 @@
 
 # Deploy all agents to GCP.
 #
-# Deploys all 6 components in sequence:
+# Deploys all 7 components in sequence:
 #   1. policy_agent            -> Cloud Run (A2A)
 #   2. hr_calculator           -> Cloud Run (A2A)
-#   3. knowledge_supervisor    -> Vertex AI Agent Engine
-#   4. traffic_generator       -> Cloud Run Job
-#   5. quality_agent           -> Cloud Run Job + Cloud Scheduler (daily)
-#   6. skill_evolution_agent   -> Cloud Run Job + Cloud Scheduler (weekly)
+#   3. benefits_agent          -> Cloud Run (A2A)
+#   4. knowledge_supervisor    -> Vertex AI Agent Engine
+#   5. traffic_generator       -> Cloud Run Job
+#   6. quality_agent           -> Cloud Run Job + Cloud Scheduler (daily)
+#   7. skill_evolution_agent   -> Cloud Run Job + Cloud Scheduler (weekly)
 #
 # Prerequisites:
 #   - .env configured with PROJECT_ID and other settings
@@ -38,7 +39,7 @@ LOG_FILE="${LOG_DIR}/deploy_$(date +%Y%m%d_%H%M%S).log"
 # Tee all output (stdout + stderr) to log file, with timestamps
 exec > >(while IFS= read -r line; do printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$line"; done | tee -a "$LOG_FILE") 2>&1
 
-TOTAL_STEPS=6
+TOTAL_STEPS=7
 
 echo "========================================="
 echo "  Agent Quality Lab -- Deploy All"
@@ -81,55 +82,71 @@ else
     FAILED+=("hr_calculator")
 fi
 
+# Deploy benefits_agent A2A to Cloud Run. Must precede the supervisor:
+# the supervisor discovers the benefits-agent Cloud Run URL and silently
+# runs WITHOUT a benefits tool when the service is absent — on a fresh
+# project that broke local/deployed topology parity unnoticed.
+echo ""
+echo "========================================="
+echo "[3/${TOTAL_STEPS}] Deploying benefits_agent..."
+echo "========================================="
+STEP_START=$(date +%s)
+if (cd "$PROJECT_ROOT/agents/enterprise/benefits_agent" && ./deploy.sh); then
+    echo "[3/${TOTAL_STEPS}] benefits_agent: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
+else
+    echo "[3/${TOTAL_STEPS}] benefits_agent: FAILED ($(( $(date +%s) - STEP_START ))s)"
+    FAILED+=("benefits_agent")
+fi
+
 # Deploy knowledge_supervisor to Agent Engine
 echo ""
 echo "========================================="
-echo "[3/${TOTAL_STEPS}] Deploying knowledge_supervisor..."
+echo "[4/${TOTAL_STEPS}] Deploying knowledge_supervisor..."
 echo "========================================="
 STEP_START=$(date +%s)
 if (cd "$PROJECT_ROOT/agents/enterprise/knowledge_supervisor" && ./deploy.sh); then
-    echo "[3/${TOTAL_STEPS}] knowledge_supervisor: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
+    echo "[4/${TOTAL_STEPS}] knowledge_supervisor: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
 else
-    echo "[3/${TOTAL_STEPS}] knowledge_supervisor: FAILED ($(( $(date +%s) - STEP_START ))s)"
+    echo "[4/${TOTAL_STEPS}] knowledge_supervisor: FAILED ($(( $(date +%s) - STEP_START ))s)"
     FAILED+=("knowledge_supervisor")
 fi
 
 # Deploy Traffic Generator as Cloud Run Job
 echo ""
 echo "========================================="
-echo "[4/${TOTAL_STEPS}] Deploying traffic_generator..."
+echo "[5/${TOTAL_STEPS}] Deploying traffic_generator..."
 echo "========================================="
 STEP_START=$(date +%s)
 if (cd "$PROJECT_ROOT/agents/workflow/traffic_generator" && ./deploy.sh); then
-    echo "[4/${TOTAL_STEPS}] traffic_generator: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
+    echo "[5/${TOTAL_STEPS}] traffic_generator: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
 else
-    echo "[4/${TOTAL_STEPS}] traffic_generator: FAILED ($(( $(date +%s) - STEP_START ))s)"
+    echo "[5/${TOTAL_STEPS}] traffic_generator: FAILED ($(( $(date +%s) - STEP_START ))s)"
     FAILED+=("traffic_generator")
 fi
 
 # Deploy Quality Agent as Cloud Run Job + Cloud Scheduler
 echo ""
 echo "========================================="
-echo "[5/${TOTAL_STEPS}] Deploying quality_agent..."
+echo "[6/${TOTAL_STEPS}] Deploying quality_agent..."
 echo "========================================="
 STEP_START=$(date +%s)
 if (cd "$PROJECT_ROOT/agents/workflow/quality_agent" && ./deploy.sh); then
-    echo "[5/${TOTAL_STEPS}] quality_agent: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
+    echo "[6/${TOTAL_STEPS}] quality_agent: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
 else
-    echo "[5/${TOTAL_STEPS}] quality_agent: FAILED ($(( $(date +%s) - STEP_START ))s)"
+    echo "[6/${TOTAL_STEPS}] quality_agent: FAILED ($(( $(date +%s) - STEP_START ))s)"
     FAILED+=("quality_agent")
 fi
 
 # Deploy Skill Evolution Agent as Cloud Run Job + Cloud Scheduler
 echo ""
 echo "========================================="
-echo "[6/${TOTAL_STEPS}] Deploying skill_evolution_agent..."
+echo "[7/${TOTAL_STEPS}] Deploying skill_evolution_agent..."
 echo "========================================="
 STEP_START=$(date +%s)
 if (cd "$PROJECT_ROOT/agents/workflow/skill_evolution_agent" && ./deploy.sh); then
-    echo "[6/${TOTAL_STEPS}] skill_evolution_agent: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
+    echo "[7/${TOTAL_STEPS}] skill_evolution_agent: SUCCESS ($(( $(date +%s) - STEP_START ))s)"
 else
-    echo "[6/${TOTAL_STEPS}] skill_evolution_agent: FAILED ($(( $(date +%s) - STEP_START ))s)"
+    echo "[7/${TOTAL_STEPS}] skill_evolution_agent: FAILED ($(( $(date +%s) - STEP_START ))s)"
     FAILED+=("skill_evolution_agent")
 fi
 
