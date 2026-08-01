@@ -1,7 +1,7 @@
 {
   "eval_set_id": "golden_evals_hr_policy",
   "name": "Golden Eval Set: HR Policy Q&A",
-  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact — what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
+  "description": "Curated question-answer pairs that define correct agent behavior. This is the starting artifact \u2014 what users bring to the system. The evolution pipeline produces skills that satisfy these Q&A pairs. Expected answers contain verifiable facts (numbers, dates, limits, yes/no) that the scorer uses as ground truth.",
   "version": "1.0",
   "eval_cases": [
     {
@@ -150,7 +150,7 @@
       "question": "Is Juneteenth a company holiday?",
       "expected_answer": "No, Juneteenth is not a company holiday.",
       "topic": "holidays",
-      "notes": "Tests hallucination resistance — agent must not assume"
+      "notes": "Tests hallucination resistance \u2014 agent must not assume"
     },
     {
       "id": "holiday_03",
@@ -197,30 +197,30 @@
     {
       "id": "scope_01",
       "question": "What are the salary bands for senior engineers?",
-      "expected_answer": "DECLINE — salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 salary information is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_02",
       "question": "How do I get promoted?",
-      "expected_answer": "DECLINE — promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 promotion processes are out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_03",
       "question": "Can you help me set up my laptop?",
-      "expected_answer": "DECLINE — IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 IT support is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "scope_04",
       "question": "What's the dress code?",
-      "expected_answer": "DECLINE — dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
+      "expected_answer": "DECLINE \u2014 dress code is out of scope. I can help with PTO, benefits, expenses, and other HR policies.",
       "topic": "out_of_scope"
     },
     {
       "id": "compound_01",
-      "question": "Compare PTO and sick leave — what rolls over and what doesn't?",
+      "question": "Compare PTO and sick leave \u2014 what rolls over and what doesn't?",
       "expected_answer": "PTO: 20 days/year, up to 5 days roll over. Sick leave: 10 days/year, no rollover.",
       "topic": "multi_topic",
       "notes": "Tests multi-topic handling with comparison"
@@ -231,6 +231,36 @@
       "expected_answer": "PTO: 20 days/year. Sick leave: 10 days/year. Parental leave: 16 weeks (primary) or 8 weeks (secondary). 11 paid holidays/year.",
       "topic": "multi_topic",
       "notes": "Tests comprehensive multi-topic response"
+    },
+    {
+      "id": "reg-20260801-01",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "expected_answer": "You receive **10 sick days per year**. Please note that unused sick leave **does not roll over** to the next year. Additionally, the policy requires a doctor's note if you are out sick for more than 3 consecutive days.",
+      "topic": "benefits"
+    },
+    {
+      "id": "reg-20260801-02",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "expected_answer": "For the loss of an immediate family member, which includes a parent, you are eligible for **5 paid days** of bereavement leave. If you need additional time off, you can arrange for unpaid leave with your manager. You will need to notify both your manager and HR, but please note that documentation is not required.",
+      "topic": "bereavement"
+    },
+    {
+      "id": "reg-20260801-03",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "expected_answer": "Yes, I have verified our actual company policy. Here are the exact terms regarding our short-term disability benefits: * **Payout Percentage:** The policy covers exactly **60% of your weekly salary**. * **Waiting Period:** There is a **7-day waiting period** before benefits begin. * **Payable Weeks:** Importantly, the 7-day waiting period **does not reduce** the number of payable weeks.",
+      "topic": "calc"
+    },
+    {
+      "id": "reg-20260801-04",
+      "question": "How many counseling visits does the EAP cover?",
+      "expected_answer": "Employees receive **10 sick days per year**. Here are a few important details to keep in mind regarding sick leave: * **No Rollover:** Unused sick days do not roll over from year to year; they reset annually. * **Doctor's Note:** If you are absent due to illness for more than 3 consecutive days, a doctor's note is required.",
+      "topic": "eap"
+    },
+    {
+      "id": "reg-20260801-05",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "expected_answer": "You are allowed to work remotely up to **3 days per week**, subject to your manager's approval. Here are a few additional details regarding the remote work policy: * **Core Collaboration Hours**: On your remote days, you are expected to be available during our core collaboration hours of **10:00 AM to 3:00 PM** in your local timezone.",
+      "topic": "expenses"
     }
   ]
 }
