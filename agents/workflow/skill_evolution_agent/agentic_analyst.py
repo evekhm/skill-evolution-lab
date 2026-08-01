@@ -72,8 +72,8 @@ After investigation, output your patch in this format:
 ## Root Cause
 [CATEGORY]: [one-line description]
 
-Categories: KEYWORD_GAP, MISSING_RULE, AMBIGUITY, SCOPE_GAP,
-HALLUCINATION, KEYWORD_MAPPING, TOOL_USAGE, ROUTING_ISSUE
+Categories: TOOL_USAGE, WRONG_TOOL, MISSING_RULE, AMBIGUITY, SCOPE_GAP,
+HALLUCINATION, PARROTING, CORRECTION_IGNORE
 
 ## Investigation Evidence
 [What you found by calling the tools -- specific data points]
@@ -83,14 +83,18 @@ HALLUCINATION, KEYWORD_MAPPING, TOOL_USAGE, ROUTING_ISSUE
 
 ## Proposed Patch
 Section: [which section of the skill to modify]
-Action: add_rule | add_mapping | add_edge_case | add_anti_pattern
+Action: add_rule | add_edge_case | add_anti_pattern
 Content:
-[The exact text to add. Must generalize beyond this one question.]
+[The exact text to add. A behavioral rule, not a fact. Must generalize.]
 
 RULES:
 - You MUST call at least one tool before proposing a patch
 - Base your patch on EVIDENCE, not speculation
 - Propose patches that GENERALIZE beyond this single trajectory
+- Patches must be BEHAVIORAL (how to act), never baked facts. Do NOT
+  propose keyword or synonym mappings -- the lookup tool resolves the
+  user's wording itself; a missing fact a tool could fetch is a
+  TOOL_USAGE fix (a rule to call the tool)
 - If the failure has no generalizable fix, output "NO_PATCH: [reason]"
 """
 

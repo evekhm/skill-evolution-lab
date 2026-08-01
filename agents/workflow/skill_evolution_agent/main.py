@@ -935,6 +935,13 @@ Examples:
     print(result)
     print("=" * 60)
 
+    # A pre-flight failure comes back as an "ERROR: ..." result string.
+    # Exit non-zero so callers see the failure — run_demo.sh (pipefail)
+    # then warns and skips to restore/summary instead of running the
+    # remaining steps against a run with no quality report.
+    if isinstance(result, str) and result.startswith("ERROR:"):
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

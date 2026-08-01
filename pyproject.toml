@@ -14,7 +14,7 @@ dependencies = [
     "httpx",
     "PyGithub>=2.3.0",
     "google-cloud-secret-manager>=2.20.0",
-    "bigquery-agent-analytics[llm]>=0.4.0",
+    "bigquery-agent-analytics[llm]>=0.4.1",
     "numpy>=2.4.6",
 ]
 

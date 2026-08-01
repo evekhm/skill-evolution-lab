@@ -74,10 +74,8 @@ def coevolve(
     model_id: str = os.getenv("EVOLUTION_MODEL_ID", "gemini-2.5-pro"),
     max_workers: int = 10,
     candidates: int | None = None,
-    template_path: str | None = None,
     max_chars: int | None = None,
-    agentic: bool = False,
-    score_patches: bool = False,
+    agentic: bool = True,
     questions_file: str | None = None,
     select_by_score: bool = True,
 ) -> CoevolutionResult:
@@ -92,10 +90,8 @@ def coevolve(
         max_workers: Max parallel threads.
         candidates: Number of consolidation candidates (best-of-N).
             None = auto-decide based on meaningful_rate.
-        template_path: Structural template for consolidation.
         max_chars: Max chars for evolved skill.
         agentic: Use agentic error analysts.
-        score_patches: Score patches before consolidation.
 
     Returns:
         CoevolutionResult with bottleneck analysis and evolved skills.
@@ -277,8 +273,8 @@ def coevolve(
                     max_workers=max_workers,
                     candidates=candidates,
                     candidates_dir=cand_dir,
-                    template_path=template_path,
                     max_chars=max_chars,
+                    agentic=agentic,
                     score_fn=_make_score_fn(skill_dir),
                     incumbent_score=incumbent_score,
                 )
