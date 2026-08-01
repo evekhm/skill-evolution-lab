@@ -27,8 +27,11 @@ if [ "$TARGET" = deployed ]; then
     # env default, which points at the full 55-question evolve set).
     JOB_ARGS="--full-loop,--mode,supervisor,--rounds,1,--candidates,2,--quick,--questions,/app/eval/data/questions/two_defect_lite.json,--quality-source,synthetic"
     for a in ${ARGS[@]+"${ARGS[@]}"}; do [ -n "$a" ] && JOB_ARGS="$JOB_ARGS,$a"; done
+    # --project is REQUIRED: gcloud config is shared across VM sessions
+    # and can be flipped mid-run — an ambient-config execute once launched
+    # this job in a different project entirely.
     exec gcloud run jobs execute skill-evolution-agent \
-        --region "$REGION" --wait --args="$JOB_ARGS"
+        --project "$PROJECT_ID" --region "$REGION" --wait --args="$JOB_ARGS"
 fi
 echo "MODE: LOCAL sandbox — in-process agents, nothing published"
 exec bash scripts/demo/skill_evolution/run_demo.sh --quick ${ARGS[@]+"${ARGS[@]}"}
