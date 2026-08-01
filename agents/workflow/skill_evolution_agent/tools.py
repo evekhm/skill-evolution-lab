@@ -231,11 +231,24 @@ def run_evolution(
             ])
             result["candidate_paths"] = cand_files
             result["candidates_dir"] = candidates_dir
-            result["note"] = (
-                f"Generated {len(cand_files)} candidates. "
-                "First candidate deployed to SKILL.md. "
-                "Score each with score_candidate and pick the best."
-            )
+            if _score_fn is not None:
+                # Selection already happened inside evolve(): every candidate
+                # was scored on the eval set and the winner (incumbent-guarded)
+                # is deployed to SKILL.md. Telling the agent to score again
+                # sent deployed runs into ~15-min-per-candidate replay loops.
+                result["note"] = (
+                    f"Generated {len(cand_files)} candidates; each was already "
+                    "scored on the eval set and the best (incumbent-guarded) "
+                    "is deployed to SKILL.md. Do NOT re-score candidates with "
+                    "score_candidate — proceed to snapshot/validation of the "
+                    "deployed winner."
+                )
+            else:
+                result["note"] = (
+                    f"Generated {len(cand_files)} candidates. "
+                    "First candidate deployed to SKILL.md. "
+                    "Score each with score_candidate and pick the best."
+                )
 
         return result
 
