@@ -190,7 +190,7 @@ wheels = [
 
 [[package]]
 name = "bigquery-agent-analytics"
-version = "0.4.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-adk" },
@@ -199,9 +199,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/19/7d/9cc06a5638075cb26d79f94263c5f3b12e8856c44f02c5261988fee342ac/bigquery_agent_analytics-0.4.0.tar.gz", hash = "sha256:c8df9d813454fdfdaa799571123c8e0380834d022f56a36f7b8bf75b2808e1fc", size = 27509298, upload-time = "2026-06-18T23:47:39.609Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/a2/93caf72eef9b5116b1c316481a0ba137163e1367e6bf4c39f446a97b2e39/bigquery_agent_analytics-0.4.1.tar.gz", hash = "sha256:1133c7e52aa2a6f149e847ffdc060081e4a5ca94a4be4c57388f25cb1a875e5d", size = 28333106, upload-time = "2026-07-30T18:29:01.742Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/33/20d8604ed420de7714159d49b472023e3c15a63765e1c0d6899de385447c/bigquery_agent_analytics-0.4.0-py3-none-any.whl", hash = "sha256:76c764698272e167877c0f2f4a57631153fbdcaa95722cd4e6852a81ee7722a5", size = 526883, upload-time = "2026-06-18T23:47:36.92Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/51/80329ff4717b1429a25b55f93d5af12d2998af4f7a84e1f629d581437150/bigquery_agent_analytics-0.4.1-py3-none-any.whl", hash = "sha256:2e5069864e311e9f5cdd41550720894466712ac483f7c0873fcf9b481bd08b3a", size = 585499, upload-time = "2026-07-30T18:28:59.076Z" },
 ]
 
 [package.optional-dependencies]
