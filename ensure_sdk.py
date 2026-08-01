@@ -75,8 +75,13 @@ def _sync_sdk_branch():
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        # The cache is a shallow single-branch clone: plain `git checkout
+        # <branch>` fails there (no remote-tracking ref for other branches,
+        # so the switch silently no-ops and the clone stays on the OLD
+        # branch). Create/reset the local branch from FETCH_HEAD instead.
         subprocess.check_call(
-            ["git", "-C", _SDK_LOCAL_DIR, "checkout", _SDK_BRANCH],
+            ["git", "-C", _SDK_LOCAL_DIR, "checkout", "-B", _SDK_BRANCH,
+             "FETCH_HEAD"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
