@@ -102,6 +102,71 @@ def sanitize_adk_vars(skill: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+_toolbox_cache: dict[str, str] = {}
+
+
+def _derive_toolbox(agent: str | None = None) -> str:
+    """The target agent's toolbox, DERIVED from its live definition.
+
+    Introspects the same in-process agent objects candidate scoring
+    builds: AgentTools contribute the sub-agent's name and description,
+    function tools their name and docstring first line. Nothing is
+    hand-maintained — the block always matches the code that runs.
+    Analysts previously had to infer the toolbox from trajectories, so
+    baselines whose conversations showed few tool calls (deployed serve
+    paths suppress discretionary tool use) produced vague, weak skills.
+    Returns "" when the agent cannot be introspected.
+
+    Fed to the SDK engine via ``evolve_skill(tools=...)`` (the engine
+    shows it to every analyst and the consolidator); the agentic analyst
+    prepends it to its own prompt directly.
+    """
+    agent = (agent or os.getenv("EVOLUTION_TARGET_AGENTS", "supervisor")
+             ).split(",")[0].strip()
+    if agent in _toolbox_cache:
+        return _toolbox_cache[agent]
+    try:
+        from agents.workflow.traffic_generator.main import _build_local_supervisor
+        root = _build_local_supervisor(local_agents=True)
+        if agent in ("supervisor", root.name):
+            target = root
+        else:
+            target = next(
+                (getattr(t, "agent", None) for t in root.tools
+                 if getattr(getattr(t, "agent", None), "name", None) == agent),
+                None,
+            )
+        if target is None:
+            _toolbox_cache[agent] = ""
+            return ""
+        lines = []
+        for t in target.tools:
+            sub = getattr(t, "agent", None)
+            if sub is not None:
+                desc = " ".join((sub.description or "").split())
+                lines.append(f"- `{sub.name}` (callable as a tool): {desc}")
+            else:
+                name = getattr(t, "__name__", None) or getattr(t, "name", str(t))
+                doc = ((getattr(t, "__doc__", "") or "").strip().split("\n") or [""])[0]
+                lines.append(f"- `{name}`: {doc}")
+        block = (
+            "<agent_toolbox>\n"
+            "The agent HAS these callable tools (read from its live "
+            "definition; true even when the trajectories show few or no "
+            "tool calls — a failing baseline under-using its tools IS the "
+            "defect, not the toolbox):\n"
+            + "\n".join(lines) + "\n"
+            "An evolved skill should direct the agent to use these tools "
+            "BY NAME wherever they resolve the observed failures.\n"
+            "</agent_toolbox>\n\n"
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Toolbox derivation failed for %s: %s", agent, e)
+        block = ""
+    _toolbox_cache[agent] = block
+    return block
+
+
 def load_current_skill(skill_dir: str) -> str:
     """Read the full SKILL.md content from the skill directory."""
     skill_path = os.path.join(skill_dir, "SKILL.md")
@@ -259,6 +324,12 @@ def evolve(
         location=os.getenv("MODEL_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or "global",  # model endpoint: gemini-3.x is global-only
     )
 
+    # Derive the toolbox HERE, before the engine spawns analyst threads:
+    # derivation imports traffic_generator.main, whose import must happen
+    # predictably in this thread, and one derivation serves every analyst.
+    # The engine shows the block to all analysts and the consolidator.
+    toolbox = _derive_toolbox() or None
+
     error_analyst_fn = None
     if agentic:
         # Lazy import to avoid circular imports
@@ -293,6 +364,7 @@ def evolve(
         score_fn=wrapped_score_fn,
         min_improvement=min_improvement,
         incumbent_score=incumbent_score,
+        tools=toolbox,
         error_analyst_fn=error_analyst_fn,
         artifacts_dir=artifacts_dir or candidates_dir,
         version_label=_version_label(current_skill),

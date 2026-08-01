@@ -9,9 +9,9 @@ run opened one.
 
 | Sample | Config | Wall time | Evolve set (V0 -> winner, training questions) | Held-out exam (V0 -> winner, unseen questions) |
 |---|---|---|---|---|
-| [lite_local](lite_local/) | 13q, 1 round, 2 candidates, local sandbox | ~54 min (~37 min of run + one-off live V0 exam) | 30.8% -> 100% (13q) | 40.0% -> 100% (55/55, +60.0pp) |
+| [lite_local](lite_local/) | 13q, 1 round, 2 candidates, local sandbox | 60m 25s (~43 min of run + one-off V0 exam re-baseline) | 38.5% -> 100.0% (13q) | 38.2% -> 98.2% (55q, +60.0pp) |
 | [full_local](full_local/) | all 55q, agent-decided scope (evolved all 3 agents, stopped itself at 0 failures) | ~6h 51m | 40.0% -> 100% (55q) | 40.0% -> 100% (55/55, +60.0pp) |
-| [lite_deployed](lite_deployed/) | Cloud Run job vs the live stack, BigQuery slice | ~91 min | PR #51: 21.8% -> 100.0%; in-container publish gate 10/10, PR checks all green; closed as sample, registry rolled back to V0 | — (deployed runs validate on their slice) |
+| [lite_deployed](lite_deployed/) | Cloud Run job vs the live stack, 13-question set (same as local lite), all models gemini-3.5-flash | 42m 55s | V0 23.1% (generated 13q baseline) -> winner 69.2% validated on the 13q set; publish gate 10/10; PR #63 | — (deployed runs validate on their slice) |
 | [full_deployed](full_deployed/) | 55-session slice, agent-decided | ~6h 14m | 16.4% -> 61.8% (+45.4pp); PR step failed (job container git bug); registry push rolled back to V0 | — |
 | [deployed_incumbent_refusal](deployed_incumbent_refusal/) | unscoped window (safety behavior) | ~54 min | evolved 58.2% < baseline 72.0%: NO PR opened — the loop refuses regressions | — |
 

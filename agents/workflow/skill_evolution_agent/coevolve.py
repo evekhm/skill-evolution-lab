@@ -107,7 +107,7 @@ def coevolve(
     client = genai.Client(
         vertexai=True,
         project=os.getenv("PROJECT_ID"),
-        location=os.getenv("REGION", "us-central1"),
+        location=os.getenv("MODEL_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or "global",  # model endpoint: gemini-3.x is global-only
     )
 
     logger.info("Step 1: Detecting bottleneck...")

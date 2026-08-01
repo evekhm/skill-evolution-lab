@@ -1,0 +1,2244 @@
+{
+  "summary": {
+    "total_sessions": 13,
+    "meaningful": 3,
+    "declined": 0,
+    "partial": 0,
+    "unhelpful": 10,
+    "meaningful_rate": 23.1,
+    "unhelpful_rate": 76.9,
+    "dimension_averages": {
+      "correctness": 0.54,
+      "tool_usage": 0.54,
+      "specificity": 0.46,
+      "scope_compliance": 0.46,
+      "first_time_right": 0.46
+    },
+    "avg_user_turns": 3.4,
+    "avg_tool_calls": 0.5,
+    "multi_turn_sessions": 13,
+    "correction_rate": 7.7,
+    "verification_rate": 61.5,
+    "avg_corrections": 0.08,
+    "avg_verifications": 0.77,
+    "skill_gap": 9,
+    "knowledge_gap": 1,
+    "tool_gap": 0,
+    "knowledge_gap_rate": 7.7,
+    "tool_gap_rate": 0.0,
+    "addressable_meaningful_rate": 25.0,
+    "knowledge_gap_questions": [
+      "How many sick days am I given annually?"
+    ],
+    "tool_gap_questions": [],
+    "elapsed_seconds": 49.9,
+    "golden_eval_summary": {
+      "total_sessions": 13,
+      "matched": 13,
+      "matched_meaningful": 3,
+      "matched_unhelpful": 10,
+      "matched_partial": 0,
+      "matched_meaningful_rate": 23.1,
+      "unmatched": 0,
+      "unmatched_meaningful": 0,
+      "unmatched_unhelpful": 0,
+      "unmatched_partial": 0,
+      "unmatched_meaningful_rate": 0,
+      "mismatches": [
+        {
+          "question": "How much bereavement leave do I get for losing a parent?",
+          "expected_answer": "5 paid days (a parent is immediate family).",
+          "actual_response": "I do not have information about bereavement leave in my policy summary. Please contact HR for assistance with this topic.",
+          "topic": "bereavement",
+          "similarity": 1.0
+        },
+        {
+          "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+          "expected_answer": "$7,200 total ($1,200/week = 60% of weekly salary, for 6 weeks).",
+          "actual_response": "According to the company policy summary, you get **10 sick days per year**, and they **do not roll over** to the next year.",
+          "topic": "calc",
+          "similarity": 1.0
+        },
+        {
+          "question": "How many counseling visits does the EAP cover?",
+          "expected_answer": "Up to 8 counseling sessions per issue per year.",
+          "actual_response": "I do not have access to the official policy documents beyond the summary provided to me, which only notes that the company offers competitive benefits but does not detail the specific number of EAP counseling visits. \n\nI recommend contacting HR directly, as they will have access to the complete poli",
+          "topic": "eap",
+          "similarity": 1.0
+        },
+        {
+          "question": "What's the per-diem for meals while traveling for work?",
+          "expected_answer": "$75 per day for meals during business travel.",
+          "actual_response": "I checked the policy database, but I do not have any information regarding the travel per-diem policy in my summary or resources. I suggest you contact HR directly for this information.",
+          "topic": "expenses",
+          "similarity": 1.0
+        },
+        {
+          "question": "Can I do a compressed schedule of four 10-hour days?",
+          "expected_answer": "Yes - compressed work weeks like four 10-hour days are allowed with manager approval.",
+          "actual_response": "According to the company policy, you are allowed to work remotely up to 3 days per week with manager approval.",
+          "topic": "flex_time",
+          "similarity": 1.0
+        },
+        {
+          "question": "How many company-paid holidays are there?",
+          "expected_answer": "11 paid holidays per year.",
+          "actual_response": "I am sure. I only have access to a specific summary of company policies, which does not include information about company-paid holidays. I recommend contacting HR directly, as they will be able to assist you with the onboarding documents and the complete policy database.",
+          "topic": "holidays",
+          "similarity": 1.0
+        },
+        {
+          "question": "Does the company pay me during jury duty, and is there a limit?",
+          "expected_answer": "Jury duty is fully paid for the entire duration of service, with no day limit.",
+          "actual_response": "I do not have that information in my summary of company policies. I suggest you contact HR to find out about the company's jury duty and pay policies.",
+          "topic": "jury_duty",
+          "similarity": 1.0
+        },
+        {
+          "question": "What portion of my pay does short-term disability replace?",
+          "expected_answer": "60% of your salary.",
+          "actual_response": "I do not have access to any policy documents beyond the summary provided to me, which does not contain information about short-term disability. I suggest you contact HR directly to get the specific information regarding short-term disability pay replacement.",
+          "topic": "short_term_disability",
+          "similarity": 1.0
+        },
+        {
+          "question": "How many sick days am I given annually?",
+          "expected_answer": "10 sick days per year; they do not roll over.",
+          "actual_response": "I do not have information regarding whether a doctor's note is required for consecutive sick days in the policy summary. I suggest you contact HR for clarification on this matter.",
+          "topic": "sick_leave",
+          "similarity": 1.0
+        },
+        {
+          "question": "How much will the company reimburse for tuition each year?",
+          "expected_answer": "Up to $5,250 per year for job-related courses.",
+          "actual_response": "I attempted to check the official policy database for you, but unfortunately, the database system is still experiencing an error and is currently inaccessible. \n\nSince the number of paid holidays is not listed in the company policy summary I have access to, I do not have this information. I suggest ",
+          "topic": "tuition_reimbursement",
+          "similarity": 1.0
+        }
+      ]
+    }
+  },
+  "category_distributions": {
+    "response_usefulness": {
+      "meaningful": 3,
+      "unhelpful": 10
+    },
+    "task_grounding": {
+      "grounded": 5,
+      "ungrounded": 8
+    },
+    "correctness": {
+      "mostly_correct": 1,
+      "incorrect": 9,
+      "correct": 3
+    },
+    "tool_usage": {
+      "partial": 1,
+      "none": 9,
+      "proper": 3
+    },
+    "specificity": {
+      "specific": 3,
+      "vague": 10
+    },
+    "scope_compliance": {
+      "non_compliant": 10,
+      "compliant": 3
+    },
+    "first_time_right": {
+      "correction_needed": 10,
+      "correct": 3
+    },
+    "failure_attribution": {
+      "skill_gap": 10,
+      "not_a_failure": 2,
+      "knowledge_gap": 1
+    }
+  },
+  "per_agent": {
+    "unknown": {
+      "total": 13,
+      "meaningful": 3,
+      "declined": 0,
+      "unhelpful": 10,
+      "partial": 0,
+      "unclassified": 0,
+      "a2a_count": 0
+    }
+  },
+  "sessions": [
+    {
+      "session_id": "2590970219954438144",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "What percentage of my medical premium does the employer pay?",
+      "response": "According to the company policy summary, you get **20 days of PTO per year**, which are accrued monthly. You can also roll over up to 5 unused PTO days to the next year.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The final response directly and substantively answers the user's question about PTO with specific, actionable details."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The PTO information provided in the final response is grounded in the company policy data."
+        },
+        "correctness": {
+          "category": "mostly_correct",
+          "justification": "The PTO details are accurate, but the agent's earlier assertion that it did not have the medical premium coverage percentage was incorrect according to the ground truth."
+        },
+        "tool_usage": {
+          "category": "partial",
+          "justification": "The agent failed to use the policy tool to find the medical premium info in the first turn, but successfully retrieved the PTO policy details in the final turn."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides exact numbers, stating the user gets 20 days of PTO per year and can roll over up to 5 unused days."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer the in-scope question about medical premium coverage, incorrectly claiming it didn't have the information and deflecting to HR."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was a failure to answer an in-scope question, requiring the user to ask a different question to get a useful response."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The agent had the policy tool available to answer the medical premium coverage question but failed to retrieve the information, resulting in an unnecessary deflection to HR."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 1,
+          "reason": "The PTO details are accurate, but the agent's earlier assertion that it did not have the medical premium coverage percentage was incorrect according to the ground truth."
+        },
+        "tool_usage": {
+          "score": 1,
+          "reason": "The agent failed to use the policy tool to find the medical premium info in the first turn, but successfully retrieved the PTO policy details in the final turn."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides exact numbers, stating the user gets 20 days of PTO per year and can roll over up to 5 unused days."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer the in-scope question about medical premium coverage, incorrectly claiming it didn't have the information and deflecting to HR."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was a failure to answer an in-scope question, requiring the user to ask a different question to get a useful response."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What percentage of my medical premium does the employer pay?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry about medical premium coverage."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have that information in my policy summary. I suggest you contact HR for more details regarding the specific percentage of the medical premium that the employer covers."
+        },
+        {
+          "role": "user",
+          "text": "Could you please check the actual company policy documents to see if the medical premium coverage percentage is listed there?",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "User asks the agent to check the actual policy documents, questioning the agent's claim of not having the information."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have access to the full company policy documents beyond the summary provided to me. Since the specific medical premium coverage percentage is not listed in my summary, I do not have that information. I suggest contacting HR directly to get the exact details from the actual policy documents."
+        },
+        {
+          "role": "user",
+          "text": "Understood, I will reach out to HR for the medical premium details. Can you tell me how many days of PTO I get per year?",
+          "tag": "FOLLOWUP",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "User accepts the deflection and asks a new question about PTO days."
+        },
+        {
+          "role": "agent",
+          "text": "According to the company policy summary, you get **20 days of PTO per year**, which are accrued monthly. You can also roll over up to 5 unused PTO days to the next year."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for confirming that! That matches the information in my onboarding packet perfectly. I appreciate your help.",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User confirms the information is correct and closes the conversation."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "pre_correction_1",
+          "start_turn": 0,
+          "end_turn": 6,
+          "outcome": "not_recovered"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry about medical premium coverage."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "User asks the agent to check the actual policy documents, questioning the agent's claim of not having the information."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "User accepts the deflection and asks a new question about PTO days."
+        },
+        {
+          "turn_index": 6,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User confirms the information is correct and closes the conversation."
+        }
+      ],
+      "execution_trace": "Session: 2590970219954438144\nUser: conv_f08c0b4a\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:43:52  Total: 3.7min\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [16.4s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.4s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.2s, ttft=4.2s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [6.3s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [6.1s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [6.0s, ttft=6.0s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.0s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.8s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.7s, ttft=1.7s]",
+      "execution_sub_trajectories": [
+        {
+          "label": "pre_correction_1",
+          "outcome": "not_recovered",
+          "start_turn": 0,
+          "end_turn": 6,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [16.4s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.4s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.2s, ttft=4.2s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [6.3s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [6.1s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [6.0s, ttft=6.0s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.0s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.8s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.7s, ttft=1.7s]"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "What percentage of my medical premium does the employer pay?",
+        "expected_answer": "The company covers 80% of health insurance premiums for the employee (50% for dependents).",
+        "topic": "benefits",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "1269163729321197568",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "How much bereavement leave do I get for losing a parent?",
+      "response": "I do not have information about bereavement leave in my policy summary. Please contact HR for assistance with this topic.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent deflected the user to HR for an in-scope topic (bereavement leave) instead of using its tools to find the answer."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent did not retrieve any policy data to answer the question and instead claimed it did not have the information."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent incorrectly stated that it does not have information about bereavement leave, which is a covered company policy."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent failed to call the policy_agent tool to look up the bereavement leave policy, despite the topic being fully in-scope."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response contains no specific details or figures regarding bereavement leave."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer an in-scope question about bereavement leave, which it should have handled."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was a failure to answer an in-scope question, requiring correction or escalation."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The policy_agent tool contains the bereavement leave policy, but the agent failed to invoke the tool and instead deflected to HR."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent incorrectly stated that it does not have information about bereavement leave, which is a covered company policy."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent failed to call the policy_agent tool to look up the bereavement leave policy, despite the topic being fully in-scope."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response contains no specific details or figures regarding bereavement leave."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer an in-scope question about bereavement leave, which it should have handled."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was a failure to answer an in-scope question, requiring correction or escalation."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How much bereavement leave do I get for losing a parent?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry about bereavement leave policy."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information about bereavement leave in my policy summary. Please contact HR for assistance with this topic."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User closes the conversation with a polite closing statement."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 2,
+          "outcome": "wrong"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry about bereavement leave policy."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User closes the conversation with a polite closing statement."
+        }
+      ],
+      "execution_trace": "Session: 1269163729321197568\nUser: conv_e4c49829\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:46:49  Total: 4.5s\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [4.6s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.4s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.3s, ttft=4.3s]",
+      "execution_sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "outcome": "wrong",
+          "start_turn": 0,
+          "end_turn": 2,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [4.6s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.4s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.3s, ttft=4.3s]"
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How much bereavement leave do I get for losing a parent?",
+        "expected_answer": "5 paid days (a parent is immediate family).",
+        "topic": "bereavement",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "7202656238381826048",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+      "response": "According to the company policy summary, you get **10 sick days per year**, and they **do not roll over** to the next year.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 1,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent failed to answer the user's primary question about the short-term disability payout, falsely claiming it did not have the information and deflecting to HR."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent did not use any tools to look up or calculate the short-term disability payout, resulting in an ungrounded deflection."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent incorrectly stated that it did not have information about short-term disability payouts, which is false as the tools contain this information."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent did not invoke any tools (such as the hr_calculator or policy_agent) to answer the short-term disability question, despite them being available."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The agent's response to the primary question was vague and generic, directing the user to HR instead of providing specific figures."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer an in-scope question about short-term disability benefits, which it should have handled using its tools."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The first response was a complete deflection, requiring the user to follow up and eventually ask a different question to get any useful information."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The agent had the necessary tools (hr_calculator) to compute the short-term disability payout but failed to select and execute the tool, representing a routing/instruction skill gap."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent incorrectly stated that it did not have information about short-term disability payouts, which is false as the tools contain this information."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent did not invoke any tools (such as the hr_calculator or policy_agent) to answer the short-term disability question, despite them being available."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The agent's response to the primary question was vague and generic, directing the user to HR instead of providing specific figures."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer an in-scope question about short-term disability benefits, which it should have handled using its tools."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The first response was a complete deflection, requiring the user to follow up and eventually ask a different question to get any useful information."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry regarding short-term disability payout calculation."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information about short-term disability payouts or policies in my summary. I suggest you contact HR to get the details regarding your specific situation and short-term disability benefits."
+        },
+        {
+          "role": "user",
+          "text": "Could you please double-check the official policy documents to see if there is any specific information regarding short-term disability payouts?",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "User asks the agent to double-check the official policy documents after the agent claims to lack the information."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have access to any additional official policy documents beyond the summary provided to me, which only states that the company offers competitive benefits but does not include specific details on short-term disability payouts. \n\nPlease contact HR directly, as they will have access to the full policy documents and can provide you with the exact payout calculations for your short-term disability leave."
+        },
+        {
+          "role": "user",
+          "text": "Okay, I will contact HR directly about short-term disability. Since we are on the topic of time off, can you tell me how many sick days I get per year and if they roll over?",
+          "tag": "FOLLOWUP",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "User accepts the deflection and asks a new, related question about sick leave and rollover policy."
+        },
+        {
+          "role": "agent",
+          "text": "According to the company policy summary, you get **10 sick days per year**, and they **do not roll over** to the next year."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for confirming the sick leave policy, that is very helpful!",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User thanks the agent and closes the conversation."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 6,
+          "outcome": "wrong"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry regarding short-term disability payout calculation."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "User asks the agent to double-check the official policy documents after the agent claims to lack the information."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "User accepts the deflection and asks a new, related question about sick leave and rollover policy."
+        },
+        {
+          "turn_index": 6,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User thanks the agent and closes the conversation."
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "I make $104,000 a year. If I'm out 6 weeks on short-term disability, what's my total payout?",
+        "expected_answer": "$7,200 total ($1,200/week = 60% of weekly salary, for 6 weeks).",
+        "topic": "calc",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "2178890854050037760",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "How many counseling visits does the EAP cover?",
+      "response": "I do not have access to the official policy documents beyond the summary provided to me, which only notes that the company offers competitive benefits but does not detail the specific number of EAP counseling visits. \n\nI recommend contacting HR directly, as they will have access to the complete policy documents and can provide you with the exact number of covered visits.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 1,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent failed to answer the question about EAP counseling visits, which is an in-scope topic, and instead deflected the user to HR."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent did not use any tools to retrieve the requested policy information, resulting in an ungrounded response."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent incorrectly claimed that it does not have access to the information, whereas the EAP policy details are available in the company policy tool."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent did not call the policy_agent or lookup_company_policy tool to find the EAP counseling coverage, even though the topic is fully in-scope."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response does not provide any specific details or numbers regarding the EAP counseling visits."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer an in-scope question about EAP benefits, which it should have handled using its tools."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was a deflection to HR and failed to answer the question."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The agent had the policy_agent tool available to look up EAP benefits but failed to invoke it, which is a routing/tool-invocation skill failure."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent incorrectly claimed that it does not have access to the information, whereas the EAP policy details are available in the company policy tool."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent did not call the policy_agent or lookup_company_policy tool to find the EAP counseling coverage, even though the topic is fully in-scope."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response does not provide any specific details or numbers regarding the EAP counseling visits."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer an in-scope question about EAP benefits, which it should have handled using its tools."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was a deflection to HR and failed to answer the question."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many counseling visits does the EAP cover?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial query asking about the number of counseling visits covered by the EAP."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information regarding how many counseling visits the Employee Assistance Program (EAP) covers in my summary. Please contact HR for assistance with this question."
+        },
+        {
+          "role": "user",
+          "text": "Could you please check the official policy documents to see if the exact number of counseling visits covered by the EAP is listed there?",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "User asks the agent to check official policy documents, questioning the agent's previous response that it lacks this information."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have access to the official policy documents beyond the summary provided to me, which only notes that the company offers competitive benefits but does not detail the specific number of EAP counseling visits. \n\nI recommend contacting HR directly, as they will have access to the complete policy documents and can provide you with the exact number of covered visits."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for checking anyway. I will reach out to HR directly to get the details on the EAP counseling visits.",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User politely concludes the conversation after the agent reiterates its inability to help."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 4,
+          "outcome": "wrong"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial query asking about the number of counseling visits covered by the EAP."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "User asks the agent to check official policy documents, questioning the agent's previous response that it lacks this information."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User politely concludes the conversation after the agent reiterates its inability to help."
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How many counseling visits does the EAP cover?",
+        "expected_answer": "Up to 8 counseling sessions per issue per year.",
+        "topic": "eap",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "7484131215092482048",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "What's the per-diem for meals while traveling for work?",
+      "response": "I checked the policy database, but I do not have any information regarding the travel per-diem policy in my summary or resources. I suggest you contact HR directly for this information.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent failed to provide the per-diem rate for meals ($75) and instead deflected the user to HR, claiming it did not have the information."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent did not fabricate or hallucinate any false policy details; it simply stated it could not find the information."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent's claim that there is no information regarding travel per-diem in the policy database is incorrect, as the database contains the $75 per-diem limit."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent failed to successfully use the policy lookup tool to retrieve the travel per-diem policy, which was available in its database."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response contains no specific details or figures regarding the per-diem rate."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent failed to answer an in-scope question about travel expenses/per-diem, which it should have handled."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The first response was unhelpful and incorrect, and even after the user prompted the agent to check the database, it still failed to retrieve the answer."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The information was available in the policy database, but the agent failed to successfully query or retrieve it using its tools."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent's claim that there is no information regarding travel per-diem in the policy database is incorrect, as the database contains the $75 per-diem limit."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent failed to successfully use the policy lookup tool to retrieve the travel per-diem policy, which was available in its database."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response contains no specific details or figures regarding the per-diem rate."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent failed to answer an in-scope question about travel expenses/per-diem, which it should have handled."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The first response was unhelpful and incorrect, and even after the user prompted the agent to check the database, it still failed to retrieve the answer."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What's the per-diem for meals while traveling for work?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "The user asks an initial in-scope question about travel meal per-diem expenses."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information about the per-diem for meals while traveling in my policy summary. I suggest you contact HR for assistance with this question."
+        },
+        {
+          "role": "user",
+          "text": "Could you please check the official policy database to see if there is any information on travel per-diem?",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "The user doubts the agent's claim of not having the information and asks the agent to check the official policy database."
+        },
+        {
+          "role": "agent",
+          "text": "I checked the policy database, but I do not have any information regarding the travel per-diem policy in my summary or resources. I suggest you contact HR directly for this information."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "The user closes the conversation."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 4,
+          "outcome": "unresolved"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "The user asks an initial in-scope question about travel meal per-diem expenses."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "The user doubts the agent's claim of not having the information and asks the agent to check the official policy database."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "END",
+          "evidence": "The user closes the conversation."
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "What's the per-diem for meals while traveling for work?",
+        "expected_answer": "$75 per day for meals during business travel.",
+        "topic": "expenses",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "5137755809232453632",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "Can I do a compressed schedule of four 10-hour days?",
+      "response": "According to the company policy, you are allowed to work remotely up to 3 days per week with manager approval.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent failed to answer the user's primary in-scope question about compressed work schedules, incorrectly claiming it did not have the information and deflecting the user to HR."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent did not use its tools to look up the compressed schedule policy, making its claim of not having the information ungrounded."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent incorrectly stated that it did not have access to the policy database to search for compressed work schedules, which contradicts its actual capabilities."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent failed to invoke the policy_agent tool to look up the compressed work schedule policy, which was fully within its capabilities and scope."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The agent's responses regarding the primary question were vague deflections, offering no specific details about compressed schedules."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer an in-scope question about compressed work schedules (flex time), which it should have handled using the policy_agent."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was a failure to answer an in-scope question, requiring the user to follow up and eventually change the subject to get a useful answer."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The agent had the policy_agent tool available to look up the compressed schedule policy but failed to invoke it, representing a routing/instruction-following failure."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent incorrectly stated that it did not have access to the policy database to search for compressed work schedules, which contradicts its actual capabilities."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent failed to invoke the policy_agent tool to look up the compressed work schedule policy, which was fully within its capabilities and scope."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The agent's responses regarding the primary question were vague deflections, offering no specific details about compressed schedules."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer an in-scope question about compressed work schedules (flex time), which it should have handled using the policy_agent."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was a failure to answer an in-scope question, requiring the user to follow up and eventually change the subject to get a useful answer."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Can I do a compressed schedule of four 10-hour days?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry about compressed work schedules."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information about compressed work schedules in my policy summary. I suggest you contact HR for assistance with this question."
+        },
+        {
+          "role": "user",
+          "text": "Could you please check the official company policy database to see if there is any mention of compressed work schedules or alternative work arrangements?",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "User doubts the agent's claim of not having the information and asks them to check the official database."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have access to search the official company policy database beyond the summary provided to me, which does not contain information about compressed work schedules or alternative work arrangements. I suggest you contact HR directly to get information on this topic."
+        },
+        {
+          "role": "user",
+          "text": "Understood, I will contact HR directly about compressed schedules. In the meantime, could you tell me what the official policy is regarding remote work and how many days per week I am allowed to work from home?",
+          "tag": "FOLLOWUP",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "User accepts the deflection and asks a new follow-up question about remote work."
+        },
+        {
+          "role": "agent",
+          "text": "According to the company policy, you are allowed to work remotely up to 3 days per week with manager approval."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for confirming the remote work policy! That answers my question.",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User confirms their question is answered and closes the conversation."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 6,
+          "outcome": "not_applicable"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry about compressed work schedules."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "User doubts the agent's claim of not having the information and asks them to check the official database."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "User accepts the deflection and asks a new follow-up question about remote work."
+        },
+        {
+          "turn_index": 6,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User confirms their question is answered and closes the conversation."
+        }
+      ],
+      "execution_trace": "Session: 5137755809232453632\nUser: conv_e66be69e\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:43:54  Total: 1.3min\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [18.0s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.4s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.2s, ttft=4.2s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [3.2s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.9s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [2.8s, ttft=2.8s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [11.7s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.4s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.3s, ttft=1.3s]",
+      "execution_sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "outcome": "not_applicable",
+          "start_turn": 0,
+          "end_turn": 6,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [18.0s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.4s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.2s, ttft=4.2s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [3.2s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.9s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [2.8s, ttft=2.8s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [11.7s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.4s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.3s, ttft=1.3s]"
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "Can I do a compressed schedule of four 10-hour days?",
+        "expected_answer": "Yes - compressed work weeks like four 10-hour days are allowed with manager approval.",
+        "topic": "flex_time",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "800789368074665984",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "How many company-paid holidays are there?",
+      "response": "I am sure. I only have access to a specific summary of company policies, which does not include information about company-paid holidays. I recommend contacting HR directly, as they will be able to assist you with the onboarding documents and the complete policy database.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 2,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent deflected the user to HR for an in-scope topic (company-paid holidays) instead of using its tools to provide a substantive answer."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent did not call any tools or retrieve any data to answer the user's question."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent failed to provide the correct answer (11 paid holidays) and incorrectly claimed it did not have access to the policy database."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent did not use the policy_agent tool, which was available and capable of answering this in-scope question."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response is completely vague and contains no specific details or numbers regarding company holidays."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer an in-scope question about company-paid holidays, incorrectly claiming it was outside its summary/access."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was a deflection to HR, which was incorrect and required multiple follow-ups from the user."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The agent had the policy_agent tool available to look up company holidays but failed to invoke it, which is a tool-routing/instruction failure."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent failed to provide the correct answer (11 paid holidays) and incorrectly claimed it did not have access to the policy database."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent did not use the policy_agent tool, which was available and capable of answering this in-scope question."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response is completely vague and contains no specific details or numbers regarding company holidays."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer an in-scope question about company-paid holidays, incorrectly claiming it was outside its summary/access."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was a deflection to HR, which was incorrect and required multiple follow-ups from the user."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many company-paid holidays are there?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry about company-paid holidays."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information about company-paid holidays in my summary. I suggest you contact HR for assistance with this question."
+        },
+        {
+          "role": "user",
+          "text": "Could you please check the actual policy database? I'm sure the information about our company-paid holidays is documented there.",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "User doubts the agent's claim of not having the information and asks to check the policy database."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have access to the policy database or any information outside of the provided summary. Since company-paid holidays are not covered in my summary, I suggest you contact HR directly for this information."
+        },
+        {
+          "role": "user",
+          "text": "Are you sure you can't find it? Please check the system again, as the onboarding documents definitely mention our company-paid holidays.",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "User asks 'Are you sure' and requests another check, pointing out onboarding documents mention it."
+        },
+        {
+          "role": "agent",
+          "text": "I am sure. I only have access to a specific summary of company policies, which does not include information about company-paid holidays. I recommend contacting HR directly, as they will be able to assist you with the onboarding documents and the complete policy database."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for your help anyway. I will reach out to HR directly to get the details about our company-paid holidays.",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User politely ends the conversation, stating they will reach out to HR."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "pre_correction_1",
+          "start_turn": 0,
+          "end_turn": 6,
+          "outcome": "wrong"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry about company-paid holidays."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "User doubts the agent's claim of not having the information and asks to check the policy database."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "User asks 'Are you sure' and requests another check, pointing out onboarding documents mention it."
+        },
+        {
+          "turn_index": 6,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User politely ends the conversation, stating they will reach out to HR."
+        }
+      ],
+      "execution_trace": "Session: 800789368074665984\nUser: conv_9eee0602\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:44:49  Total: 1.1min\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [5.1s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.8s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.7s, ttft=4.7s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [1.8s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.7s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.6s, ttft=1.6s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.2s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.0s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.8s, ttft=1.8s]",
+      "execution_sub_trajectories": [
+        {
+          "label": "pre_correction_1",
+          "outcome": "wrong",
+          "start_turn": 0,
+          "end_turn": 6,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [5.1s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.8s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.7s, ttft=4.7s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [1.8s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.7s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.6s, ttft=1.6s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.2s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.0s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.8s, ttft=1.8s]"
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How many company-paid holidays are there?",
+        "expected_answer": "11 paid holidays per year.",
+        "topic": "holidays",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "1438048715347591168",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "Does the company pay me during jury duty, and is there a limit?",
+      "response": "I do not have that information in my summary of company policies. I suggest you contact HR to find out about the company's jury duty and pay policies.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 2,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent deflected the question by stating it did not have the information and directing the user to HR, despite jury duty being an in-scope topic that the policy_agent tool covers."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent did not retrieve any data from its tools to answer the question."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent incorrectly claimed it did not have the information, whereas the company policy on jury duty is fully paid with no limit and is available via the policy_agent."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent did not use the policy_agent tool to look up the jury duty policy, which was available and appropriate for this in-scope question."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response contains no specific details about the company's jury duty policy."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer an in-scope question about jury duty, which is explicitly listed as within the agent's scope."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The first response was completely unhelpful and failed to answer the question, requiring a correction or retry to get the correct information."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The agent failed to call the available policy_agent tool to retrieve the jury duty policy. This is a routing/tool-invocation failure (skill gap)."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent incorrectly claimed it did not have the information, whereas the company policy on jury duty is fully paid with no limit and is available via the policy_agent."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent did not use the policy_agent tool to look up the jury duty policy, which was available and appropriate for this in-scope question."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response contains no specific details about the company's jury duty policy."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer an in-scope question about jury duty, which is explicitly listed as within the agent's scope."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The first response was completely unhelpful and failed to answer the question, requiring a correction or retry to get the correct information."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "Does the company pay me during jury duty, and is there a limit?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry about company policy regarding jury duty pay and limits."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have that information in my summary of company policies. I suggest you contact HR to find out about the company's jury duty and pay policies."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User closes the conversation with a polite closing statement."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 2,
+          "outcome": "unhelpful"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry about company policy regarding jury duty pay and limits."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User closes the conversation with a polite closing statement."
+        }
+      ],
+      "execution_trace": "Session: 1438048715347591168\nUser: conv_47d59039\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:43:54  Total: 5.2s\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [19.1s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [5.1s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.9s, ttft=4.9s]",
+      "execution_sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "outcome": "unhelpful",
+          "start_turn": 0,
+          "end_turn": 2,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [19.1s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [5.1s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.9s, ttft=4.9s]"
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "Does the company pay me during jury duty, and is there a limit?",
+        "expected_answer": "Jury duty is fully paid for the entire duration of service, with no day limit.",
+        "topic": "jury_duty",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "8371340341684469760",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "How many vacation days do I get a year?",
+      "response": "You can work remotely up to 3 days per week with manager approval.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent provided direct, substantive, and accurate answers to all of the user's questions regarding PTO, sick leave, and remote work policies."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent's responses are grounded in the company's policy data, matching the expected answers for PTO, sick leave, and remote work."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "All facts provided by the agent, including the 20 PTO days, 10 sick days, and 3 days of remote work, are accurate and correct."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly used the policy lookup capabilities to retrieve the specific details for each of the user's policy questions."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The agent provided highly specific details, including exact numbers of days (20 PTO days, 10 sick days, 3 remote days) and rollover rules."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "All questions asked by the user (PTO, sick leave, remote work) are within the agent's defined HR scope, and the agent answered them correctly."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was completely correct and addressed the user's initial question perfectly without needing any corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The conversation was successful and there were no failures."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "All facts provided by the agent, including the 20 PTO days, 10 sick days, and 3 days of remote work, are accurate and correct."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly used the policy lookup capabilities to retrieve the specific details for each of the user's policy questions."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The agent provided highly specific details, including exact numbers of days (20 PTO days, 10 sick days, 3 remote days) and rollover rules."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "All questions asked by the user (PTO, sick leave, remote work) are within the agent's defined HR scope, and the agent answered them correctly."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was completely correct and addressed the user's initial question perfectly without needing any corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many vacation days do I get a year?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry about vacation days policy."
+        },
+        {
+          "role": "agent",
+          "text": "You get 20 PTO (vacation) days per year, which are accrued monthly. Up to 5 unused days can roll over to the next year."
+        },
+        {
+          "role": "user",
+          "text": "Thanks for confirming that! How many sick days do we get per year, and do they roll over?",
+          "tag": "FOLLOWUP",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Follow-up question regarding sick days and rollover policy."
+        },
+        {
+          "role": "agent",
+          "text": "You get 10 sick days per year, and they do not roll over."
+        },
+        {
+          "role": "user",
+          "text": "That makes sense, thank you. What is the policy regarding remote work?",
+          "tag": "FOLLOWUP",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Follow-up question regarding remote work policy."
+        },
+        {
+          "role": "agent",
+          "text": "You can work remotely up to 3 days per week with manager approval."
+        },
+        {
+          "role": "user",
+          "text": "Thank you for clarifying the remote work policy, that covers all my questions!",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User indicates all questions are answered and closes the conversation."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 6,
+          "outcome": "completed"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry about vacation days policy."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Follow-up question regarding sick days and rollover policy."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Follow-up question regarding remote work policy."
+        },
+        {
+          "turn_index": 6,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User indicates all questions are answered and closes the conversation."
+        }
+      ],
+      "execution_trace": "Session: 8371340341684469760\nUser: conv_dc699849\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:43:59  Total: 1.4min\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [7.5s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [7.3s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [7.2s, ttft=7.2s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [1.7s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.4s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.3s, ttft=1.3s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [1.2s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [994ms]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [882ms, ttft=882ms]",
+      "execution_sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "outcome": "completed",
+          "start_turn": 0,
+          "end_turn": 6,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [7.5s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [7.3s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [7.2s, ttft=7.2s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [1.7s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.4s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.3s, ttft=1.3s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [1.2s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [994ms]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [882ms, ttft=882ms]"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How many vacation days do I get a year?",
+        "expected_answer": "20 PTO days per year, accrued monthly.",
+        "topic": "pto",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "9015355088398450688",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "How often can I work from home each week?",
+      "response": "Thank you for sharing that. However, based strictly on the policy summary I have access to, there is no mention of specific core hours. To ensure you have the most accurate and official information, I suggest confirming these details with HR.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 0,
+      "corrections": 1,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "meaningful",
+          "justification": "The agent's first response directly and substantively answers the user's primary question about working from home frequency with specific, accurate details."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The response is grounded in the company's remote work policy, matching the expected golden answer."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The information provided (up to 3 days per week with manager approval) is completely accurate and matches the expected answer."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent correctly retrieved and used the policy information to answer the user's primary question."
+        },
+        "specificity": {
+          "category": "specific",
+          "justification": "The response provides specific details, stating 'up to 3 days per week' and mentioning the requirement of 'manager approval'."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent correctly answered the in-scope question about remote work policy."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response was fully correct, specific, and addressed the user's question perfectly without needing any corrections."
+        },
+        "failure_attribution": {
+          "category": "not_a_failure",
+          "justification": "The conversation was successful, as the primary question was answered correctly on the first turn."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The information provided (up to 3 days per week with manager approval) is completely accurate and matches the expected answer."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent correctly retrieved and used the policy information to answer the user's primary question."
+        },
+        "specificity": {
+          "score": 2,
+          "reason": "The response provides specific details, stating 'up to 3 days per week' and mentioning the requirement of 'manager approval'."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent correctly answered the in-scope question about remote work policy."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response was fully correct, specific, and addressed the user's question perfectly without needing any corrections."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How often can I work from home each week?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry regarding the work from home policy."
+        },
+        {
+          "role": "agent",
+          "text": "You can work from home up to 3 days per week with manager approval."
+        },
+        {
+          "role": "user",
+          "text": "That makes sense. Are there specific core hours I need to be online when working remotely?",
+          "tag": "FOLLOWUP",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Follow-up question asking for specific core hours when working remotely."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information about specific core hours in my company policy summary. I suggest you contact HR to get more details on this."
+        },
+        {
+          "role": "user",
+          "text": "Actually, the policy does outline this. Our core hours are 10am to 3pm, regardless of whether we are working remotely or in-office.",
+          "tag": "CORRECTION",
+          "inferred_tag": "CORRECTION",
+          "tag_evidence": "User corrects the agent's claim of not having the information, stating that core hours are 10am to 3pm."
+        },
+        {
+          "role": "agent",
+          "text": "Thank you for sharing that. However, based strictly on the policy summary I have access to, there is no mention of specific core hours. To ensure you have the most accurate and official information, I suggest confirming these details with HR."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User closes the conversation."
+        }
+      ],
+      "correction_boundaries": [
+        {
+          "turn_index": 4,
+          "wrong_claim": "I do not have information about specific core hours in my company policy summary. I suggest you contact HR to get more details on this.",
+          "correct_fact": "Our core hours are 10am to 3pm, regardless of whether we are working remotely or in-office.",
+          "agent_recovered": false
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "pre_correction_1",
+          "start_turn": 0,
+          "end_turn": 3,
+          "outcome": "wrong"
+        },
+        {
+          "label": "post_correction_1",
+          "start_turn": 4,
+          "end_turn": 6,
+          "outcome": "not_recovered"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry regarding the work from home policy."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Follow-up question asking for specific core hours when working remotely."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "CORRECTION",
+          "evidence": "User corrects the agent's claim of not having the information, stating that core hours are 10am to 3pm."
+        },
+        {
+          "turn_index": 6,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User closes the conversation."
+        }
+      ],
+      "execution_trace": "Session: 9015355088398450688\nUser: conv_5633fb3c\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:43:57  Total: 1.7min\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [3.2s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.9s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [2.8s, ttft=2.8s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [12.3s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.9s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.7s, ttft=1.7s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.8s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.6s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [2.5s, ttft=2.5s]",
+      "execution_sub_trajectories": [
+        {
+          "label": "pre_correction_1",
+          "outcome": "wrong",
+          "start_turn": 0,
+          "end_turn": 3,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [3.2s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.9s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [2.8s, ttft=2.8s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [12.3s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.9s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.7s, ttft=1.7s]"
+        },
+        {
+          "label": "post_correction_1",
+          "outcome": "not_recovered",
+          "start_turn": 4,
+          "end_turn": 6,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.8s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.6s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [2.5s, ttft=2.5s]"
+        }
+      ],
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How often can I work from home each week?",
+        "expected_answer": "Up to 3 days per week with manager approval.",
+        "topic": "remote_work",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "5781770555946434560",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "What portion of my pay does short-term disability replace?",
+      "response": "I do not have access to any policy documents beyond the summary provided to me, which does not contain information about short-term disability. I suggest you contact HR directly to get the specific information regarding short-term disability pay replacement.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 1,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent failed to answer the question about short-term disability pay replacement, which is an in-scope topic, and instead deflected the user to HR."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent did not retrieve any data from its tools to answer the question."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent incorrectly claimed that it does not have access to information regarding short-term disability, which is available via the policy_agent tool."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent did not use the policy_agent tool to look up the short-term disability policy, despite the tool being available and the topic being in-scope."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The response contains no specific details or numbers regarding the short-term disability policy."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer an in-scope question about short-term disability benefits."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was unhelpful and incorrect, requiring the user to follow up and ask them to check the policy documents again."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The agent had the policy_agent tool available to look up short-term disability policies but failed to invoke it, which is a routing/instruction-following failure (skill gap)."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent incorrectly claimed that it does not have access to information regarding short-term disability, which is available via the policy_agent tool."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent did not use the policy_agent tool to look up the short-term disability policy, despite the tool being available and the topic being in-scope."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The response contains no specific details or numbers regarding the short-term disability policy."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer an in-scope question about short-term disability benefits."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was unhelpful and incorrect, requiring the user to follow up and ask them to check the policy documents again."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "What portion of my pay does short-term disability replace?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry about short-term disability pay replacement."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have that information in my summary of company policies. I suggest you contact HR to get more details about short-term disability benefits."
+        },
+        {
+          "role": "user",
+          "text": "Could you please check the actual company policy documents to see if there is any specific information regarding short-term disability pay replacement?",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "User asks the agent to check the actual policy documents, doubting the agent's claim that it does not have the information."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have access to any policy documents beyond the summary provided to me, which does not contain information about short-term disability. I suggest you contact HR directly to get the specific information regarding short-term disability pay replacement."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User closes the conversation."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 4,
+          "outcome": "wrong"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry about short-term disability pay replacement."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "User asks the agent to check the actual policy documents, doubting the agent's claim that it does not have the information."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User closes the conversation."
+        }
+      ],
+      "execution_trace": "Session: 5781770555946434560\nUser: conv_45fb319c\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:45:00  Total: 42.8s\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [5.1s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.9s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.8s, ttft=4.8s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [4.4s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [3.4s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [3.2s, ttft=3.2s]",
+      "execution_sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "outcome": "wrong",
+          "start_turn": 0,
+          "end_turn": 4,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [5.1s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [4.9s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [4.8s, ttft=4.8s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [4.4s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [3.4s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [3.2s, ttft=3.2s]"
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "What portion of my pay does short-term disability replace?",
+        "expected_answer": "60% of your salary.",
+        "topic": "short_term_disability",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "2748033256958984192",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "How many sick days am I given annually?",
+      "response": "I do not have information regarding whether a doctor's note is required for consecutive sick days in the policy summary. I suggest you contact HR for clarification on this matter.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 3,
+      "tool_calls": 0,
+      "corrections": 0,
+      "verifications": 0,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent's final response states that it does not have the requested information about doctor's notes and directs the user to HR, which is not useful."
+        },
+        "task_grounding": {
+          "category": "grounded",
+          "justification": "The agent correctly grounded its response on the fact that the policy summary retrieved from its tools does not contain information about doctor's notes."
+        },
+        "correctness": {
+          "category": "correct",
+          "justification": "The first response was completely correct according to the ground truth, and the second response accurately stated that the information was missing from the policy."
+        },
+        "tool_usage": {
+          "category": "proper",
+          "justification": "The agent used its policy lookup tool to answer the first question and to search for the doctor's note policy in the second turn."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The final response is vague because it lacks the specific details requested regarding doctor's notes, as they were not available in the policy."
+        },
+        "scope_compliance": {
+          "category": "compliant",
+          "justification": "The agent remained within its defined scope, addressing sick leave policies and correctly identifying that it could not find the specific detail in the policy rather than declining the topic outright."
+        },
+        "first_time_right": {
+          "category": "correct",
+          "justification": "The agent's first response to the user's initial question was completely correct, specific, and aligned with the ground truth."
+        },
+        "failure_attribution": {
+          "category": "knowledge_gap",
+          "justification": "The agent failed to answer the follow-up question because the specific detail about doctor's notes for consecutive sick days is missing from the company policy data source."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 2,
+          "reason": "The first response was completely correct according to the ground truth, and the second response accurately stated that the information was missing from the policy."
+        },
+        "tool_usage": {
+          "score": 2,
+          "reason": "The agent used its policy lookup tool to answer the first question and to search for the doctor's note policy in the second turn."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The final response is vague because it lacks the specific details requested regarding doctor's notes, as they were not available in the policy."
+        },
+        "scope_compliance": {
+          "score": 2,
+          "reason": "The agent remained within its defined scope, addressing sick leave policies and correctly identifying that it could not find the specific detail in the policy rather than declining the topic outright."
+        },
+        "first_time_right": {
+          "score": 2,
+          "reason": "The agent's first response to the user's initial question was completely correct, specific, and aligned with the ground truth."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How many sick days am I given annually?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Initial inquiry about annual sick days."
+        },
+        {
+          "role": "agent",
+          "text": "You are given 10 sick days per year, which do not roll over."
+        },
+        {
+          "role": "user",
+          "text": "That makes sense. Is a doctor's note required if I am out sick for multiple consecutive days?",
+          "tag": "FOLLOWUP",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "Follow-up question regarding doctor's note policy."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information regarding whether a doctor's note is required for consecutive sick days in the policy summary. I suggest you contact HR for clarification on this matter."
+        },
+        {
+          "role": "user",
+          "text": "Thanks, that helps!",
+          "tag": "END",
+          "inferred_tag": "END",
+          "tag_evidence": "User expresses satisfaction and ends the conversation."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "start_turn": 0,
+          "end_turn": 4,
+          "outcome": "not_applicable"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Initial inquiry about annual sick days."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "Follow-up question regarding doctor's note policy."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "END",
+          "evidence": "User expresses satisfaction and ends the conversation."
+        }
+      ],
+      "execution_trace": "Session: 2748033256958984192\nUser: conv_71d88d88\nRoot agent: knowledge_supervisor\nScope: v1:{\"custom_labels\":[[\"agent_version\",\"0\"],[\"sw_version\",\"3e50ba7\"]],\"experiment_id\":null}\nTime: 22:45:52  Total: 37.5s\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.0s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.8s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.7s, ttft=1.7s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.4s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.2s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [2.0s, ttft=2.0s]",
+      "execution_sub_trajectories": [
+        {
+          "label": "full_trajectory",
+          "outcome": "not_applicable",
+          "start_turn": 0,
+          "end_turn": 4,
+          "trace": "\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.0s]\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n\u2502   \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n\u2502   \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [1.8s]\n\u2502       \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n\u2502       \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [1.7s, ttft=1.7s]\n\u251c\u2500\u2500 knowledge_supervisor > USER_MESSAGE_RECEIVED\n\u251c\u2500\u2500 knowledge_supervisor > INVOCATION_STARTING\n\u2514\u2500\u2500 knowledge_supervisor > INVOCATION_COMPLETED [2.4s]\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_STARTING\n    \u251c\u2500\u2500 knowledge_supervisor > AGENT_RESPONSE\n    \u2514\u2500\u2500 knowledge_supervisor > AGENT_COMPLETED [2.2s]\n        \u251c\u2500\u2500 knowledge_supervisor > LLM_REQUEST\n        \u2514\u2500\u2500 knowledge_supervisor > LLM_RESPONSE [2.0s, ttft=2.0s]"
+        }
+      ],
+      "failure_class": "knowledge_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How many sick days am I given annually?",
+        "expected_answer": "10 sick days per year; they do not roll over.",
+        "topic": "sick_leave",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    },
+    {
+      "session_id": "577298236566405120",
+      "user_id": null,
+      "root_agent_name": null,
+      "experiment_id": null,
+      "custom_labels": null,
+      "scope_signature": null,
+      "scope_coverage": null,
+      "context_applied": true,
+      "context_source": "trusted_judge_context",
+      "execution_mode": "api_fallback",
+      "question": "How much will the company reimburse for tuition each year?",
+      "response": "I attempted to check the official policy database for you, but unfortunately, the database system is still experiencing an error and is currently inaccessible. \n\nSince the number of paid holidays is not listed in the company policy summary I have access to, I do not have this information. I suggest contacting HR directly, as they will be able to provide you with the complete list of paid holidays.",
+      "answered_by": "unknown",
+      "is_a2a": false,
+      "latency_s": null,
+      "user_turns": 4,
+      "tool_calls": 2,
+      "corrections": 0,
+      "verifications": 2,
+      "metrics": {
+        "response_usefulness": {
+          "category": "unhelpful",
+          "justification": "The agent failed to answer both the tuition reimbursement and paid holidays questions, repeatedly deflecting to HR and claiming it did not have the information or that there was a system error."
+        },
+        "task_grounding": {
+          "category": "ungrounded",
+          "justification": "The agent did not retrieve any data from its tools to answer the user's questions."
+        },
+        "correctness": {
+          "category": "incorrect",
+          "justification": "The agent incorrectly claimed that the information was not available in the policy database and failed to provide the correct figures for tuition reimbursement ($5,250/year) and paid holidays."
+        },
+        "tool_usage": {
+          "category": "none",
+          "justification": "The agent did not successfully invoke the policy_agent tool to look up the requested policies, despite the questions being fully in-scope."
+        },
+        "specificity": {
+          "category": "vague",
+          "justification": "The responses are completely vague and generic, offering no specific details or numbers regarding the company policies."
+        },
+        "scope_compliance": {
+          "category": "non_compliant",
+          "justification": "The agent refused to answer in-scope questions about tuition reimbursement and paid holidays, which it should have handled using the policy_agent."
+        },
+        "first_time_right": {
+          "category": "correction_needed",
+          "justification": "The agent's first response was unhelpful and deflected to HR, requiring the user to follow up and ask it to check the database."
+        },
+        "failure_attribution": {
+          "category": "skill_gap",
+          "justification": "The agent had the tools (policy_agent) and data available to answer these standard policy questions, but failed to invoke them, instead claiming system errors and deflecting to HR. This is a model routing/instruction execution failure."
+        }
+      },
+      "quality_scores": {
+        "correctness": {
+          "score": 0,
+          "reason": "The agent incorrectly claimed that the information was not available in the policy database and failed to provide the correct figures for tuition reimbursement ($5,250/year) and paid holidays."
+        },
+        "tool_usage": {
+          "score": 0,
+          "reason": "The agent did not successfully invoke the policy_agent tool to look up the requested policies, despite the questions being fully in-scope."
+        },
+        "specificity": {
+          "score": 0,
+          "reason": "The responses are completely vague and generic, offering no specific details or numbers regarding the company policies."
+        },
+        "scope_compliance": {
+          "score": 0,
+          "reason": "The agent refused to answer in-scope questions about tuition reimbursement and paid holidays, which it should have handled using the policy_agent."
+        },
+        "first_time_right": {
+          "score": 0,
+          "reason": "The agent's first response was unhelpful and deflected to HR, requiring the user to follow up and ask it to check the database."
+        }
+      },
+      "conversation": [
+        {
+          "role": "user",
+          "text": "How much will the company reimburse for tuition each year?",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "The user asks an initial question about tuition reimbursement."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information about tuition reimbursement in my policy summary. I suggest you contact HR for more details regarding this benefit."
+        },
+        {
+          "role": "user",
+          "text": "Could you please check the official policy database to see if there is any information regarding tuition reimbursement?",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "The user asks the agent to check the official policy database, questioning the agent's claim that it lacks the information."
+        },
+        {
+          "role": "agent",
+          "text": "I attempted to check the policy database, but I am currently unable to access it due to a system error. Since tuition reimbursement is not covered in the summary of policies I have access to, I do not have that information. I suggest you contact HR directly to get the details on tuition reimbursement."
+        },
+        {
+          "role": "user",
+          "text": "Understood, thank you for trying to check. Since you don't have information on tuition reimbursement, could you tell me how many paid holidays we get each year?",
+          "tag": "FOLLOWUP",
+          "inferred_tag": "FOLLOWUP",
+          "tag_evidence": "The user asks a new, related question about paid holidays after the agent fails to find tuition reimbursement info."
+        },
+        {
+          "role": "agent",
+          "text": "I do not have information regarding the number of paid holidays in my policy summary. I suggest you contact HR to get the official list of paid holidays."
+        },
+        {
+          "role": "user",
+          "text": "Could you please check the official policy database to see if there is any information regarding the number of paid holidays?",
+          "tag": "VERIFY",
+          "inferred_tag": "VERIFY",
+          "tag_evidence": "The user asks the agent to check the official policy database for paid holidays, doubting the agent's claim of not having the information."
+        },
+        {
+          "role": "agent",
+          "text": "I attempted to check the official policy database for you, but unfortunately, the database system is still experiencing an error and is currently inaccessible. \n\nSince the number of paid holidays is not listed in the company policy summary I have access to, I do not have this information. I suggest contacting HR directly, as they will be able to provide you with the complete list of paid holidays."
+        }
+      ],
+      "sub_trajectories": [
+        {
+          "label": "pre_correction_1",
+          "start_turn": 0,
+          "end_turn": 7,
+          "outcome": "wrong"
+        }
+      ],
+      "turn_tags": [
+        {
+          "turn_index": 0,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "The user asks an initial question about tuition reimbursement."
+        },
+        {
+          "turn_index": 2,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "The user asks the agent to check the official policy database, questioning the agent's claim that it lacks the information."
+        },
+        {
+          "turn_index": 4,
+          "role": "user",
+          "tag": "FOLLOWUP",
+          "evidence": "The user asks a new, related question about paid holidays after the agent fails to find tuition reimbursement info."
+        },
+        {
+          "turn_index": 6,
+          "role": "user",
+          "tag": "VERIFY",
+          "evidence": "The user asks the agent to check the official policy database for paid holidays, doubting the agent's claim of not having the information."
+        }
+      ],
+      "failure_class": "skill_gap",
+      "golden_eval": {
+        "matched": true,
+        "golden_question": "How much will the company reimburse for tuition each year?",
+        "expected_answer": "Up to $5,250 per year for job-related courses.",
+        "topic": "tuition_reimbursement",
+        "out_of_scope": false,
+        "similarity": 1.0
+      }
+    }
+  ],
+  "details": {
+    "parse_errors": "0",
+    "parse_error_rate": "0.0"
+  }
+}

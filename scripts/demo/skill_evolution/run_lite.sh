@@ -15,10 +15,23 @@ esac; done
 if [ "$TARGET" = deployed ]; then
     set -a; source .env; set +a
     echo "MODE: DEPLOYED — Cloud Run job 'skill-evolution-agent' in project ${PROJECT_ID} (winner -> Skill Registry + real PR)"
-    JOB_ARGS="--full-loop,--mode,supervisor,--rounds,1,--candidates,2,--quick"
+    # Guarantee the baseline: the deployed supervisor serves whatever the
+    # registry's newest revision is. A previous run's evolved push (kept
+    # while its PR awaits review) would silently replace V0 in the "V0
+    # baseline" traffic and poison both the baseline and the training
+    # signal. Roll back to content-verified V0 before every run.
+    echo "Ensuring registry + agents serve V0 (rollback with content verification)..."
+    bash "$(dirname "${BASH_SOURCE[0]}")/rollback_demo.sh"
+    # --questions keeps the deployed run on the SAME 13-question lite set as
+    # the local run (it forces EVAL_QUESTIONS_FILE past the container's
+    # env default, which points at the full 55-question evolve set).
+    JOB_ARGS="--full-loop,--mode,supervisor,--rounds,1,--candidates,2,--quick,--questions,/app/eval/data/questions/two_defect_lite.json,--quality-source,synthetic"
     for a in ${ARGS[@]+"${ARGS[@]}"}; do [ -n "$a" ] && JOB_ARGS="$JOB_ARGS,$a"; done
+    # --project is REQUIRED: gcloud config is shared across VM sessions
+    # and can be flipped mid-run — an ambient-config execute once launched
+    # this job in a different project entirely.
     exec gcloud run jobs execute skill-evolution-agent \
-        --region "$REGION" --wait --args="$JOB_ARGS"
+        --project "$PROJECT_ID" --region "$REGION" --wait --args="$JOB_ARGS"
 fi
 echo "MODE: LOCAL sandbox — in-process agents, nothing published"
 exec bash scripts/demo/skill_evolution/run_demo.sh --quick ${ARGS[@]+"${ARGS[@]}"}

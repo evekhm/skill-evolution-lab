@@ -61,7 +61,7 @@ SDK_ROOT="${SDK_DIR:-$REPO_ROOT/.sdk/BigQuery-Agent-Analytics-SDK}"
 SKILL_REGISTRY_SRC="$SDK_ROOT/examples/skill_evolution_lab/agent/skill_registry.py"
 if [ ! -f "$SKILL_REGISTRY_SRC" ]; then
     echo "ERROR: skill_registry.py not found at $SKILL_REGISTRY_SRC"
-    echo "Set SDK_DIR to a BigQuery-Agent-Analytics-SDK clone (branch fix/md-scorecards)."
+    echo "Set SDK_DIR to a BigQuery-Agent-Analytics-SDK clone (branch main)."
     exit 1
 fi
 cp "$REPO_ROOT/agents/enterprise/policy_agent/skill_loader.py" "${SCRIPT_DIR}/app/skill_loader.py"
@@ -174,9 +174,20 @@ fi
 rm -f "${ENV_TMP}"
 
 if [ $ADK_EXIT -ne 0 ] || grep -q "Deploy failed" "${ADK_LOG}"; then
-    rm -f "${ADK_LOG}"
-    echo "ERROR: ADK deployment failed!"
-    exit 1
+    # One known false negative: the ADK CLI sometimes reports
+    # "Deploy failed: [Errno 2] ... app_tmp<ts>" about its own
+    # already-removed temp folder AFTER the engine update succeeded.
+    # Treat that as success when the success marker is present; fail
+    # on every other "Deploy failed".
+    if grep -qE "(Updated|Created) agent engine" "${ADK_LOG}" \
+       && grep -qE "Deploy failed: \[Errno 2\].*app_tmp" "${ADK_LOG}" \
+       && [ "$(grep -c "Deploy failed" "${ADK_LOG}")" -eq 1 ]; then
+        echo "NOTE: engine updated; ignoring ADK's post-success temp-folder cleanup error."
+    else
+        rm -f "${ADK_LOG}"
+        echo "ERROR: ADK deployment failed!"
+        exit 1
+    fi
 fi
 rm -f "${ADK_LOG}"
 

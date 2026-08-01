@@ -301,7 +301,7 @@ def detect_bottleneck_tool(quality_report_path: str) -> dict:
     client = genai.Client(
         vertexai=True,
         project=os.getenv("PROJECT_ID"),
-        location=os.getenv("REGION", "us-central1"),
+        location=os.getenv("MODEL_LOCATION") or os.getenv("GOOGLE_CLOUD_LOCATION") or "global",  # model endpoint: gemini-3.x is global-only
     )
 
     try:
@@ -1075,6 +1075,20 @@ def _gather_run_context(run_dir: str, version: str, agent: str) -> str:
     return "\n".join(parts)
 
 
+def _gh_repo_args() -> list:
+    """--repo flag for gh when GITHUB_REPO is set.
+
+    Deployed containers are not git checkouts, so gh cannot infer the
+    repository from cwd (observed live: the lite job's issue creation
+    failed with 'not a git repository' and the run fell back to a
+    dry-run PR). Single source of truth: quality_agent.tools.
+    """
+    from agents.workflow.quality_agent.tools import (
+        _gh_repo_args as _impl,
+    )
+    return _impl()
+
+
 def parse_quality_issue(issue_number: int) -> dict:
     """Read a quality issue from GitHub and extract structured context.
 
@@ -1093,7 +1107,7 @@ def parse_quality_issue(issue_number: int) -> dict:
     import re
 
     r = subprocess.run(
-        ["gh", "issue", "view", str(issue_number),
+        ["gh", "issue", "view", str(issue_number), *_gh_repo_args(),
          "--json", "title,body,labels,state"],
         cwd=_repo_root, capture_output=True, text=True,
     )
@@ -1349,7 +1363,7 @@ def create_evolution_issue(
             label_args.extend(["--label", label])
 
         r = subprocess.run(
-            ["gh", "issue", "create",
+            ["gh", "issue", "create", *_gh_repo_args(),
              "--title", title,
              "--body", issue_body,
              *label_args],
@@ -1361,7 +1375,7 @@ def create_evolution_issue(
             # Labels may not exist yet — retry without labels
             logger.warning("gh issue create failed with labels: %s", r.stderr)
             r = subprocess.run(
-                ["gh", "issue", "create",
+                ["gh", "issue", "create", *_gh_repo_args(),
                  "--title", title,
                  "--body", issue_body],
                 cwd=_repo_root,
