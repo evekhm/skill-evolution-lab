@@ -9,7 +9,7 @@
       * [Python environment](#python-environment)
     * [3 — GCP: deploy the stack](#3--gcp-deploy-the-stack)
       * [3.1 — GCP infrastructure](#31--gcp-infrastructure)
-      * [3.2 — Deploy all six components](#32--deploy-all-six-components)
+      * [3.2 — Deploy all seven components](#32--deploy-all-seven-components)
       * [3.3 — Smoke test](#33--smoke-test)
       * [3.4 — Connect Gemini Enterprise (optional)](#34--connect-gemini-enterprise-optional)
     * [4 — GitHub: CI + bot wiring](#4--github-ci--bot-wiring)
@@ -218,7 +218,7 @@ This enables required GCP APIs (Vertex AI, Cloud Run, BigQuery, etc.),
 creates the BigQuery dataset for Agent Analytics, seeds the Skill
 Registry with the V0 skills, and grants IAM permissions.
 
-#### 3.2 — Deploy all six components
+#### 3.2 — Deploy all seven components
 
 ```bash
 bash scripts/deploy/deploy_gcp.sh
@@ -230,11 +230,16 @@ Deploys all components in order:
 |------|-----------|------|
 | 1 | policy_agent (Cloud Run) | ~3.5 min |
 | 2 | hr_calculator (Cloud Run) | ~3 min |
-| 3 | knowledge_supervisor (Agent Engine) | ~15 min |
-| 4 | traffic_generator (Cloud Run Job) | ~2.5 min |
-| 5 | quality_agent (Cloud Run Job + Scheduler) | ~3 min |
-| 6 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
-| | **Total** | **~30 min** |
+| 3 | benefits_agent (Cloud Run) | ~3 min |
+| 4 | knowledge_supervisor (Agent Engine) | ~15 min |
+| 5 | traffic_generator (Cloud Run Job) | ~2.5 min |
+| 6 | quality_agent (Cloud Run Job + Scheduler) | ~3 min |
+| 7 | skill_evolution_agent (Cloud Run Job + Scheduler) | ~3 min |
+| | **Total** | **~33 min** |
+
+benefits_agent deploys before the supervisor on purpose: the supervisor
+discovers the benefits-agent Cloud Run URL at startup and silently runs
+without a benefits tool when the service is absent.
 
 
 
@@ -1398,11 +1403,15 @@ the stack:
   weekly by default). One run: quality report from BigQuery → failure-count
   gate → bottleneck attribution (which agent caused each failure) →
   agentic analysts investigate each failure with tool access → patch
-  scoring and consolidation → best-of-N candidate skills scored on the
-  evolve set → winners pushed to the Skill Registry → PR opened. Key
-  files: `evolve.py` (core pipeline), `coevolve.py` (multi-agent
-  orchestration), `bottleneck.py`, `agentic_analyst.py`,
-  `patch_scoring.py`, `tools.py` (registry push + PR), `main.py` (CLI).
+  quality gate and consolidation → best-of-N candidate skills scored on
+  the evolve set with an incumbent guard → winners pushed to the Skill
+  Registry → PR opened. The evolution algorithm itself (analyst fleet,
+  quality gate, consolidation, guardrails, candidate selection) lives in
+  the BigQuery-Agent-Analytics-SDK as `scripts/skill_evolution.py`,
+  pinned via `SDK_REPO`/`SDK_BRANCH` in `.env`. Key files: `evolve.py`
+  (adapter over the SDK engine: lab client, agentic-analyst hook, demo
+  knobs), `coevolve.py` (multi-agent orchestration), `bottleneck.py`,
+  `agentic_analyst.py`, `tools.py` (registry push + PR), `main.py` (CLI).
 
 **Supporting pieces:**
 

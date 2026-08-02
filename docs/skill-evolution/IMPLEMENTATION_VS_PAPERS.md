@@ -4,6 +4,15 @@ A detailed comparison of our skill evolution pipeline against the two
 foundational papers — **Trace2Skill** and **AutoSkill** — with component-level
 implementation details and improvement opportunities.
 
+> **Where the code lives:** the engine is the
+> BigQuery-Agent-Analytics-SDK's `scripts/skill_evolution.py` (pinned via
+> `SDK_REPO`/`SDK_BRANCH` in `.env`); this repo's `evolve.py` is an
+> adapter over it. `evolve.py` function references below describe the
+> algorithm as the engine implements it. Two options described in this
+> document were dropped in the engine: hierarchical (tree) consolidation
+> — flat consolidation with the structural quality gate is the only mode
+> — and standalone LLM patch scoring.
+
 ## The Two Foundational Papers
 
 ### Trace2Skill (arXiv:2603.25158)
