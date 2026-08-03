@@ -157,11 +157,23 @@ def find_sdk_scripts_dir():
     os.makedirs(os.path.dirname(_SDK_LOCAL_DIR), exist_ok=True)
     clone_cmd = ["git", "clone", "--depth", "1", "--branch", _SDK_BRANCH]
     clone_cmd += [_SDK_REPO, _SDK_LOCAL_DIR]
-    subprocess.check_call(
-        clone_cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        subprocess.check_call(
+            clone_cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError as e:
+        # No SDK anywhere and the clone failed (typically: no network).
+        # There is nothing to fall back to — fail with the remediation
+        # instead of a raw CalledProcessError traceback.
+        raise RuntimeError(
+            f"Could not clone the SDK from {_SDK_REPO} (branch "
+            f"{_SDK_BRANCH}). If this environment has no network access, "
+            "set SDK_DIR to an existing clone of "
+            "BigQuery-Agent-Analytics-SDK, or place one as a sibling "
+            "checkout next to this repo."
+        ) from e
     if os.path.isdir(scripts):
         _sdk_scripts_dir = os.path.abspath(scripts)
         logger.info("Using freshly cloned SDK: %s", _sdk_scripts_dir)
