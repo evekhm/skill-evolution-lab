@@ -717,7 +717,7 @@ annotations next to each component (e.g., "evolve.py", "bottleneck.py",
 | **Best-of-N** | Not described | Not described | Generate N candidates, score each, pick best. Addresses 6.9pp variance (novel) |
 | **Compaction** | Not described | Not described | Distills bloated skills (45K→10K chars) while preserving effectiveness (novel) |
 | **Template-guided** | Not described | Not described | Structural blueprint constrains section organization across rounds (novel) |
-| **Multi-round** | Single round shown | Continuous (versions accumulate) | Multi-round: V0→V1→V2. Two rounds essential — V1 learns failures, V2 writes strong fixes (novel finding) |
+| **Multi-round** | Single round shown | Continuous (versions accumulate) | Multi-round: V0→V1→V2 supported. On the committed reference, round 1 delivers the full gain and round 2 regresses (55.1% → 85.4% → 84.4%); incumbent-guarded selection keeps the best version deployed |
 | **Cross-model transfer** | Proven: 35B→122B, +57.65pp | Proven cross-session/task | Not yet tested (Flash→Flash only) |
 | **Deployment** | Research prototype (vLLM serving) | SDK/Web UI plugin | Production: Cloud Run Job (weekly cron), GCS archival, GitHub PR integration, CI quality gates |
 | **Model** | Qwen3.5 (35B, 122B) open-source | Various (model-agnostic) | Gemini 2.5 Flash (all components) |
