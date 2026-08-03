@@ -204,6 +204,12 @@ fi
 #   - Eval & remediation: Vertex AI, BigQuery, Secret Manager
 #   - Deploy: Cloud Run, Cloud Build, IAM, Scheduler, Storage, Service Usage
 echo "  Granting roles..."
+# NOTE: no roles/iam.securityAdmin here — it carries setIamPolicy, which
+# makes the CI identity owner-equivalent (it could grant itself any role),
+# and it is impersonable from any branch of the repo via WIF (review #54
+# finding 4). Project IAM bindings are created ONCE by setup_gcp.sh and
+# the first operator-run deploy; the deploy scripts' re-grant calls
+# tolerate permission denial in CI (the bindings already exist).
 for role in \
     "roles/secretmanager.secretAccessor" \
     "roles/aiplatform.user" \
@@ -214,7 +220,6 @@ for role in \
     "roles/artifactregistry.writer" \
     "roles/logging.viewer" \
     "roles/storage.admin" \
-    "roles/iam.securityAdmin" \
     "roles/cloudscheduler.admin" \
     "roles/serviceusage.serviceUsageAdmin" \
     "roles/iam.serviceAccountUser"; do
@@ -278,18 +283,25 @@ if gcloud secrets describe github-pat --project="$PROJECT_ID" >/dev/null 2>&1; t
 else
     PAT_VALUE="${GH_PAT:-}"
     PAT_SOURCE="GH_PAT env var"
-    if [ -z "$PAT_VALUE" ] && command -v gh &>/dev/null; then
-        # Fallback: the gh CLI's own token. Works for the demo; a dedicated
-        # repo-scoped PAT is the durable choice (gh tokens can expire).
+    if [ -z "$PAT_VALUE" ] && [ "${ALLOW_GH_TOKEN_FALLBACK:-}" = "1" ] \
+        && command -v gh &>/dev/null; then
+        # OPT-IN fallback (ALLOW_GH_TOKEN_FALLBACK=1): the gh CLI's own
+        # OAuth token. It carries repo+workflow scope across EVERY repo
+        # the operator can reach and would be mounted into LLM-driven
+        # Cloud Run jobs — far broader than the single-repo fine-grained
+        # PAT the docs recommend (review #54 finding 5). Never stored
+        # silently: set GH_PAT, or opt in explicitly.
         PAT_VALUE=$(gh auth token 2>/dev/null || true)
-        PAT_SOURCE="gh auth token (fallback -- consider a dedicated PAT)"
+        PAT_SOURCE="gh auth token (ALLOW_GH_TOKEN_FALLBACK=1 -- consider a dedicated repo-scoped PAT)"
     fi
     if [ -n "$PAT_VALUE" ]; then
         printf '%s' "$PAT_VALUE" | gcloud secrets create github-pat \
             --project="$PROJECT_ID" --data-file=-
         echo "  Created secret 'github-pat' from: $PAT_SOURCE"
     else
-        echo "  WARNING: no GH_PAT env var and no gh CLI token available."
+        echo "  WARNING: no GH_PAT env var set (and the gh-token fallback is"
+        echo "  opt-in via ALLOW_GH_TOKEN_FALLBACK=1 — a dedicated repo-scoped"
+        echo "  fine-grained PAT is the safe choice; see docs/GITHUB_APP_SETUP.md)."
         echo "  Create the secret manually before deploying the evolution job:"
         echo "    printf '%s' \"<YOUR_PAT>\" | gcloud secrets create github-pat \\"
         echo "      --project=$PROJECT_ID --data-file=-"

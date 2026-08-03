@@ -188,7 +188,9 @@ no tool-use rules, no edge cases. You deploy it knowing it will fail.
 5. Redeploy, re-generate traffic, re-score
 6. Repeat until quality stabilizes
 
-   V0 (54%) --> V1 (97%) --> V2 (98%)
+   V0 (55.1%) --> V1 (85.4%) --> V2 (84.4%, gate keeps V1)
+   (committed reference: eval/skill_evolution/reference_runs/
+    v0_baseline_demo/summary.json)
 ```
 
 **Quality Agent role during bootstrap:** scoring only. No GitHub

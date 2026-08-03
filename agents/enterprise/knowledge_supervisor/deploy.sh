@@ -122,7 +122,7 @@ SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 echo "Granting BigQuery roles to ${SERVICE_ACCOUNT}..."
 for role in roles/bigquery.dataEditor roles/bigquery.user roles/bigquery.jobUser; do
     gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-        --member="serviceAccount:${SERVICE_ACCOUNT}" --role="$role" --quiet > /dev/null
+        --member="serviceAccount:${SERVICE_ACCOUNT}" --role="$role" --quiet > /dev/null || echo "  (grant $role skipped: no setIamPolicy permission — binding pre-created by setup/first operator deploy)"
 done
 
 # Remove __pycache__ before packaging
@@ -207,14 +207,14 @@ echo "Granting IAM roles to Reasoning Engine SA: ${REASONING_SA}..."
 # aiplatform.user covers Skill Registry reads (GetSkill) for SKILL_SOURCE=registry.
 for role in roles/bigquery.dataEditor roles/bigquery.user roles/bigquery.jobUser roles/aiplatform.user; do
     gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-        --member="serviceAccount:${REASONING_SA}" --role="$role" --quiet > /dev/null
+        --member="serviceAccount:${REASONING_SA}" --role="$role" --quiet > /dev/null || echo "  (grant $role skipped: no setIamPolicy permission — binding pre-created by setup/first operator deploy)"
 done
 
 for svc in "${POLICY_AGENT_SERVICE_NAME}" "${HR_CALCULATOR_SERVICE_NAME}"; do
     echo "  Cloud Run Invoker on ${svc}..."
     gcloud run services add-iam-policy-binding "${svc}" \
         --member="serviceAccount:${REASONING_SA}" \
-        --role="roles/run.invoker" --region="${REGION}" --project="${PROJECT_ID}" --quiet > /dev/null
+        --role="roles/run.invoker" --region="${REGION}" --project="${PROJECT_ID}" --quiet > /dev/null || echo "  (run.invoker grant on ${svc} skipped: binding pre-created)"
 done
 
 echo "Reasoning Engine SA IAM grants complete."
