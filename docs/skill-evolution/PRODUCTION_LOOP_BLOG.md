@@ -4,9 +4,10 @@
 in before publishing.*
 
 Every Monday at 09:00 UTC, Cloud Scheduler fires a job. Two hours later there
-is a pull request waiting for review: one file changed, the policy agent's
-SKILL.md, with a quality table in the description showing what the new version
-fixes. Nobody wrote that skill. The agent's own conversations did.
+is a pull request waiting for review: one file changed, the knowledge
+supervisor's SKILL.md, with a quality table in the description showing what
+the new version fixes. Nobody wrote that skill. The agent's own conversations
+did.
 
 In the previous post the loop ran on a laptop: an agent with a flawed prompt,
 traffic, an evolution engine, a better skill. This post takes the same two
@@ -21,7 +22,8 @@ The demo system is a small enterprise knowledge assistant:
 
 - **knowledge_supervisor** — deployed on Vertex AI Agent Engine. It answers
   employee questions by invoking specialists as tools, so it can call two of
-  them in one turn and synthesize.
+  them in one turn and synthesize. Its routing behavior comes from its own
+  SKILL.md — the file this loop evolves.
 - **policy_agent** — a Cloud Run service (A2A). It owns the company policy
   corpus and a lookup tool. Its behavior comes from a SKILL.md.
 - **hr_calculator** — a Cloud Run service for personalized math: PTO
@@ -33,8 +35,8 @@ produced them. That version tag is what makes the rest of the loop possible.
 
 ## Two defects, planted on purpose
 
-The policy agent starts from the same deliberately flawed V0 skill as the
-previous post:
+The baseline is deliberately flawed, the same way as the previous post.
+The policy specialist serves this V0 skill:
 
 ```text
 You have the following knowledge about company policies:
@@ -55,8 +57,18 @@ employees.
 Defect one: the baked facts plus "answer only from the above" block the
 lookup tool the agent already has, so anything beyond four bullet points gets
 deflected to HR. Defect two: "be agreeable" turns every wrong user correction
-into a parroted wrong answer. Both defects are invisible in a smoke test and
-obvious in production traffic.
+into a parroted wrong answer. The supervisor's own V0 skill compounds the
+first defect — it carries the same four-bullet summary and the same
+"otherwise suggest HR" rule, so the router deflects before a specialist is
+ever consulted. All of it is invisible in a smoke test and obvious in
+production traffic.
+
+In a multi-agent system the interesting question is which of these skills to
+fix. Failure attribution answers it with data rather than intuition — and in
+this topology it points at the supervisor: it owns every conversation, and a
+router that answers from its own stale summary starves the specialists of
+the questions they could have answered. The supervisor's SKILL.md is what
+the loop evolves.
 
 ## The method: corrections are hypotheses, tools are truth
 
@@ -139,11 +151,11 @@ weekly cron (a demo can shrink this to minutes with an env var). The job:
    with golden answers: meaningful, partial, or unhelpful, plus turn tags
    that catch the parroting pattern explicitly.
 3. **Evolves the bottleneck agent.** Failure attribution pointed at the
-   policy agent; a fleet of analysts reads the failed trajectories, proposes
-   patches, and a consolidator writes candidate skills. Candidates are scored
-   locally inside the job — the deployed stack still serves the old revision,
-   so a local run is the only place a not-yet-published candidate can be
-   exercised.
+   supervisor — the router that owns every conversation; a fleet of analysts
+   reads the failed trajectories, proposes patches, and a consolidator writes
+   candidate skills. Candidates are scored locally inside the job — the
+   deployed stack still serves the old revision, so a local run is the only
+   place a not-yet-published candidate can be exercised.
 4. **Publishes post-gate.** Only when the winning candidate beats the
    baseline does the job push it to the Skill Registry as a new revision and
    open a pull request with the same file.
