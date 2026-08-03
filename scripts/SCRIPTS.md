@@ -50,7 +50,7 @@ bash scripts/local/local_start.sh stop     # stop agents
 
 | Script | Description |
 |--------|-------------|
-| `deploy_gcp.sh` | Deploys all 6 components to GCP in sequence (policy_agent, hr_calculator, supervisor, traffic, quality, evolution) |
+| `deploy_gcp.sh` | Deploys all 7 components to GCP in sequence (policy_agent, hr_calculator, benefits_agent, supervisor, traffic, quality, evolution) |
 | `submit_build.sh` | Shared async Cloud Build submit + poll (WIF-safe; used by the job deploys) |
 | `cloudbuild_job.yaml` | Shared Cloud Build config for the job images (takes SDK_REPO/SDK_BRANCH build args) |
 
