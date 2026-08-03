@@ -88,8 +88,9 @@ does. The pipeline enforces this at three layers:
 3. **Evaluation.** A held-out anti-parroting exam asserts wrong figures on
    topics the skill never trained on. Success means re-verifying and holding
    the tool's value against the user's pushback. On this system the V0 skill
-   held correct on {{OOD_CORR_V0}} of the unseen-topic correction cases; the
-   evolved skill held on {{OOD_CORR_V1}}.
+   held correct on 8 of 15 unseen-topic correction cases (53.3%); the
+   evolved skill held on all 15 (100.0%).
+   <!-- source: run 2026-08-03_045659_demo_quick, v0/v1_corr_test_report.json -->
 
 The safety consequence: a wrong or adversarial user cannot poison the skill.
 Assertions never become skill content — at most they trigger a tool lookup,
@@ -107,7 +108,7 @@ At startup, each agent calls GetSkill, unzips the payload, and loads SKILL.md
 from it:
 
 ```text
-Loaded skill from registry ks-policy-agent (revision {{REVISION_SHA}})
+Loaded skill from registry ks-knowledge-supervisor (revision 179307574317747730)
 ```
 
 The registry gives the loop two properties that a file in a container image
@@ -153,8 +154,13 @@ The PR contains one changed file and a body with the numbers:
 
 | | V0 (baseline) | V1 (evolved) |
 |---|---|---|
-| Meaningful rate | {{V0_RATE}} | {{V1_RATE}} |
-| Corrections held | {{V0_CORR}} | {{V1_CORR}} |
+| Meaningful rate | 23.1% | 100.0% |
+| Unhelpful rate | 76.9% | 0.0% |
+
+<!-- source: deployed run 2026-08-01 (job kcd4c), PR #66 body; both
+     versions scored on the same 13-question set inside the job.
+     The unseen-topic correction resistance lives in the method
+     section above (53.3% -> 100.0%). -->
 
 CI runs the golden eval gate against the evolved skill. A human reads the
 diff — SKILL.md is prose, so the review is reading, and the reviewer can see
@@ -171,9 +177,42 @@ from the merge workflow.
 
 ## What the run produced
 
-{{RESULTS_SECTION: filled from the recorded run — V0 deflections and parroted
-corrections with a real trace, V1 behavior on the same questions, final
-table.}}
+The V0 baseline behaved exactly as the planted defects predict. Ten of
+thirteen conversations failed, and they failed the same two ways. The
+deflection, from the recorded run's quality report:
+
+```text
+User:  How many counseling visits does the EAP cover?
+Agent: I do not have access to the full company policy or employee
+       handbook, and this information is not in the summary I have.
+       I suggest you contact HR to find out the specific number of
+       covered EAP counseling visits.
+```
+
+The agent has a lookup tool that answers this question. The V0 skill's
+"answer only from the above" rule blocks it — so the trace shows no tool
+call, just a deflection. The analysts read exactly that gap: of the
+patches that passed the quality gate, the dominant root cause was
+TOOL_USAGE — the agent failing to use a tool it already has.
+
+The evolved winner answered all thirteen (100.0% vs 23.1%), and the
+behavior transfers: on the topic-disjoint exams it declined all ten
+unseen out-of-scope requests and held the tool's value on all fifteen
+unseen-topic wrong corrections (V0: 53.3%).
+
+| | V0 | V1 (winner) |
+|---|---|---|
+| Evolve set (13 questions) | 23.1% | 100.0% |
+| Unseen out-of-scope (10) | 60% correct behavior | 100% |
+| Unseen wrong corrections (15) | 53.3% held | 100.0% held |
+
+The job pushed the winner to the Skill Registry as a new revision and
+opened the pull request with the quality table — one changed file,
+reviewable as prose.
+
+<!-- sources: deployed run 2026-08-01 job kcd4c + PR #66 (evolve set);
+     run 2026-08-03_045659_demo_quick (OOD exams); deflection trace from
+     sample_runs/lite_local/v0_quality_report.md -->
 
 ## Limitations we kept
 
@@ -184,6 +223,39 @@ judge scores against scope and ground truth without per-session goldens
 passes separated by label filters (#359). Both are tracked with an
 implementation plan (#361), and the demo's honesty is the better for naming
 them.
+
+A third one is a deliberate demo shortcut that a production deployment must
+not copy: **the loop writes its own passing criteria.** When a candidate
+wins, the pipeline extracts the conversations it fixed and appends them —
+with the winner's own judged answers as the expected answers — to the golden
+eval set and the regression cases. Those files ride the same pull request as
+the SKILL.md, and the CI gate that protects the merge then runs against eval
+data the pipeline just authored. In this demo that is a bootstrap
+convenience: every verified win becomes a permanent regression floor, and a
+dedup guard prevents existing cases from being weakened. In production it is
+a closed loop that can drift from real policy one cycle at a time, because
+model-judged answers quietly become the ground truth that future runs — and
+future simulated users — treat as fact.
+
+The fix is to separate authorship from authority:
+
+- **Quarantine pipeline-authored cases.** Extracted regression cases land in
+  a candidate pool (a separate file or directory), tagged with provenance —
+  which run produced them, which judge scored them. The required CI gate
+  runs only against human-approved goldens; the candidate pool runs as an
+  informational check.
+- **Promote by human review.** A case moves from the candidate pool into the
+  golden set only through its own reviewed diff — a small recurring
+  curation task, and the one place a human asserts "this answer is company
+  truth," which no judge can do.
+- **Require review on the evolution PR itself.** Branch protection with a
+  required human approval means eval-data changes can never merge on green
+  status checks alone.
+
+The cost is one human curation step per cycle. The return is that the
+system's definition of correct stays anchored outside the system — the same
+principle the skill loop already follows: the pipeline may propose, only a
+verified source may decide.
 
 ## Reproduce it
 
