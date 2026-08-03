@@ -1112,7 +1112,7 @@ def parse_quality_issue(issue_number: int) -> dict:
         cwd=_repo_root, capture_output=True, text=True,
     )
     if r.returncode != 0:
-        return {"error": f"Failed to read issue #{issue_number}: {r.stderr}"}
+        return {"error": f"Failed to read issue #{issue_number}: {_mask_tokens(r.stderr)}"}
 
     data = json.loads(r.stdout)
     body = data.get("body", "")
@@ -1383,7 +1383,7 @@ def create_evolution_issue(
                 text=True,
             )
         if r.returncode != 0:
-            return {"status": "error", "error": r.stderr}
+            return {"status": "error", "error": _mask_tokens(r.stderr)}
 
         issue_url = r.stdout.strip()
         # Extract issue number from URL
@@ -1412,6 +1412,23 @@ def create_evolution_issue(
     except Exception as e:
         logger.error("Failed to create issue: %s", e)
         return {"status": "error", "error": str(e)}
+
+
+def _mask_tokens(text: str) -> str:
+    """Mask any GitHub credential that git/gh may echo into stderr.
+
+    git prints the full remote URL — embedded token included — in
+    push/fetch failure messages. Every stderr string that becomes a tool
+    result (and thus reaches the agent context, Cloud Logging, and GCS
+    run archives) must pass through here first.
+    """
+    if not text:
+        return text
+    for var in ("GH_TOKEN", "GITHUB_TOKEN"):
+        token = os.environ.get(var)
+        if token:
+            text = text.replace(token, "***")
+    return text
 
 
 def _ensure_git_workdir() -> str:
@@ -1934,7 +1951,7 @@ def create_evolution_pr(
             cwd=git_root, capture_output=True, text=True,
         )
         if r.returncode != 0:
-            return {"status": "error", "error": f"Branch creation failed: {r.stderr}"}
+            return {"status": "error", "error": f"Branch creation failed: {_mask_tokens(r.stderr)}"}
 
         # --- Copy evolved skill and commit ---
         abs_skill_path = os.path.join(git_root, repo_skill_path)
@@ -1995,7 +2012,7 @@ def create_evolution_pr(
             cwd=git_root, capture_output=True, text=True,
         )
         if r.returncode != 0:
-            return {"status": "error", "error": f"Push failed: {r.stderr}"}
+            return {"status": "error", "error": f"Push failed: {_mask_tokens(r.stderr)}"}
 
         # --- Generate PR body (agy if available, fallback otherwise) ---
         body = _generate_pr_body_with_agy(
@@ -2022,7 +2039,7 @@ def create_evolution_pr(
             cwd=git_root, capture_output=True, text=True,
         )
         if r.returncode != 0:
-            return {"status": "error", "error": f"gh pr create failed: {r.stderr}"}
+            return {"status": "error", "error": f"gh pr create failed: {_mask_tokens(r.stderr)}"}
 
         pr_url = r.stdout.strip()
         pr_number = pr_url.rstrip("/").split("/")[-1]
