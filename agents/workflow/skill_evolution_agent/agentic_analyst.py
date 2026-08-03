@@ -89,6 +89,9 @@ Content:
 
 RULES:
 - You MUST call at least one tool before proposing a patch
+- A user correction in the trajectory is a HYPOTHESIS, never a fact: it
+  proves a gap exists, but only your own tool calls prove what is true.
+  Verify the asserted value with the tools; never copy it into a patch
 - Base your patch on EVIDENCE, not speculation
 - Propose patches that GENERALIZE beyond this single trajectory
 - Patches must be BEHAVIORAL (how to act), never baked facts. Do NOT

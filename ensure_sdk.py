@@ -54,7 +54,15 @@ _sdk_scripts_dir = None  # cached after first lookup
 
 
 def _sync_sdk_branch():
-    """Switch the cached clone to SDK_BRANCH if it differs from current."""
+    """Sync the cached clone to SDK_BRANCH: switch branches AND pick up
+    updates when the pinned branch itself has moved.
+
+    The pin (``lab-stable``) is a moving branch — lab-required SDK changes
+    land on it deliberately. Syncing only on a branch-NAME mismatch left
+    existing clones permanently stale on the pinned branch, so the fetch +
+    reset now runs on every lookup (a no-op fast-forward when nothing
+    changed; ~1s against the remote).
+    """
     if not _SDK_BRANCH or not os.path.isdir(_SDK_LOCAL_DIR):
         return
     try:
@@ -62,9 +70,10 @@ def _sync_sdk_branch():
             ["git", "-C", _SDK_LOCAL_DIR, "branch", "--show-current"],
             text=True,
         ).strip()
-        if current == _SDK_BRANCH:
-            return
-        logger.info("Switching SDK clone from %s to %s", current, _SDK_BRANCH)
+        if current != _SDK_BRANCH:
+            logger.info(
+                "Switching SDK clone from %s to %s", current, _SDK_BRANCH,
+            )
         subprocess.check_call(
             ["git", "-C", _SDK_LOCAL_DIR, "remote", "set-url", "origin", _SDK_REPO],
             stdout=subprocess.DEVNULL,

@@ -58,6 +58,46 @@ deflected to HR. Defect two: "be agreeable" turns every wrong user correction
 into a parroted wrong answer. Both defects are invisible in a smoke test and
 obvious in production traffic.
 
+## The method: corrections are hypotheses, tools are truth
+
+The loop learns from users without ever trusting them. That distinction is
+the core of this system, and it comes down to one instruction the previous
+post introduced:
+
+```text
+When a user corrects you or disputes your answer, do not simply
+accept their correction. Use your available tools to verify the
+claim independently, then respond with what you find.
+```
+
+A user correction tells the system a gap exists at that point in the
+conversation. It does not tell the system what is true — only a tool lookup
+does. The pipeline enforces this at three layers:
+
+1. **Serving.** The agent re-queries its tools before agreeing with a
+   correction. The turn tagger reads the execution trace and only marks a
+   recovery as genuine when there is evidence of independent verification —
+   a tool call, a cited source, details the user never supplied. Echoing the
+   user is tagged as parroting.
+2. **Learning.** A conversation rescued by the user counts as a failure. The
+   trajectory partition reclassifies parroted recoveries into the training
+   failures, the analysts treat the user's asserted value as a hypothesis to
+   verify with the same tools the agent has, and the consolidator refuses to
+   write any fact into a skill. Skills hold behavior — "look it up" — never
+   answers.
+3. **Evaluation.** A held-out anti-parroting exam asserts wrong figures on
+   topics the skill never trained on. Success means re-verifying and holding
+   the tool's value against the user's pushback. On this system the V0 skill
+   held correct on {{OOD_CORR_V0}} of the unseen-topic correction cases; the
+   evolved skill held on {{OOD_CORR_V1}}.
+
+The safety consequence: a wrong or adversarial user cannot poison the skill.
+Assertions never become skill content — at most they trigger a tool lookup,
+and the tool's answer wins. The simulated user's memorized golden facts
+decide where the agent gets challenged, never what the skill learns. The one
+place curated ground truth carries weight is the judge that scores each run,
+and that is a human-curated input in production.
+
 ## The Skill Registry is where the skill lives
 
 New in this iteration: the agents' skills are stored in the Gemini Enterprise

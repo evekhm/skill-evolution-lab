@@ -1,5 +1,6 @@
 <!-- TOC -->
 * [Skill Evolution Lab](#skill-evolution-lab)
+  * [The method: corrections are hypotheses, tools are truth](#the-method-corrections-are-hypotheses-tools-are-truth)
   * [What This System Does](#what-this-system-does)
   * [Prerequisites](#prerequisites)
     * [1 — First time only: create the project and the repo](#1--first-time-only-create-the-project-and-the-repo)
@@ -63,6 +64,43 @@ is responsible, evolves a replacement, and opens a GitHub pull
 request with the patch. Deployed end-to-end on Google Cloud, with
 the Skill Registry as the source of truth and every change flowing
 through a pull request.
+
+## The method: corrections are hypotheses, tools are truth
+
+The learning signal comes from users, but no fact ever does. The
+serving agents carry one standing instruction:
+
+> When a user corrects you or disputes your answer, do not simply
+> accept their correction. Use your available tools to verify the
+> claim independently, then respond with what you find.
+
+A user correction proves a gap exists at that point in the
+conversation; only a tool lookup proves what is true. This one rule
+is enforced at every layer of the loop:
+
+- **Serving** — the agent re-queries its tools before agreeing.
+  Echoing the user without a tool call is *parroting*, and the turn
+  tagger detects it from the execution trace (a "recovered" verdict
+  requires evidence of independent verification).
+- **Learning** — a conversation rescued by the user counts as a
+  FAILURE, not a success: parroted recoveries are reclassified into
+  the training failures. Analysts treat the user's asserted value as
+  a hypothesis and re-verify it with the same tools the agent has;
+  the consolidator refuses to write any fact into a skill — skills
+  hold behavior ("look it up"), never answers.
+- **Evaluation** — a held-out anti-parroting exam asserts WRONG
+  figures on topics the skill never trained on; success means
+  re-verifying and holding the tool's value. Measured on this system:
+  V0 caved on nearly half (53.3% correct), the evolved skill held the
+  tool's value on all 15 unseen-topic cases (100%).
+
+The consequence for safety: wrong or adversarial users cannot poison
+the skill. Their assertions never become skill content — at most they
+trigger a tool lookup, and the tool's answer wins. What the demo's
+simulated user memorizes (the golden Q&A) therefore drives *where*
+the agent gets challenged, never *what* the skill learns; the one
+place curated ground truth is load-bearing is the judge that scores
+runs, which in production must stay human-curated.
 
 > 🤖 **For AI Agents:** If you are an autonomous agent or coding assistant operating in this repository, please refer to the [Agent Reference Document](docs/README.agent.md) for your system runbooks, execution flows, and environment variables.
 
