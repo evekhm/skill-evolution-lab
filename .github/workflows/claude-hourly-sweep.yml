@@ -1,0 +1,108 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Argus hourly sweep — catch-all behind claude-pr-review.yml.
+#
+# If an event-triggered run failed or was missed, this pass picks the
+# item up within the hour. It finds open PRs/issues with recent human
+# activity that Argus has not yet answered and applies the same
+# CLAUDE.md review standards. Costs one small model call per idle hour
+# (list + exit) — lower the frequency here if that matters.
+#
+# NOTE: GitHub suspends cron schedules after ~60 days without repo
+# activity; re-enable under Actions if the repo has been dormant.
+#
+# Auth is identical to claude-pr-review.yml (reviewer app + Vertex WIF).
+
+name: Argus Hourly Sweep
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+# One sweep at a time; a queued sweep covers the same window anyway.
+concurrency:
+  group: argus-hourly-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: Sweep Unanswered PRs/Issues
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write   # WIF OIDC (Vertex)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mint reviewer app token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.REVIEWER_APP_ID }}
+          private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Sweep for unanswered items
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_vertex: "true"
+          prompt: |
+            You are the catch-all sweep behind the event-triggered Argus
+            reviewer in ${{ github.repository }}. Work with `gh`:
+
+            1. List open PRs and open issues updated in the last 2 hours
+               (`gh pr list` / `gh issue list` with --json including
+               number, updatedAt, author, labels).
+            2. For each, read the timeline and DROP it when any of:
+               - the latest activity is by Argus itself (any author
+                 login ending in "[bot]" that matches the reviewer app)
+                 or the only recent activity is bot-authored;
+               - Argus already responded AFTER the latest human
+                 activity (for PRs: after the latest push);
+               - it is an issue labeled "quality" (machine-filed for
+                 the evolution dispatcher — never touch these).
+            3. For each remaining item (at most 5 per run — list any
+               overflow in the run log, the next sweep gets them):
+               - PR: review the diff (`gh pr diff`, `gh pr view`) and
+                 post ONE review comment following the "Automated
+                 review standards" section of CLAUDE.md exactly:
+                 summary, bugs/edge cases, security concerns, at most
+                 3 significant suggestions. Comment only — never
+                 approve, merge, or close.
+               - Issue: investigate against the repository code and
+                 post ONE comment answering it, citing file paths.
+            4. If nothing qualifies, finish without posting anything.
+          claude_args: |
+            --model claude-fable-5
+            --max-turns 50
+            --allowedTools "Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh api:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
+        env:
+          ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
+          CLOUD_ML_REGION: global
+          ANTHROPIC_SMALL_FAST_MODEL: claude-fable-5

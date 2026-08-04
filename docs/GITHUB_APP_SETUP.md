@@ -6,6 +6,7 @@ Everything GitHub-related in one place. Two credentials, one script:
 |---|---|---|---|
 | **PR credential** (`github-pat` secret) | the evolution job — clones the repo and opens PRs from its container | your account | a fine-grained PAT (Step 1, ~2 min). Skip it and the script falls back to your `gh` CLI token — fine for a first spin, unfit for anything durable |
 | **GitHub App** (`github-app-key` + `github-app-config` secrets) | the quality agent — files quality issues | `<your-app>[bot]` | optional (without it, issues attribute to your account) |
+| **Reviewer App** (`REVIEWER_APP_ID` + `REVIEWER_APP_PRIVATE_KEY` Actions secrets) | the Argus reviewer workflows — reviews PRs, answers issues and `@argus` mentions | `<reviewer-app>[bot]` | optional (see [Reviewer app (Argus)](#reviewer-app-argus) below) |
 
 Both are stored by `scripts/setup/setup_github.sh` (Step 4 below),
 which also wires CI: Workload Identity Federation, the CI service
@@ -247,6 +248,87 @@ bash scripts/setup/setup_github.sh
 
 ---
 
+## Reviewer app (Argus)
+
+A second, separate GitHub App gives the automated reviewer
+(`.github/workflows/claude-pr-review.yml` and
+`claude-hourly-sweep.yml`, both running `anthropics/claude-code-action`
+on Claude via Vertex AI) its own bot identity. Named after Argus
+Panoptes, the hundred-eyed watchman — reviews post as
+`<your-reviewer-app>[bot]`.
+
+Keep it separate from the quality-agent app above: the reviewer is
+comment-only and never needs Contents write, so a leaked reviewer
+credential cannot touch code.
+
+### Create and install
+
+Same flow as Steps 2–4 above, with these values:
+
+| Field | Value |
+|-------|-------|
+| App name | e.g. `odyssey-argus` (globally unique on GitHub; the `[bot]` suffix is added automatically) |
+| Webhook active | **Uncheck** |
+| Permissions | **Contents: Read-only**, **Issues: Read & Write**, **Pull requests: Read & Write** — nothing else |
+
+Install it on this repository only. No Installation ID needed — the
+workflows discover it when minting tokens.
+
+### Store the credentials (GitHub Actions secrets, not Secret Manager)
+
+The workflows mint short-lived installation tokens directly with
+`actions/create-github-app-token`, so the key lives in repo Actions
+secrets:
+
+```bash
+gh secret set REVIEWER_APP_ID --body "<app id from the app settings page>"
+gh secret set REVIEWER_APP_PRIVATE_KEY < ~/Downloads/<your-app>.*.private-key.pem
+rm ~/Downloads/<your-app>.*.private-key.pem
+```
+
+One repo variable tells the workflows which GCP project serves Claude
+on Vertex (it is NOT this repo's infra project if Claude models are
+enabled elsewhere):
+
+```bash
+gh variable set CLAUDE_VERTEX_PROJECT_ID --body "<gcp project with Claude models enabled>"
+```
+
+The WIF service account (`WIF_SERVICE_ACCOUNT` repo variable) needs
+`roles/aiplatform.user` on that project. Model auth reuses the WIF
+setup from this doc's Step 5 — no Anthropic API key is stored
+anywhere.
+
+### Updating the review standards
+
+The standards (what to flag, what to skip, tone, comment-only
+authority) live in the "Automated review standards" section of the
+root `CLAUDE.md` — edit that file and merge; the next run picks it up.
+The workflow prompts only describe mechanics (which command to run,
+where to post) and rarely need changing.
+
+### Renaming the bot
+
+Three places: the app name in GitHub settings, `trigger_phrase` in
+`claude-pr-review.yml`, and the CLAUDE.md section header.
+
+### Security notes (public repo)
+
+- `pull_request` runs from forks get no secrets and no OIDC token, so
+  the auto-review job is gated to same-repo PRs. Do not "fix" a fork
+  PR not being reviewed by switching to `pull_request_target` with a
+  head checkout at the workspace root — that executes untrusted code
+  with base-repo credentials. Review fork PRs by commenting `@argus`
+  yourself (the action only accepts triggers from actors with write
+  access).
+- Bot-authored comments never trigger the action (default
+  `allowed_bots` is empty), so Argus cannot loop on itself.
+- The workflows grant the job's own `GITHUB_TOKEN` no write scopes
+  beyond PR/issue comments; code write access is impossible because
+  the reviewer app has Contents: Read-only.
+
+---
+
 ## Summary
 
 | What | Where |
@@ -256,3 +338,7 @@ bash scripts/setup/setup_github.sh
 | Private key | `projects/$PROJECT_ID/secrets/github-app-key` |
 | Bot identity | `skill-evolution-lab-bot[bot]` |
 | Permissions | Issues, Pull requests, Contents (all Read & Write) |
+| Reviewer App | e.g. `odyssey-argus` (your GitHub account settings) |
+| Reviewer credentials | repo Actions secrets `REVIEWER_APP_ID`, `REVIEWER_APP_PRIVATE_KEY`; repo variable `CLAUDE_VERTEX_PROJECT_ID` |
+| Reviewer identity | `<your-reviewer-app>[bot]`, mentions via `@argus` |
+| Reviewer permissions | Issues + Pull requests Read & Write, Contents Read-only |

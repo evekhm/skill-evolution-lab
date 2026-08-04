@@ -1,0 +1,230 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Argus — automated reviewer (anthropics/claude-code-action@v1).
+#
+# Three jobs, one per trigger:
+#   1. auto-review  — reviews every same-repo PR on open/push
+#   2. issue-triage — responds to new human-filed issues
+#   3. mention      — answers "@argus" in any PR/issue comment
+#
+# Review standards live in CLAUDE.md ("Automated review standards") —
+# edit that file to change what Argus flags; edit the prompts here only
+# to change the mechanics. To rename the bot, change `trigger_phrase`
+# below, the bot login in claude-hourly-sweep.yml, and the CLAUDE.md
+# section header.
+#
+# Auth:
+#   GitHub — short-lived token minted from the Argus GitHub App
+#            (secrets REVIEWER_APP_ID + REVIEWER_APP_PRIVATE_KEY);
+#            comments post as <app-name>[bot]. Setup:
+#            docs/GITHUB_APP_SETUP.md, "Reviewer app" section.
+#   Model  — Claude on Vertex AI via Workload Identity Federation
+#            (vars WIF_PROVIDER / WIF_SERVICE_ACCOUNT, no stored keys).
+#            vars.CLAUDE_VERTEX_PROJECT_ID is the project where Claude
+#            models are enabled. claude-fable-5 is the only Claude
+#            model enabled there (probed 2026-08-04) — hence the pin,
+#            including the small/fast model override (Haiku is 404).
+#
+# Fork-PR security (public repo): pull_request runs from forks get no
+# secrets and no OIDC, so auto-review is gated to same-repo PRs. Never
+# switch this to pull_request_target with a head checkout at the
+# workspace root — that hands base-repo secrets to untrusted code.
+# The action itself only accepts triggers from actors with write
+# access, and ignores bot-authored comments (no self-trigger loop).
+
+name: Argus Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Job 1: Automatic review of same-repo PRs (evolution candidates included)
+  # -----------------------------------------------------------------------
+  auto-review:
+    name: PR Auto-Review
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # A new push supersedes the in-flight review of the same PR.
+    concurrency:
+      group: argus-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write   # WIF OIDC (Vertex)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the whole diff is explorable
+
+      - name: Mint reviewer app token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.REVIEWER_APP_ID }}
+          private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Review the PR
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_vertex: "true"
+          track_progress: true
+          prompt: |
+            Review this pull request following the "Automated review
+            standards" section of CLAUDE.md exactly — authority rules
+            (comment only, never approve/merge/close), what to flag,
+            what not to comment on, and the required review structure:
+            (1) one-paragraph summary of the change, (2) bugs and edge
+            cases, (3) security concerns, (4) at most 3 suggestions and
+            only if significant. Omit empty sections. If there is
+            nothing to flag, say so in one line.
+          claude_args: |
+            --model claude-fable-5
+            --max-turns 30
+        env:
+          ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
+          CLOUD_ML_REGION: global
+          ANTHROPIC_SMALL_FAST_MODEL: claude-fable-5
+
+  # -----------------------------------------------------------------------
+  # Job 2: Respond to new human-filed issues.
+  # Quality issues are machine-filed for the evolution dispatcher
+  # (skill_evolution_on_issue.yml) — Argus stays out of that pipeline.
+  # -----------------------------------------------------------------------
+  issue-triage:
+    name: Issue Response
+    if: >-
+      github.event_name == 'issues' &&
+      !contains(github.event.issue.labels.*.name, 'quality')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mint reviewer app token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.REVIEWER_APP_ID }}
+          private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Respond to the issue
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_vertex: "true"
+          prompt: |
+            Issue #${{ github.event.issue.number }} was just opened in
+            ${{ github.repository }}. Read it with
+            `gh issue view ${{ github.event.issue.number }}`, investigate
+            against the repository code, and post ONE comment with
+            `gh issue comment`: answer the question or confirm/refute
+            the reported behavior, citing file paths. Follow the
+            "Automated review standards" section of CLAUDE.md — tone,
+            authority (comment only), no praise. If the issue is a bug
+            report, state the likely cause and where a fix would land;
+            do not push any fix.
+          claude_args: |
+            --model claude-fable-5
+            --max-turns 20
+            --allowedTools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh label list:*),Bash(git log:*),Bash(git diff:*)"
+        env:
+          ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
+          CLOUD_ML_REGION: global
+          ANTHROPIC_SMALL_FAST_MODEL: claude-fable-5
+
+  # -----------------------------------------------------------------------
+  # Job 3: Conversational responses to "@argus" mentions on PRs and issues.
+  # No prompt — the action runs in tag mode and answers the mention.
+  # -----------------------------------------------------------------------
+  mention:
+    name: Mention Response
+    if: >-
+      github.event_name == 'issue_comment' &&
+      contains(github.event.comment.body, '@argus')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mint reviewer app token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.REVIEWER_APP_ID }}
+          private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Answer the mention
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_vertex: "true"
+          trigger_phrase: "@argus"
+          claude_args: |
+            --model claude-fable-5
+            --max-turns 30
+        env:
+          ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
+          CLOUD_ML_REGION: global
+          ANTHROPIC_SMALL_FAST_MODEL: claude-fable-5

@@ -11,11 +11,16 @@
       * [3.1 — GCP infrastructure](#31--gcp-infrastructure)
       * [3.2 — Deploy all six components](#32--deploy-all-six-components)
       * [3.3 — Smoke test](#33--smoke-test)
+        * [3.3.a — knowledge_supervisor (Agent Engine, end-to-end)](#33a--knowledge_supervisor-agent-engine-end-to-end)
+        * [3.3.b — policy_agent (Cloud Run, direct A2A)](#33b--policy_agent-cloud-run-direct-a2a)
+        * [3.3.c — hr_calculator (Cloud Run, direct A2A)](#33c--hr_calculator-cloud-run-direct-a2a)
       * [3.4 — Connect Gemini Enterprise (optional)](#34--connect-gemini-enterprise-optional)
     * [4 — GitHub: CI + bot wiring](#4--github-ci--bot-wiring)
+      * [Optional: Argus, the automated reviewer](#optional-argus-the-automated-reviewer)
     * [5 — Verify everything: one command](#5--verify-everything-one-command)
   * [Run the Demo](#run-the-demo)
     * [The one-command run](#the-one-command-run)
+    * [Local vs deployed: configuration identity (lite profile)](#local-vs-deployed-configuration-identity-lite-profile)
     * [The step-by-step walkthrough](#the-step-by-step-walkthrough)
     * [Step 1 — Reset to the V0 baseline](#step-1--reset-to-the-v0-baseline)
     * [Step 2 — Generate labeled traffic](#step-2--generate-labeled-traffic)
@@ -50,8 +55,8 @@
     * [Step 4: Extract ground truth](#step-4-extract-ground-truth)
     * [Step 5: Run evolution](#step-5-run-evolution)
   * [CI/CD and GitHub Integration](#cicd-and-github-integration)
-  * [Project Structure](#project-structure)
   * [Troubleshooting](#troubleshooting)
+  * [Project Structure](#project-structure)
   * [Roadmap](#roadmap)
   * [Related Posts](#related-posts)
 <!-- TOC -->
@@ -423,6 +428,22 @@ deployed Agent Engine -- no custom frontend needed.
 PR) and local runs launched with `--github`. 
 
 Follow **[GITHUB_APP_SETUP](docs/GITHUB_APP_SETUP.md)** (PR credential, optional bot identity, one setup-script run).
+
+#### Optional: Argus, the automated reviewer
+
+`.github/workflows/claude-pr-review.yml` reviews every same-repo PR,
+answers new issues, and responds to `@argus` comment mentions;
+`claude-hourly-sweep.yml` is the hourly catch-all for anything an
+event trigger missed. Both run `anthropics/claude-code-action` with
+Claude on Vertex AI (WIF — no API key stored) under a dedicated
+GitHub App identity.
+
+Setup (app creation, `REVIEWER_APP_ID` / `REVIEWER_APP_PRIVATE_KEY`
+secrets, `CLAUDE_VERTEX_PROJECT_ID` variable) and the fork-PR security
+notes: the "Reviewer app (Argus)" section of
+[GITHUB_APP_SETUP](docs/GITHUB_APP_SETUP.md). Review standards live in
+the "Automated review standards" section of [CLAUDE.md](CLAUDE.md) —
+edit there, not in the workflows.
 
 
 ### 5 — Verify everything: one command
