@@ -82,17 +82,23 @@ jobs:
                including number, updatedAt, author, labels). The wide
                window is deliberate — cron runs get delayed or dropped;
                the rules below make re-processing a no-op.
-            2. For each, read the timeline and DROP it when any of:
-               - Argus (the literal login "evekhm-odyssey-argus[bot]")
-                 already commented AFTER the latest non-Argus activity
-                 (for PRs: after the latest push);
-               - the only activity in the window is Argus's own
-                 comments;
-               - it is an issue labeled "quality" (machine-filed for
-                 the evolution dispatcher — never touch these).
-               Items authored by OTHER bots and machine accounts are
-               IN scope: machine-opened skill-evolution/* candidate
-               PRs are the main class this sweep exists to catch.
+            2. For each, read the timeline with
+               `gh pr view --json commits,comments` /
+               `gh issue view --json comments` and DROP it when any of:
+               - PR: Argus (the literal login
+                 "evekhm-odyssey-argus[bot]") has commented since the
+                 current head commit was pushed. Human comments alone
+                 NEVER trigger a re-review — replies to comments are
+                 the @argus mention path's job, not yours;
+               - issue: Argus has ever commented on it (follow-ups are
+                 the mention path's job);
+               - it is machine-filed: labeled "quality", or its content
+                 is a quality report or a skill-evolution companion
+                 issue — those belong to the evolution dispatcher.
+               Items authored by other bots and machine accounts are
+               otherwise IN scope: machine-opened skill-evolution/*
+               candidate PRs with no review yet are the main class
+               this sweep exists to catch.
             3. For each remaining item (at most 5 per run — list any
                overflow in the run log, the next sweep gets them):
                - PR: review the diff (`gh pr diff`, `gh pr view`) and
@@ -107,7 +113,7 @@ jobs:
           claude_args: |
             --model claude-opus-5
             --max-turns 50
-            --allowedTools "Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh api:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
+            --allowedTools "Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git fetch:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global

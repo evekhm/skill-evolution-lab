@@ -66,10 +66,13 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # A new push supersedes the in-flight review of the same PR.
+    # One review at a time per PR. cancel-in-progress must stay false:
+    # canceling mid-run would strand the track_progress comment on a
+    # permanent spinner. With false, GitHub keeps only the newest
+    # queued run, so a push burst costs at most one extra review.
     concurrency:
       group: argus-review-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     permissions:
       contents: read
       pull-requests: write
@@ -80,7 +83,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # full history so the whole diff is explorable
+          # Deep clone requested, but the action's own ref fetching can
+          # still leave the repo shallow (verified on run 30959850358:
+          # is-shallow=true, origin/main had no merge base). git fetch
+          # is allowlisted so the agent can deepen on demand; gh pr diff
+          # is the canonical diff source either way.
+          fetch-depth: 0
 
       - name: Mint reviewer app token
         id: app-token
@@ -113,7 +121,7 @@ jobs:
           claude_args: |
             --model claude-opus-5
             --max-turns 30
-            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git fetch:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
@@ -126,8 +134,15 @@ jobs:
   # -----------------------------------------------------------------------
   issue-triage:
     name: Issue Response
+    # The label gate alone races: machine producers can file the issue
+    # unlabeled (label-create fallbacks in quality/evolution tools; the
+    # evolution PR's companion issue is never labeled) and label it
+    # later — this event sees the pre-label payload. user.type catches
+    # app-bot authors; the prompt's machine-content guard catches
+    # PAT-authored machine issues, which share the owner's login.
     if: >-
       github.event_name == 'issues' &&
+      github.event.issue.user.type != 'Bot' &&
       !contains(github.event.issue.labels.*.name, 'quality')
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -163,7 +178,12 @@ jobs:
           use_vertex: "true"
           prompt: |
             Issue #${{ github.event.issue.number }} was just opened in
-            ${{ github.repository }}. Read it with
+            ${{ github.repository }}. FIRST check whether it is
+            machine-generated: a quality report, or a companion issue
+            for a skill-evolution PR (it references or is referenced by
+            an evolution run/PR). If so, exit without commenting —
+            those belong to the evolution pipeline, not to you.
+            Otherwise read it with
             `gh issue view ${{ github.event.issue.number }}`, investigate
             against the repository code, and post ONE comment with
             `gh issue comment`: answer the question or confirm/refute
@@ -175,7 +195,7 @@ jobs:
           claude_args: |
             --model claude-opus-5
             --max-turns 20
-            --allowedTools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh label list:*),Bash(git log:*),Bash(git diff:*)"
+            --allowedTools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh label list:*),Bash(git log:*),Bash(git diff:*),Bash(git fetch:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
@@ -192,6 +212,11 @@ jobs:
       contains(github.event.comment.body, '@argus')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Two quick @argus mentions on one thread queue instead of racing
+    # (and instead of canceling someone's in-flight answer).
+    concurrency:
+      group: argus-mention-${{ github.event.issue.number }}
+      cancel-in-progress: false
     permissions:
       contents: read
       pull-requests: write
@@ -226,7 +251,7 @@ jobs:
           claude_args: |
             --model claude-opus-5
             --max-turns 30
-            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git fetch:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global

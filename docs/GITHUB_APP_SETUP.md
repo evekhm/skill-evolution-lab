@@ -336,9 +336,13 @@ CLAUDE.md section header.
   untrusted input, and read its output accordingly.
 - Bot-authored comments never trigger the action (default
   `allowed_bots` is empty), so Argus cannot loop on itself.
-- The workflows grant the job's own `GITHUB_TOKEN` no write scopes
-  beyond PR/issue comments; code write access is impossible because
-  the reviewer app has Contents: Read-only.
+- Code write access is impossible: the reviewer app has Contents:
+  Read-only, so it cannot push, branch, or merge. Note that its
+  Issues and Pull-requests write permissions cover more than
+  comments (close/reopen, labels, edits) — comment-only behavior at
+  that layer is enforced by the CLAUDE.md authority rules plus the
+  workflows' tool allowlists, which expose no `gh` write command
+  beyond commenting (in particular, no unrestricted `gh api`).
 
 ---
 
