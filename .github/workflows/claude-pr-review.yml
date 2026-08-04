@@ -21,9 +21,10 @@
 #
 # Review standards live in CLAUDE.md ("Automated review standards") —
 # edit that file to change what Argus flags; edit the prompts here only
-# to change the mechanics. To rename the bot, change `trigger_phrase`
-# below, the bot login in claude-hourly-sweep.yml, and the CLAUDE.md
-# section header.
+# to change the mechanics. Renaming the bot touches four places (same
+# list in docs/GITHUB_APP_SETUP.md): the app name in GitHub settings,
+# `trigger_phrase` below, the login literal in claude-hourly-sweep.yml,
+# and the CLAUDE.md section header.
 #
 # Auth:
 #   GitHub — short-lived token minted from the Argus GitHub App
@@ -66,12 +67,16 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One review at a time per PR. cancel-in-progress must stay false:
-    # canceling mid-run would strand the track_progress comment on a
-    # permanent spinner. With false, GitHub keeps only the newest
-    # queued run, so a push burst costs at most one extra review.
+    # One Argus agent at a time per thread — the group is shared with
+    # the mention job (same argus-thread-<n> key; PR number and issue
+    # number coincide for a PR), so an @argus reply and an auto-review
+    # of the same PR queue instead of racing. cancel-in-progress must
+    # stay false: canceling mid-run would strand the track_progress
+    # comment on a permanent spinner. With false, GitHub keeps only
+    # the newest queued run, so a push burst costs at most one extra
+    # review.
     concurrency:
-      group: argus-review-${{ github.event.pull_request.number }}
+      group: argus-thread-${{ github.event.pull_request.number }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -85,9 +90,10 @@ jobs:
         with:
           # Deep clone requested, but the action's own ref fetching can
           # still leave the repo shallow (verified on run 30959850358:
-          # is-shallow=true, origin/main had no merge base). git fetch
-          # is allowlisted so the agent can deepen on demand; gh pr diff
-          # is the canonical diff source either way.
+          # is-shallow=true, origin/main had no merge base), so gh pr
+          # diff is the canonical diff source. git fetch must NEVER be
+          # allowlisted to work around this: --upload-pack makes it
+          # arbitrary command execution (PoC on run 30960292905).
           fetch-depth: 0
 
       - name: Mint reviewer app token
@@ -117,11 +123,16 @@ jobs:
             (1) one-paragraph summary of the change, (2) bugs and edge
             cases, (3) security concerns, (4) at most 3 suggestions and
             only if significant. Omit empty sections. If there is
-            nothing to flag, say so in one line.
+            nothing to flag, say so in one line. End the review
+            comment with a final line of exactly:
+            Reviewed-head: ${{ github.event.pull_request.head.sha }}
+            (the hourly sweep uses this marker to tell a completed
+            review apart from the tracking comment of a run that died
+            mid-way — without it the PR gets re-reviewed).
           claude_args: |
             --model claude-opus-5
             --max-turns 30
-            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git fetch:*)"
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
@@ -195,7 +206,7 @@ jobs:
           claude_args: |
             --model claude-opus-5
             --max-turns 20
-            --allowedTools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh label list:*),Bash(git log:*),Bash(git diff:*),Bash(git fetch:*)"
+            --allowedTools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh label list:*),Bash(git log:*),Bash(git diff:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
@@ -212,10 +223,11 @@ jobs:
       contains(github.event.comment.body, '@argus')
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Two quick @argus mentions on one thread queue instead of racing
-    # (and instead of canceling someone's in-flight answer).
+    # Shares the argus-thread-<n> group with the auto-review job, so
+    # mentions queue behind an in-flight review of the same PR (and
+    # behind each other) instead of racing it.
     concurrency:
-      group: argus-mention-${{ github.event.issue.number }}
+      group: argus-thread-${{ github.event.issue.number }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -251,7 +263,7 @@ jobs:
           claude_args: |
             --model claude-opus-5
             --max-turns 30
-            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git fetch:*)"
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global

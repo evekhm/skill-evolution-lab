@@ -342,7 +342,12 @@ CLAUDE.md section header.
   comments (close/reopen, labels, edits) — comment-only behavior at
   that layer is enforced by the CLAUDE.md authority rules plus the
   workflows' tool allowlists, which expose no `gh` write command
-  beyond commenting (in particular, no unrestricted `gh api`).
+  beyond commenting and no unrestricted `gh api`. Allowlist hygiene:
+  entries are prefix matches with no argument inspection, so before
+  adding one, check the command has no flag that executes an
+  arbitrary program — `git fetch --upload-pack=<cmd>` is the proven
+  case (it was allowlisted briefly; Argus demonstrated the escape on
+  its own runner and it was removed).
 
 ---
 

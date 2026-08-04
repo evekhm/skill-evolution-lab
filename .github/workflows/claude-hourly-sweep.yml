@@ -82,16 +82,21 @@ jobs:
                including number, updatedAt, author, labels). The wide
                window is deliberate — cron runs get delayed or dropped;
                the rules below make re-processing a no-op.
-            2. For each, read the timeline with
-               `gh pr view --json commits,comments` /
-               `gh issue view --json comments` and DROP it when any of:
-               - PR: Argus (the literal login
-                 "evekhm-odyssey-argus[bot]") has commented since the
-                 current head commit was pushed. Human comments alone
-                 NEVER trigger a re-review — replies to comments are
-                 the @argus mention path's job, not yours;
-               - issue: Argus has ever commented on it (follow-ups are
-                 the mention path's job);
+            2. For each, read `gh pr view --json headRefOid,comments`
+               / `gh issue view --json comments` and DROP it when any
+               of:
+               - PR: a comment by Argus (the literal login
+                 "evekhm-odyssey-argus[bot]") contains the line
+                 "Reviewed-head: <oid>" where <oid> equals the PR's
+                 current headRefOid. A comment WITHOUT a matching
+                 marker is not a completed review — a run that died
+                 mid-way leaves a markerless tracking comment, and
+                 that PR still needs you. Do not compare timestamps
+                 (commit dates are not push dates). Human comments
+                 alone NEVER trigger a re-review — replies are the
+                 @argus mention path's job, not yours;
+               - issue: Argus has ever commented on it (follow-ups
+                 are the mention path's job);
                - it is machine-filed: labeled "quality", or its content
                  is a quality report or a skill-evolution companion
                  issue — those belong to the evolution dispatcher.
@@ -106,14 +111,16 @@ jobs:
                  review standards" section of CLAUDE.md exactly:
                  summary, bugs/edge cases, security concerns, at most
                  3 significant suggestions. Comment only — never
-                 approve, merge, or close.
+                 approve, merge, or close. End the comment with a
+                 final line of exactly "Reviewed-head: <headRefOid>"
+                 for the oid you reviewed.
                - Issue: investigate against the repository code and
                  post ONE comment answering it, citing file paths.
             4. If nothing qualifies, finish without posting anything.
           claude_args: |
             --model claude-opus-5
             --max-turns 50
-            --allowedTools "Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git fetch:*)"
+            --allowedTools "Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
