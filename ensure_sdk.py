@@ -54,7 +54,15 @@ _sdk_scripts_dir = None  # cached after first lookup
 
 
 def _sync_sdk_branch():
-    """Switch the cached clone to SDK_BRANCH if it differs from current."""
+    """Sync the cached clone to SDK_BRANCH: switch branches AND pick up
+    updates when the pinned branch itself has moved.
+
+    The pin (``lab-stable``) is a moving branch — lab-required SDK changes
+    land on it deliberately. Syncing only on a branch-NAME mismatch left
+    existing clones permanently stale on the pinned branch, so the fetch +
+    reset now runs on every lookup (a no-op fast-forward when nothing
+    changed; ~1s against the remote).
+    """
     if not _SDK_BRANCH or not os.path.isdir(_SDK_LOCAL_DIR):
         return
     try:
@@ -62,9 +70,10 @@ def _sync_sdk_branch():
             ["git", "-C", _SDK_LOCAL_DIR, "branch", "--show-current"],
             text=True,
         ).strip()
-        if current == _SDK_BRANCH:
-            return
-        logger.info("Switching SDK clone from %s to %s", current, _SDK_BRANCH)
+        if current != _SDK_BRANCH:
+            logger.info(
+                "Switching SDK clone from %s to %s", current, _SDK_BRANCH,
+            )
         subprocess.check_call(
             ["git", "-C", _SDK_LOCAL_DIR, "remote", "set-url", "origin", _SDK_REPO],
             stdout=subprocess.DEVNULL,
@@ -148,11 +157,23 @@ def find_sdk_scripts_dir():
     os.makedirs(os.path.dirname(_SDK_LOCAL_DIR), exist_ok=True)
     clone_cmd = ["git", "clone", "--depth", "1", "--branch", _SDK_BRANCH]
     clone_cmd += [_SDK_REPO, _SDK_LOCAL_DIR]
-    subprocess.check_call(
-        clone_cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        subprocess.check_call(
+            clone_cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError as e:
+        # No SDK anywhere and the clone failed (typically: no network).
+        # There is nothing to fall back to — fail with the remediation
+        # instead of a raw CalledProcessError traceback.
+        raise RuntimeError(
+            f"Could not clone the SDK from {_SDK_REPO} (branch "
+            f"{_SDK_BRANCH}). If this environment has no network access, "
+            "set SDK_DIR to an existing clone of "
+            "BigQuery-Agent-Analytics-SDK, or place one as a sibling "
+            "checkout next to this repo."
+        ) from e
     if os.path.isdir(scripts):
         _sdk_scripts_dir = os.path.abspath(scripts)
         logger.info("Using freshly cloned SDK: %s", _sdk_scripts_dir)

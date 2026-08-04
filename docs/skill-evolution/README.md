@@ -582,14 +582,14 @@ in the algorithm reference.
 - [RESEARCH.md](RESEARCH.md) -- Trace2Skill + AutoSkill paper analysis
   for the deployed loop (Skill Registry source of truth, scheduled evolution
   job, automatic PRs)
-- [PRODUCTION_LOOP_BLOG.md](PRODUCTION_LOOP_BLOG.md) -- Blog draft for the
-  production-loop demo (two-defect V0 on the deployed 3-agent stack)
-
 ## Status
 
-**Implemented** -- V0->V1->V2 pipeline reaches 85.4% meaningful rate
-on 205 conversations (committed reference:
-`eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`). Evolution agent runs the full loop autonomously
+**Implemented** -- V0->V1->V2 pipeline reaches 85.4% meaningful rate at
+V1 on 205 conversations (V2 regressed to 84.4%; the engine's diff-guard
+and incumbent-guarded selection keep V1 in that case — committed
+reference:
+`eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`).
+Evolution agent runs the full loop autonomously
 (traffic -> score -> evolve -> GCS -> PR). Version-aware filtering wired
 end-to-end (BQ tags -> quality agent -> SDK TraceFilter). See
 `scripts/demo/skill_evolution/run_demo.sh --full` for interactive demos
