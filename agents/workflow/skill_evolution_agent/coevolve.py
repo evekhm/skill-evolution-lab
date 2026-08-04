@@ -67,6 +67,41 @@ class CoevolutionResult:
         )
 
 
+def _failure_count(v) -> int:
+    """Failure tally that accepts both bottleneck shapes.
+
+    Live ``detect_bottleneck()`` returns failure LISTS; the target-bound
+    and precomputed paths carry plain COUNTS. ``len()`` on the int paths
+    crashed the summary AFTER skills were already deployed, making the
+    tool report failure while the evolved skills sat live (review #54
+    finding 8).
+    """
+    return v if isinstance(v, int) else len(v)
+
+
+def _refresh_incumbent(output_dir: str | None,
+                       current: float | None) -> float | None:
+    """Return the latest deployed score from ``<output_dir>/evolved_score.json``.
+
+    ``evolve()`` records the deployed outcome's score there ("last writer
+    wins" by design). Falls back to ``current`` when the file is absent,
+    unreadable, or carries no rate — the bar never silently drops to None.
+    """
+    if not output_dir:
+        return current
+    path = os.path.join(output_dir, "evolved_score.json")
+    try:
+        with open(path) as f:
+            score = json.load(f).get("meaningful_rate")
+        if score is not None:
+            return float(score)
+    except FileNotFoundError:
+        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Could not refresh incumbent from %s: %s", path, e)
+    return current
+
+
 def coevolve(
     report_path: str,
     agent_configs: dict | None = None,
@@ -202,7 +237,13 @@ def coevolve(
         len(agents_to_evolve), agents_to_evolve,
     )
 
-    # Incumbent baseline: never deploy a skill that scores worse than V0.
+    # Incumbent baseline: never deploy a skill that scores worse than the
+    # CURRENT system. Starts at V0's rate and is refreshed after every
+    # agent in the sequential loop — earlier agents' deployed winners
+    # raise the bar (comparing agent 2's candidates against pre-agent-1
+    # V0 let a system regression clear a stale guard; review #54
+    # finding 9). evolve() records the deployed outcome's score in
+    # <output_dir>/evolved_score.json ("last writer wins" by design).
     incumbent_score = report.get("summary", {}).get("meaningful_rate")
 
     def _make_score_fn(skill_dir):
@@ -332,6 +373,9 @@ def coevolve(
     for name in agents_to_evolve:
         agent_name, agent_result = _evolve_agent(name)
         result.evolved_agents[agent_name] = agent_result
+        # The bar the next agent must clear is the system as it now runs,
+        # including this agent's deployed winner (or the kept incumbent).
+        incumbent_score = _refresh_incumbent(output_dir, incumbent_score)
 
     # Save co-evolution summary
     result.elapsed_seconds = time.time() - t0
@@ -342,10 +386,11 @@ def coevolve(
                 "recommendation": bottleneck.recommendation,
                 "confidence": bottleneck.confidence,
                 "summary": bottleneck.summary,
-                "routing_failures": len(bottleneck.routing_failures),
-                "skill_failures": len(bottleneck.skill_failures),
-                "tool_failures": len(bottleneck.tool_failures),
-                "architecture_failures": len(bottleneck.architecture_failures),
+                "routing_failures": _failure_count(bottleneck.routing_failures),
+                "skill_failures": _failure_count(bottleneck.skill_failures),
+                "tool_failures": _failure_count(bottleneck.tool_failures),
+                "architecture_failures": _failure_count(
+                    bottleneck.architecture_failures),
             },
             "evolved_agents": result.evolved_agents,
             "elapsed_seconds": result.elapsed_seconds,

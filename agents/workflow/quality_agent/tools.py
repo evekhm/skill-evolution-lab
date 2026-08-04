@@ -569,7 +569,18 @@ def _build_issue_body(
     agent_version: str = "",
 ) -> str:
     """Build the structured issue body markdown."""
-    meaningful_rate = summary.get("meaningful_rate", 100)
+    # Machine-owned metric: derive from counts when absent rather than
+    # inventing a value — a missing rate once rendered as "Meaningful
+    # rate 100%" next to 75 unhelpful sessions (issue #41). "unknown"
+    # is the honest floor when counts are absent too.
+    meaningful_rate = summary.get("meaningful_rate")
+    if meaningful_rate is None:
+        total = summary.get("total_sessions") or summary.get("total") or 0
+        meaningful = summary.get("meaningful")
+        if total and meaningful is not None:
+            meaningful_rate = round(meaningful / total * 100, 1)
+        else:
+            meaningful_rate = "unknown"
     n = len(affected_sessions)
 
     action_map = {
@@ -593,7 +604,10 @@ def _build_issue_body(
     parts.append(f"| Agent | `{agent_name}` |")
     parts.append(f"| Action needed | `{action_type}` |")
     parts.append(f"| Sessions affected | {n} |")
-    parts.append(f"| Meaningful rate | {meaningful_rate}% |")
+    rate_cell = (
+        f"{meaningful_rate}%" if meaningful_rate != "unknown" else "unknown"
+    )
+    parts.append(f"| Meaningful rate | {rate_cell} |")
     parts.append(f"| Time period | `{summary.get('time_period', '?')}` |")
     parts.append(f"| Files to investigate | {', '.join(f'`{f}`' for f in files)} |")
     if agent_version:
@@ -647,7 +661,7 @@ def _build_issue_body(
     parts.append(f"| Time period | `{summary.get('time_period', '?')}` |")
     parts.append(f"| Total sessions | {summary.get('total_sessions', 0)} |")
     parts.append(
-        f"| Meaningful | {summary.get('meaningful', 0)} ({meaningful_rate}%) |"
+        f"| Meaningful | {summary.get('meaningful', 0)} ({rate_cell}) |"
     )
     declined = summary.get("declined", 0)
     if declined:
@@ -898,7 +912,7 @@ def create_github_issue(
     # <app>[bot]. gh CLI (PAT-owner attribution) is the fallback.
     if _app_secrets_available():
         result = _create_issue_pygithub(
-            title, body, labels,
+            title, issue_body, labels,
             category=category, agent_name=agent_name, topic=topic,
             agent_version=agent_version,
             affected_sessions=affected_sessions, summary=summary,
