@@ -23,7 +23,7 @@ scripts/
 |--------|-------------|
 | `setup_gcp.sh` | One-time GCP project setup: enables APIs, creates the BigQuery dataset, Artifact Registry repo, GCS bucket, IAM roles, and seeds the Skill Registry with V0 skills |
 | `setup_github.sh` | GitHub integration (7 steps): issue labels, Workload Identity Federation, CI service account, repo variables, the `github-pat` secret, branch protection |
-| `cleanup_github.sh` | Closes and deletes all PRs and issues in the repo (for resetting demo state) |
+| `cleanup_github.sh` | Closes and PERMANENTLY deletes all PRs and issues in an explicitly named repo (`--repo owner/repo` + typed confirmation; `--yes` for automation) |
 | `verify_setup.sh` | Read-only: runs all prerequisite checks (tools, auth, deployments, registry, CI wiring), one PASS/FAIL line each; exit code = failure count |
 
 ```bash
@@ -50,7 +50,7 @@ bash scripts/local/local_start.sh stop     # stop agents
 
 | Script | Description |
 |--------|-------------|
-| `deploy_gcp.sh` | Deploys all 6 components to GCP in sequence (policy_agent, hr_calculator, supervisor, traffic, quality, evolution) |
+| `deploy_gcp.sh` | Deploys all 7 components to GCP in sequence (policy_agent, hr_calculator, benefits_agent, supervisor, traffic, quality, evolution) |
 | `submit_build.sh` | Shared async Cloud Build submit + poll (WIF-safe; used by the job deploys) |
 | `cloudbuild_job.yaml` | Shared Cloud Build config for the job images (takes SDK_REPO/SDK_BRANCH build args) |
 

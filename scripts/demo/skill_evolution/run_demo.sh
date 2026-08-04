@@ -138,6 +138,11 @@
 #                        Requires --resume <dir> with traffic JSONs.
 #   --test-version <N>   Deploy v<N> skills from --resume dir, test, restore V0.
 #   --persona <name>     User simulator persona: alex (default) or morgan.
+#   --ood-exam           Also examine V0 and the winner on the topic-disjoint
+#                        held-out sets (two_defect_oos_heldout.json +
+#                        two_defect_corrections_heldout.json). The standard
+#                        test set is a paraphrase mirror of the evolve set;
+#                        this flag measures generalization beyond phrasing.
 #   --rounds <N>         Override number of evolution rounds (default: agent-decided).
 #   --candidates <N>     Override number of candidates per round.
 #   --min-failures <N>   Override minimum failure threshold for evolution.
@@ -237,9 +242,11 @@ while [[ $# -gt 0 ]]; do
         --no-heldout)   HELDOUT=false; shift ;;
         --heldout-frac) HELDOUT_FRAC="$2"; shift 2 ;;
         --github)       GITHUB_PUBLISH=true; shift ;;
+        --ood-exam)     OOD_EXAM=1; shift ;;
         *)              echo "Unknown flag: $1"; exit 1 ;;
     esac
 done
+OOD_EXAM="${OOD_EXAM:-}"
 
 # All local agents (supervisor + sub-agents) run on this model during traffic
 # generation and candidate scoring. Same model for V0 and V1 keeps the V0->V1
@@ -797,6 +804,20 @@ if [ -n "$TESTSET" ]; then
     cp "$POLICY_SKILL/SKILL.md"     "$RUN_DIR/v1_policy_skill.md"
     cp "$BENEFITS_SKILL/SKILL.md"   "$RUN_DIR/v1_benefits_skill.md"
     cp "$SUPERVISOR_SKILL/SKILL.md" "$RUN_DIR/v1_supervisor_skill.md"
+    # --ood-exam: the standard test set is a paraphrase mirror of the
+    # evolve set (same facts, different wording), so 100% there shows
+    # phrasing robustness, not generalization. These two sets are
+    # disjoint BY TOPIC: unseen out-of-scope requests (correct behavior:
+    # decline) and unseen anti-parroting corrections (correct behavior:
+    # re-verify with the tool, hold the right value). Winner is scored
+    # here while still deployed; V0 after the restore below. No cached
+    # reference — both versions are measured fresh under this flag.
+    OOS_SET="$EVAL_DIR/data/questions/two_defect_oos_heldout.json"
+    CORR_SET="$EVAL_DIR/data/questions/two_defect_corrections_heldout.json"
+    if [ -n "$OOD_EXAM" ]; then
+        score_testset "$OOS_SET"  v1_oos_test
+        score_testset "$CORR_SET" v1_corr_test
+    fi
     restore_v0
     # V0's exam score is a constant while the SYSTEM is unchanged — reuse
     # the committed reference instead of re-measuring (~17 min). The guard
@@ -835,6 +856,10 @@ if [ -n "$TESTSET" ]; then
         sha256sum "${V0_REF_INPUTS[@]}" > "$REF_DIR/v0_exam_checksums.txt"
         echo "  V0 exam: fresh measurement committed as the new reference"
     fi
+    if [ -n "$OOD_EXAM" ]; then
+        score_testset "$OOS_SET"  v0_oos_test
+        score_testset "$CORR_SET" v0_corr_test
+    fi
     banner "HELD-OUT RESULT (disjoint D_test)"
     # Headline on the GROUND-TRUTH (golden-matched) rate, not the generic
     # usefulness judge -- the judge mislabels verbose, tool-grounded answers
@@ -843,6 +868,14 @@ if [ -n "$TESTSET" ]; then
     echo "  V0 (test): $RUN_DIR/v0_test_report.json   ground-truth $(gt "$RUN_DIR/v0_test_report.json")%"
     echo "  V1 (test): $RUN_DIR/v1_test_report.json   ground-truth $(gt "$RUN_DIR/v1_test_report.json")%"
     echo "  V1 skills snapshotted: $RUN_DIR/v1_*_skill.md (V0 now restored)"
+    if [ -n "$OOD_EXAM" ]; then
+        # OOS success = clean decline; corrections success = held the
+        # tool-verified value (meaningful). Both rendered from each
+        # report's own summary counts.
+        ok_rate () { jq -r '((.summary.meaningful + (.summary.declined // 0)) / .summary.total_sessions * 100 | round | tostring) + "%"' "$1" 2>/dev/null || echo "n/a"; }
+        echo "  OOD out-of-scope  V0: $(ok_rate "$RUN_DIR/v0_oos_test_report.json")  V1: $(ok_rate "$RUN_DIR/v1_oos_test_report.json")  (correct-behavior rate: declined or meaningful)"
+        echo "  OOD corrections   V0: $(gt "$RUN_DIR/v0_corr_test_report.json")%  V1: $(gt "$RUN_DIR/v1_corr_test_report.json")%  (ground-truth rate)"
+    fi
 
     # Triage: how many skill-fixable failures evolution auto-healed, plus the
     # owner-routed backlog of failures it CANNOT fix (tool bugs -> ENG, missing
@@ -951,6 +984,21 @@ step_close
         echo "| | V0 | Winner | Gain |"
         echo "|---|---|---|---|"
         echo "| Ground-truth rate | ${gt0}% | ${gt1}% | ${d}pp |"
+        echo ""
+        echo "NOTE: the test set holds the same facts as the evolve set in"
+        echo "different phrasings — it measures phrasing robustness. For"
+        echo "topic-disjoint generalization, run with --ood-exam."
+    fi
+    if [ -f "$RUN_DIR/v0_oos_test_report.json" ] && [ -f "$RUN_DIR/v1_oos_test_report.json" ]; then
+        okr () { jq -r '((.summary.meaningful + (.summary.declined // 0)) / .summary.total_sessions * 100 | round | tostring) + "%"' "$1" 2>/dev/null || echo "?"; }
+        gtr () { jq -r '(.summary.golden_eval_summary.matched_meaningful_rate // "?" | tostring) + "%"' "$1" 2>/dev/null || echo "?"; }
+        echo ""
+        echo "## OOD EXAM — topic-disjoint held-out sets (--ood-exam)"
+        echo ""
+        echo "| Set | Metric | V0 | Winner |"
+        echo "|---|---|---|---|"
+        echo "| out-of-scope (unseen topics) | correct-behavior rate (declined or meaningful) | $(okr "$RUN_DIR/v0_oos_test_report.json") | $(okr "$RUN_DIR/v1_oos_test_report.json") |"
+        echo "| corrections (unseen topics, anti-parroting) | ground-truth rate | $(gtr "$RUN_DIR/v0_corr_test_report.json") | $(gtr "$RUN_DIR/v1_corr_test_report.json") |"
     fi
     [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
     _thr=$(awk "BEGIN{printf \"%.0f\", ${QUALITY_THRESHOLD:-0.95}*100}")

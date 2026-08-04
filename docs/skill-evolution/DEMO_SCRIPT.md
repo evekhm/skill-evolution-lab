@@ -223,11 +223,11 @@ This demo runs Act 1 (Bootstrap) of the lifecycle locally:
    job runs daily, scores yesterday's conversations, evolves the skill,
    and opens a PR — one round per cycle, with real user traffic as
    input. In this demo, we compress two cycles into a single run using
-   synthetic traffic, so you can see the compounding effect: V0→V1
-   yields a modest +1.5pp (the first round mostly discovers *what's
-   wrong*), but V1→V2 jumps +33pp because the second round sees the
-   V1 failures and writes stronger, more specific directives to fix
-   them. Two rounds take the agent from 59.5% to 94.1%.
+   synthetic traffic. On the committed 205-conversation reference
+   (`eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`)
+   round 1 delivers the full gain (55.1% → 85.4%) and round 2 regresses
+   slightly (84.4%); the incumbent-guarded selection keeps the best
+   version deployed, so a weak round costs nothing.
 
 The agent writes its own operational manual. No human provides the
 fixes — the analyst fleet extracts them from the agent's own
@@ -404,7 +404,7 @@ jq '.conversations[] | select(.verdict == "unhelpful") | .question' \
 wc -c "$RUN_DIR/v0_policy_skill.md"
 ```
 
-**Expected: ~59.5% meaningful rate**
+**Expected: ~55.1% meaningful rate** (committed reference)
 
 ### `--step v1`: Evolve V0 → V1
 
@@ -461,7 +461,8 @@ jq '.category_breakdown' "$RUN_DIR/v2_quality_report.json"
 wc -c "$RUN_DIR/v2_policy_skill.md"
 ```
 
-**Expected: ~94.1% meaningful rate** (+33.1pp)
+**Expected: ~84.4% meaningful rate** (on the committed reference V2
+lands 1.0pp below V1 — the incumbent guard keeps V1 in that case)
 
 ### `--step compare`: Side-by-side comparison
 
@@ -613,7 +614,7 @@ Traffic generator runs 205 multi-turn conversations with a simulated
 skeptical user ("Alex") who knows the real policy data and pushes back
 on errors. LLM judge scores each conversation on 7 dimensions.
 
-**V0 result: 59.5% meaningful rate**
+**V0 result: 55.1% meaningful rate** (committed reference)
 
 ### V0 → V1 Evolution
 
@@ -630,9 +631,8 @@ The evolution pipeline:
 4. **Best-of-3 selection**: generate 3 candidates, score each on the
    full 205-question dataset, keep the best
 
-**V1 result: 61.0% meaningful rate** (+1.5pp)
-
-V1 is modest -- but it provides the failure signal V2 needs.
+**V1 result: 85.4% meaningful rate** (+30.3pp on the committed
+reference)
 
 ### V1 → V2 Evolution
 
@@ -644,16 +644,20 @@ A compaction pass distills the skill from potentially 40K+ chars down
 to ~10K chars, keeping mandatory tool-use directives and anti-patterns
 while stripping redundant prose.
 
-**V2 result: 94.1% meaningful rate** (+33.1pp)
+**V2 result: 84.4% meaningful rate** (−1.0pp vs V1 on the committed
+reference — the incumbent guard keeps V1 deployed in that case)
 
 ### Final Comparison
 
+Committed reference
+(`eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`):
+
 ```text
-Metric                   V0        V1        V2      Change
----------------------------------------------------------
-Meaningful rate       59.5%     61.0%     94.1%     +34.6pp
-Unhelpful rate        26.3%     26.3%      1.0%     -25.3pp
-Correction rate       21.5%     18.0%      5.4%     -16.1pp
+Metric                   V0        V1        V2      Change (V0→V1)
+------------------------------------------------------------------
+Meaningful rate       55.1%     85.4%     84.4%     +30.3pp
+Unhelpful rate        43.4%     13.2%     12.2%     -30.2pp
+Correction rate       20.0%      0.5%      0.0%     -19.5pp
 ```
 
 ## Deployed Mode (Cloud Run Job)
@@ -1092,8 +1096,10 @@ intact.
 - **Consolidation is stochastic**: 10 candidates from the same inputs
   produced a 6.9pp range (58.0%-64.9%). Best-of-3 selection raises
   reliability from 70% to 97%.
-- **Two rounds required**: V1 only reaches 61% but generates the
-  failure signal V2 learns from. Cannot skip V1.
+- **Round 1 carries the gain**: on the committed reference, V1 reaches
+  85.4% and V2 regresses to 84.4%. An earlier "two rounds required"
+  claim came from a run with no committed artifact and is withdrawn;
+  the incumbent guard makes extra rounds safe but not necessary.
 - **Compaction beats bloat**: A 9.7K skill outperforms a 45K skill.
 - **Flat beats hierarchical** at ~100 patch scale.
 - **Both analyst types needed**: Error analysts find anti-patterns,

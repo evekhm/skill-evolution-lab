@@ -4,6 +4,15 @@ A detailed comparison of our skill evolution pipeline against the two
 foundational papers — **Trace2Skill** and **AutoSkill** — with component-level
 implementation details and improvement opportunities.
 
+> **Where the code lives:** the engine is the
+> BigQuery-Agent-Analytics-SDK's `scripts/skill_evolution.py` (pinned via
+> `SDK_REPO`/`SDK_BRANCH` in `.env`); this repo's `evolve.py` is an
+> adapter over it. `evolve.py` function references below describe the
+> algorithm as the engine implements it. Two options described in this
+> document were dropped in the engine: hierarchical (tree) consolidation
+> — flat consolidation with the structural quality gate is the only mode
+> — and standalone LLM patch scoring.
+
 ## The Two Foundational Papers
 
 ### Trace2Skill (arXiv:2603.25158)
@@ -143,7 +152,10 @@ continuous incremental adaptation from live interactions.
 
 Our system is primarily based on **Trace2Skill**, with selective ideas from
 **AutoSkill** for the skill format, plus several original extensions for
-multi-agent systems. The pipeline has six major components.
+multi-agent systems. This document describes the pipeline as six
+components; `ALGORITHM.md` groups the same pipeline into four, folding
+bottleneck detection, the analyst fleet, and patch consolidation
+(Components 3–5 here) into its single "Evolution Engine" component.
 
 ### Component 1: Traffic Generation
 
@@ -438,9 +450,10 @@ dataset against failures.
 - Contain at least one root cause category keyword from
   `ROOT_CAUSE_CATEGORIES`
 
-Optional: LLM-based patch scoring (`--score-patches`, via `patch_scoring.py`)
-to filter low-quality patches by having another LLM rate each patch on
-relevance and specificity before consolidation.
+Standalone LLM-based patch scoring (a separate `patch_scoring.py` rating
+each patch on relevance and specificity) existed in an earlier revision
+and was dropped in the SDK engine; the structural quality gate above is
+the only patch filter.
 
 **Key differences from Trace2Skill**:
 - Agentic mode is optional (off by default), not the primary mode
@@ -717,7 +730,7 @@ annotations next to each component (e.g., "evolve.py", "bottleneck.py",
 | **Best-of-N** | Not described | Not described | Generate N candidates, score each, pick best. Addresses 6.9pp variance (novel) |
 | **Compaction** | Not described | Not described | Distills bloated skills (45K→10K chars) while preserving effectiveness (novel) |
 | **Template-guided** | Not described | Not described | Structural blueprint constrains section organization across rounds (novel) |
-| **Multi-round** | Single round shown | Continuous (versions accumulate) | Multi-round: V0→V1→V2. Two rounds essential — V1 learns failures, V2 writes strong fixes (novel finding) |
+| **Multi-round** | Single round shown | Continuous (versions accumulate) | Multi-round: V0→V1→V2 supported. On the committed reference, round 1 delivers the full gain and round 2 regresses (55.1% → 85.4% → 84.4%); incumbent-guarded selection keeps the best version deployed |
 | **Cross-model transfer** | Proven: 35B→122B, +57.65pp | Proven cross-session/task | Not yet tested (Flash→Flash only) |
 | **Deployment** | Research prototype (vLLM serving) | SDK/Web UI plugin | Production: Cloud Run Job (weekly cron), GCS archival, GitHub PR integration, CI quality gates |
 | **Model** | Qwen3.5 (35B, 122B) open-source | Various (model-agnostic) | Gemini 2.5 Flash (all components) |
@@ -770,10 +783,16 @@ Makes diffs readable and ensures stable skill structure.
 
 ### 5. Multi-Round Evolution
 
-Papers show single-round results. We found two rounds essential: V1 exposes
-the failure landscape (+1.5pp), V2 writes strong directives to fix it
-(+33.1pp). The modest V1 gain is not a failure — it provides the failure
-signal that V2 learns from.
+Papers show single-round results. The pipeline supports multiple rounds,
+but the committed 205-conversation reference
+(`eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`)
+shows round 1 delivering the full gain and round 2 regressing:
+55.1% → 85.4% → 84.4%. An earlier claim here — "two rounds essential:
+V1 +1.5pp, V2 +33.1pp" — came from a run with no committed artifact and
+is withdrawn. The V1→V2 regression is the content-loss failure mode
+described in item 0b; the engine's diff-guard and incumbent-guarded
+selection now refuse such a round's output, so a V2 that does not beat
+V1 keeps V1 deployed rather than shipping a regression.
 
 ### 6. Synthetic Adversarial Traffic
 
@@ -921,12 +940,18 @@ skill section would close this gap.
 
 ## Experimental Results
 
-Results from V0→V1→V2 evolution on 205 multi-turn conversations:
+Results from V0→V1→V2 evolution on 205 multi-turn conversations
+(committed artifact:
+`eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`):
 
 | Metric | V0 (baseline) | V1 (round 1) | V2 (round 2) |
 |---|---|---|---|
-| Meaningful rate | 59.5% | 61.0% (+1.5pp) | 94.1% (+33.1pp) |
+| Meaningful rate | 55.1% | 85.4% (+30.3pp) | 84.4% (−1.0pp, regression) |
 | Skill size | 574 chars | ~5K chars | ~10K chars (after compaction from 45K) |
+
+A previous version of this table cited 59.5% → 61.0% → 94.1% from a run
+with no committed artifact; the table above is regenerated from the
+committed reference.
 
 **Per-category improvements (V0→V2)**:
 

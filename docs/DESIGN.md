@@ -63,7 +63,7 @@ to go next.
 | Deployment | Local / in-process | Agent Engine + Cloud Run |
 | Failure modes | Prompt gaps only | Routing + overlap + scope + hallucination |
 | Improvement | Vertex AI Prompt Optimizer | AI agents + human-in-the-loop via GitHub |
-| Prompt management | Prompt Registry | `prompts.py` in git (changes via PRs) |
+| Prompt management | Prompt Registry | `SKILL.md` in git (changes via PRs) |
 | Scope | Implicit | Explicit (`agent_context.json`) |
 | Traceability | Log files | Git PRs + CI quality gates |
 
@@ -329,7 +329,10 @@ Every stage of the loop, who runs it, and how to watch it live:
 
 ## 3. The Starting Point
 
-The Policy Agent starts with a deliberately naive prompt (`agents/enterprise/policy_agent/prompts.py`):
+The Policy Agent starts with a deliberately naive baseline. The original
+design expressed it as a flat prompt (`prompts.py`, shown below); the
+current repo expresses the same idea as the v0 `SKILL.md`
+(`agents/enterprise/policy_agent/skill/SKILL.md`, `version: "0"`):
 
 ```
 You are a helpful company information assistant.
@@ -355,8 +358,8 @@ and suggest they contact HR.
 questions about expenses, benefits details (401k, parental leave, dental),
 and holidays -- even though `lookup_company_policy` covers all of them.
 
-The fix is a PR that rewrites `CURRENT_PROMPT` in `prompts.py`. The
-prompt is code -- versioned, diffable, reviewable.
+The fix is a PR that rewrites the agent's `SKILL.md`. The skill is
+code -- versioned, diffable, reviewable.
 
 ---
 
@@ -1065,9 +1068,9 @@ regressions automatically.
 
 ```
 agents/
-  production/
+  enterprise/
     policy_agent/            Cloud Run A2A sub-agent
-      prompts.py               Prompt (baseline start, improved via PRs)
+      skill/SKILL.md           Skill (v0 baseline start, evolved via PRs)
       tools.py                 lookup_company_policy, get_current_date
       agent.py                 ADK agent definition
       deploy.sh                Deploy to Cloud Run
