@@ -1171,15 +1171,20 @@ Round 2: main.py (evolve from V1 scores) -> V2 skill ->
          generate_traffic.sh -> score.sh -> restore V0
 ```
 
-Golden reference results (205 conversations, May 22 2026):
+Committed reference results (205 conversations):
 
 | Metric | V0 (baseline) | V1 (round 1) | V2 (round 2) |
 |--------|---------------|--------------|--------------|
-| Meaningful rate | 54.1% | 97.1% (+43.0pp) | 98.5% (+1.4pp) |
-| Unhelpful rate | 32.2% | 0.5% (-31.7pp) | 0.0% (-0.5pp) |
-| Skill size | 574 chars | ~12K chars | ~13K chars |
+| Meaningful rate | 55.1% | 85.4% (+30.3pp) | 84.4% (−1.0pp, regression) |
+| Unhelpful rate | 43.4% | 13.2% (−30.2pp) | 12.2% (−1.0pp) |
 
-Reference run artifacts: `eval/skill_evolution/reference_runs/breakthrough_may22/`
+Reference run artifacts: `eval/skill_evolution/reference_runs/v0_baseline_demo/`
+(`summary.json`). A previous version of this table cited a May 22 2026 run
+(54.1% / 97.1% / 98.5%) whose artifact directory
+(`reference_runs/breakthrough_may22/`) is not in the repository; those
+numbers are withdrawn. On the committed reference, round 2 regresses —
+the engine's incumbent-guarded selection keeps V1 deployed in that
+case rather than shipping the regression.
 
 ### Minimum Failure Threshold
 

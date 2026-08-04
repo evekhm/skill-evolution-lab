@@ -629,7 +629,10 @@ per conversation (Agent Engine serve latency).
 Earlier-generation runs (previous models and tools, kept for
 history): the deployed policy-agent loop reached 20.0% -> 96.0% on
 its BigQuery slice (PR #4); a 205-conversation local reference run
-reached 55.1% -> 85.4% (`eval/skill_evolution/reference_runs/`).
+reached 55.1% -> 85.4%, with a V2 round that regressed to 84.4%
+(`eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`
+— the V2 content-loss failure mode that the engine's diff-guard and
+incumbent-guarded selection now reject).
 
 Algorithm lineage: [Trace2Skill](https://arxiv.org/abs/2603.25158),
 [AutoSkill](https://arxiv.org/abs/2603.01145) —

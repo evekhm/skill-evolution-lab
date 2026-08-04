@@ -116,7 +116,7 @@ mkdir -p "$RUN_DIR"
 - Quick questions: `eval/data/questions/demo_quick.json` (22q)
 - V0 skill baseline: `agents/enterprise/policy_agent/skill/SKILL.v0.md`
 
-**Golden reference (target):** V0=60% → V1=94% → V2=98% (May 16 run)
+**Golden reference (target):** V0=60% → V1=94% → V2=98% (May 16 run, LEGACY scorer — see QUICK_EVOLUTION_RUNBOOK section 2; not comparable to current-scorer numbers). Current-scorer committed reference: V0=55.1% → V1=85.4% → V2=84.4% (regression; gate keeps V1) — `eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`.
 
 **Scorer:** Use `score_conversations.py` (SDK scorer) for all scoring. It handles
 ground truth, turn tagging, trajectory sampling, and quality scoring in a single pass.

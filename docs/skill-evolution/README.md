@@ -188,7 +188,9 @@ no tool-use rules, no edge cases. You deploy it knowing it will fail.
 5. Redeploy, re-generate traffic, re-score
 6. Repeat until quality stabilizes
 
-   V0 (54%) --> V1 (97%) --> V2 (98%)
+   V0 (55.1%) --> V1 (85.4%) --> V2 (84.4%, gate keeps V1)
+   (committed reference: eval/skill_evolution/reference_runs/
+    v0_baseline_demo/summary.json)
 ```
 
 **Quality Agent role during bootstrap:** scoring only. No GitHub
@@ -585,8 +587,9 @@ in the algorithm reference.
 
 ## Status
 
-**Implemented** -- V0->V1->V2 pipeline reaches 94.1% meaningful rate
-on 205 conversations. Evolution agent runs the full loop autonomously
+**Implemented** -- V0->V1->V2 pipeline reaches 85.4% meaningful rate
+on 205 conversations (committed reference:
+`eval/skill_evolution/reference_runs/v0_baseline_demo/summary.json`). Evolution agent runs the full loop autonomously
 (traffic -> score -> evolve -> GCS -> PR). Version-aware filtering wired
 end-to-end (BQ tags -> quality agent -> SDK TraceFilter). See
 `scripts/demo/skill_evolution/run_demo.sh --full` for interactive demos

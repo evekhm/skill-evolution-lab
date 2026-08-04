@@ -48,9 +48,12 @@ jobs:
 
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      # This job only counts/comments on issues and dispatches the Cloud
+      # Run job — it never pushes or touches PRs (the evolution PR is
+      # opened by the job itself with its own credential). contents:write
+      # and pull-requests:write were unused grants (review #53 finding 9).
+      contents: read
       issues: write
-      pull-requests: write
       id-token: write   # for Workload Identity Federation
 
     steps:
