@@ -117,3 +117,36 @@ def test_failure_count_accepts_both_bottleneck_shapes():
     assert coevolve._failure_count(7) == 7
     assert coevolve._failure_count([]) == 0
     assert coevolve._failure_count([{"q": "a"}, {"q": "b"}]) == 2
+
+
+# --- #54 finding 9: incumbent must refresh between sequential agents --------
+
+
+def test_incumbent_refresh_between_sequential_agents(tmp_path):
+    # Comparing agent 2's candidates against pre-agent-1 V0 let a system
+    # regression clear a stale guard. After agent 1 deploys, the bar the
+    # next agent must clear is the score evolve() recorded in
+    # evolved_score.json — not the original baseline.
+    import json as _json
+
+    v0_baseline = 55.1
+
+    # Agent 1 has not deployed yet: no file -> baseline unchanged.
+    assert coevolve._refresh_incumbent(str(tmp_path), v0_baseline) == v0_baseline
+
+    # Agent 1 deploys a winner: the recorded score becomes the new bar.
+    (tmp_path / "evolved_score.json").write_text(
+        _json.dumps({"meaningful_rate": 85.4})
+    )
+    assert coevolve._refresh_incumbent(str(tmp_path), v0_baseline) == 85.4
+
+    # No output_dir (dry paths) keeps the current bar.
+    assert coevolve._refresh_incumbent(None, v0_baseline) == v0_baseline
+
+    # A null rate or a corrupt file never silently drops the bar.
+    (tmp_path / "evolved_score.json").write_text(
+        _json.dumps({"meaningful_rate": None})
+    )
+    assert coevolve._refresh_incumbent(str(tmp_path), 85.4) == 85.4
+    (tmp_path / "evolved_score.json").write_text("{not json")
+    assert coevolve._refresh_incumbent(str(tmp_path), 85.4) == 85.4

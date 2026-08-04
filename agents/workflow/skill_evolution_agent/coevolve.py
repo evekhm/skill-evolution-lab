@@ -79,6 +79,29 @@ def _failure_count(v) -> int:
     return v if isinstance(v, int) else len(v)
 
 
+def _refresh_incumbent(output_dir: str | None,
+                       current: float | None) -> float | None:
+    """Return the latest deployed score from ``<output_dir>/evolved_score.json``.
+
+    ``evolve()`` records the deployed outcome's score there ("last writer
+    wins" by design). Falls back to ``current`` when the file is absent,
+    unreadable, or carries no rate — the bar never silently drops to None.
+    """
+    if not output_dir:
+        return current
+    path = os.path.join(output_dir, "evolved_score.json")
+    try:
+        with open(path) as f:
+            score = json.load(f).get("meaningful_rate")
+        if score is not None:
+            return float(score)
+    except FileNotFoundError:
+        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Could not refresh incumbent from %s: %s", path, e)
+    return current
+
+
 def coevolve(
     report_path: str,
     agent_configs: dict | None = None,
@@ -223,21 +246,6 @@ def coevolve(
     # <output_dir>/evolved_score.json ("last writer wins" by design).
     incumbent_score = report.get("summary", {}).get("meaningful_rate")
 
-    def _refresh_incumbent(current: float | None) -> float | None:
-        if not output_dir:
-            return current
-        path = os.path.join(output_dir, "evolved_score.json")
-        try:
-            with open(path) as f:
-                score = json.load(f).get("meaningful_rate")
-            if score is not None:
-                return float(score)
-        except FileNotFoundError:
-            pass
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Could not refresh incumbent from %s: %s", path, e)
-        return current
-
     def _make_score_fn(skill_dir):
         """Score a candidate skill on the eval set; returns meaningful_rate."""
         if not (select_by_score and output_dir):
@@ -367,7 +375,7 @@ def coevolve(
         result.evolved_agents[agent_name] = agent_result
         # The bar the next agent must clear is the system as it now runs,
         # including this agent's deployed winner (or the kept incumbent).
-        incumbent_score = _refresh_incumbent(incumbent_score)
+        incumbent_score = _refresh_incumbent(output_dir, incumbent_score)
 
     # Save co-evolution summary
     result.elapsed_seconds = time.time() - t0
