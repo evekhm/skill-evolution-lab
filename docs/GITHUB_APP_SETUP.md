@@ -8,9 +8,11 @@ Everything GitHub-related in one place. Two credentials, one script:
 | **GitHub App** (`github-app-key` + `github-app-config` secrets) | the quality agent — files quality issues | `<your-app>[bot]` | optional (without it, issues attribute to your account) |
 | **Reviewer App** (`REVIEWER_APP_ID` + `REVIEWER_APP_PRIVATE_KEY` Actions secrets) | the Argus reviewer workflows — reviews PRs, answers issues and `@argus` mentions | `<reviewer-app>[bot]` | optional (see [Reviewer app (Argus)](#reviewer-app-argus) below) |
 
-Both are stored by `scripts/setup/setup_github.sh` (Step 4 below),
-which also wires CI: Workload Identity Federation, the CI service
-account, repo variables, labels, and branch protection.
+The first two are stored by `scripts/setup/setup_github.sh` (Step 4
+below), which also wires CI: Workload Identity Federation, the CI
+service account, repo variables, labels, and branch protection. The
+Reviewer App is configured by hand — its credentials go straight into
+GitHub Actions secrets (see [Reviewer app (Argus)](#reviewer-app-argus)).
 
 
 
@@ -314,8 +316,10 @@ where to post) and rarely need changing.
 
 ### Renaming the bot
 
-Three places: the app name in GitHub settings, `trigger_phrase` in
-`claude-pr-review.yml`, and the CLAUDE.md section header.
+Four places: the app name in GitHub settings, `trigger_phrase` in
+`claude-pr-review.yml`, the literal bot login
+(`<app-name>[bot]`) in the `claude-hourly-sweep.yml` prompt, and the
+CLAUDE.md section header.
 
 ### Security notes (public repo)
 
@@ -325,7 +329,11 @@ Three places: the app name in GitHub settings, `trigger_phrase` in
   head checkout at the workspace root — that executes untrusted code
   with base-repo credentials. Review fork PRs by commenting `@argus`
   yourself (the action only accepts triggers from actors with write
-  access).
+  access). Residual risk to keep in mind: that gate vets the human
+  who typed the mention, not the fork's content — the agent then
+  reads fork-authored text with base-repo credentials present on the
+  runner. Treat `@argus` on a fork PR as running the reviewer on
+  untrusted input, and read its output accordingly.
 - Bot-authored comments never trigger the action (default
   `allowed_bots` is empty), so Argus cannot loop on itself.
 - The workflows grant the job's own `GITHUB_TOKEN` no write scopes

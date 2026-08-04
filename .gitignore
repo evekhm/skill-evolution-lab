@@ -10,6 +10,11 @@ build/
 .env
 !.env.example
 
+### GCP WIF credentials written into the workspace by
+### google-github-actions/auth (live OIDC token + project number —
+### one `git add -A` away from a public leak without this line) ###
+gha-creds-*.json
+
 ### IDE ###
 .idea/
 .vscode/

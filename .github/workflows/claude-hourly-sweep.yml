@@ -15,10 +15,11 @@
 # Argus hourly sweep — catch-all behind claude-pr-review.yml.
 #
 # If an event-triggered run failed or was missed, this pass picks the
-# item up within the hour. It finds open PRs/issues with recent human
-# activity that Argus has not yet answered and applies the same
-# CLAUDE.md review standards. Costs one small model call per idle hour
-# (list + exit) — lower the frequency here if that matters.
+# item up within the hour. It finds open PRs/issues with unanswered
+# activity in the last 24h and applies the same CLAUDE.md review
+# standards. An idle hour still starts a short claude-opus-5 session
+# (a few gh list calls, then exit) — 24 of them a day; lower the cron
+# frequency if that cost matters.
 #
 # NOTE: GitHub suspends cron schedules after ~60 days without repo
 # activity; re-enable under Actions if the repo has been dormant.
@@ -76,17 +77,22 @@ jobs:
             You are the catch-all sweep behind the event-triggered Argus
             reviewer in ${{ github.repository }}. Work with `gh`:
 
-            1. List open PRs and open issues updated in the last 2 hours
-               (`gh pr list` / `gh issue list` with --json including
-               number, updatedAt, author, labels).
+            1. List open PRs and open issues updated in the last 24
+               hours (`gh pr list` / `gh issue list` with --json
+               including number, updatedAt, author, labels). The wide
+               window is deliberate — cron runs get delayed or dropped;
+               the rules below make re-processing a no-op.
             2. For each, read the timeline and DROP it when any of:
-               - the latest activity is by Argus itself (any author
-                 login ending in "[bot]" that matches the reviewer app)
-                 or the only recent activity is bot-authored;
-               - Argus already responded AFTER the latest human
-                 activity (for PRs: after the latest push);
+               - Argus (the literal login "evekhm-odyssey-argus[bot]")
+                 already commented AFTER the latest non-Argus activity
+                 (for PRs: after the latest push);
+               - the only activity in the window is Argus's own
+                 comments;
                - it is an issue labeled "quality" (machine-filed for
                  the evolution dispatcher — never touch these).
+               Items authored by OTHER bots and machine accounts are
+               IN scope: machine-opened skill-evolution/* candidate
+               PRs are the main class this sweep exists to catch.
             3. For each remaining item (at most 5 per run — list any
                overflow in the run log, the next sweep gets them):
                - PR: review the diff (`gh pr diff`, `gh pr view`) and
