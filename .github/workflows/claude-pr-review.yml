@@ -33,9 +33,10 @@
 #   Model  — Claude on Vertex AI via Workload Identity Federation
 #            (vars WIF_PROVIDER / WIF_SERVICE_ACCOUNT, no stored keys).
 #            vars.CLAUDE_VERTEX_PROJECT_ID is the project where Claude
-#            models are enabled. claude-fable-5 is the only Claude
-#            model enabled there (probed 2026-08-04) — hence the pin,
-#            including the small/fast model override (Haiku is 404).
+#            models are enabled. claude-opus-5 is the only Claude
+#            model enabled there, global endpoint only (probed
+#            2026-08-04) — hence the pin, including the small/fast
+#            model override (Haiku is 404). Re-probe before changing.
 #
 # Fork-PR security (public repo): pull_request runs from forks get no
 # secrets and no OIDC, so auto-review is gated to same-repo PRs. Never
@@ -110,12 +111,12 @@ jobs:
             only if significant. Omit empty sections. If there is
             nothing to flag, say so in one line.
           claude_args: |
-            --model claude-fable-5
+            --model claude-opus-5
             --max-turns 30
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
-          ANTHROPIC_SMALL_FAST_MODEL: claude-fable-5
+          ANTHROPIC_SMALL_FAST_MODEL: claude-opus-5
 
   # -----------------------------------------------------------------------
   # Job 2: Respond to new human-filed issues.
@@ -171,13 +172,13 @@ jobs:
             report, state the likely cause and where a fix would land;
             do not push any fix.
           claude_args: |
-            --model claude-fable-5
+            --model claude-opus-5
             --max-turns 20
             --allowedTools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh label list:*),Bash(git log:*),Bash(git diff:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
-          ANTHROPIC_SMALL_FAST_MODEL: claude-fable-5
+          ANTHROPIC_SMALL_FAST_MODEL: claude-opus-5
 
   # -----------------------------------------------------------------------
   # Job 3: Conversational responses to "@argus" mentions on PRs and issues.
@@ -222,9 +223,9 @@ jobs:
           use_vertex: "true"
           trigger_phrase: "@argus"
           claude_args: |
-            --model claude-fable-5
+            --model claude-opus-5
             --max-turns 30
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
-          ANTHROPIC_SMALL_FAST_MODEL: claude-fable-5
+          ANTHROPIC_SMALL_FAST_MODEL: claude-opus-5

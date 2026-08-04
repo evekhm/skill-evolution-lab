@@ -294,6 +294,11 @@ enabled elsewhere):
 gh variable set CLAUDE_VERTEX_PROJECT_ID --body "<gcp project with Claude models enabled>"
 ```
 
+The model pinned in the workflows (`--model` and
+`ANTHROPIC_SMALL_FAST_MODEL`) must be enabled on that project — verify
+with a `rawPredict` probe against the global endpoint before changing
+either side.
+
 The WIF service account (`WIF_SERVICE_ACCOUNT` repo variable) needs
 `roles/aiplatform.user` on that project. Model auth reuses the WIF
 setup from this doc's Step 5 — no Anthropic API key is stored
