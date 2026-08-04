@@ -6,6 +6,17 @@ steps, explicit inputs/outputs, and mappings to the foundational papers
 -- [Trace2Skill](https://arxiv.org/abs/2603.25158) and
 [AutoSkill](https://arxiv.org/abs/2603.01145).
 
+> **Where the code lives:** the evolution engine described here
+> (analyst fleet, quality gate, consolidation, guardrails, best-of-N
+> selection with the incumbent guard) is implemented in the
+> BigQuery-Agent-Analytics-SDK as `scripts/skill_evolution.py`, pinned
+> via `SDK_REPO`/`SDK_BRANCH` in `.env`. This repo's `evolve.py` is an
+> adapter over that engine (lab Vertex client, agentic-analyst hook,
+> live-derived toolbox, demo knobs); references to `evolve.py` below
+> describe the algorithm the engine implements. Hierarchical
+> consolidation and standalone patch scoring were dropped in the engine
+> (flat consolidation with a structural quality gate is the only mode).
+
 All scripts live in `scripts/demo/skill_evolution/`.
 Sample output files for every stage: [`eval/skill_evolution/reference_runs/v0_baseline_demo/`](../../eval/skill_evolution/reference_runs/v0_baseline_demo/).
 

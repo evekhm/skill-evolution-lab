@@ -241,17 +241,23 @@ fixes; PRs are for comprehensive skill rewrites.
 
 ## Components
 
+The evolution algorithm (analyst fleet, quality gate, consolidation,
+structural guardrails, best-of-N selection with the incumbent guard) is
+the BigQuery-Agent-Analytics-SDK's `scripts/skill_evolution.py`, cloned
+and pinned by `ensure_sdk.py` from `SDK_REPO`/`SDK_BRANCH` in `.env`
+(also baked into the job container at `/sdk` at build time). Analyst and
+consolidator prompts live in that SDK module. This directory holds the
+lab-side integration:
+
 | File | Purpose |
 |------|---------|
 | `agent.py` | ADK agent definition with instruction and tools |
 | `main.py` | CLI runner and Cloud Run Job entrypoint |
 | `tools.py` | Tool implementations (traffic, scoring, evolution, GCS, PR) |
-| `evolve.py` | Core evolution pipeline: analysts + consolidation |
-| `prompts.py` | System prompts for analysts and consolidator |
+| `evolve.py` | Adapter over the SDK evolution engine: lab Vertex client, agentic-analyst hook, live-derived toolbox, demo knobs, candidate layout |
 | `bottleneck.py` | Failure classification and bottleneck detection |
 | `coevolve.py` | Cross-agent co-evolution orchestrator |
-| `agentic_analyst.py` | Agentic error analysts with tool access |
-| `patch_scoring.py` | LLM-based patch quality scoring |
+| `agentic_analyst.py` | Agentic error analysts with tool access (plugged into the engine's `error_analyst_fn` hook) |
 | `Dockerfile` | Container image for Cloud Run deployment |
 | `deploy.sh` | Cloud Run Job + Cloud Scheduler deployment |
 | `eval/skill_evolution/agent_registry.json` | Agent registry (which agents to evolve) |

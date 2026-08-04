@@ -4,6 +4,15 @@ A detailed comparison of our skill evolution pipeline against the two
 foundational papers — **Trace2Skill** and **AutoSkill** — with component-level
 implementation details and improvement opportunities.
 
+> **Where the code lives:** the engine is the
+> BigQuery-Agent-Analytics-SDK's `scripts/skill_evolution.py` (pinned via
+> `SDK_REPO`/`SDK_BRANCH` in `.env`); this repo's `evolve.py` is an
+> adapter over it. `evolve.py` function references below describe the
+> algorithm as the engine implements it. Two options described in this
+> document were dropped in the engine: hierarchical (tree) consolidation
+> — flat consolidation with the structural quality gate is the only mode
+> — and standalone LLM patch scoring.
+
 ## The Two Foundational Papers
 
 ### Trace2Skill (arXiv:2603.25158)
@@ -143,7 +152,10 @@ continuous incremental adaptation from live interactions.
 
 Our system is primarily based on **Trace2Skill**, with selective ideas from
 **AutoSkill** for the skill format, plus several original extensions for
-multi-agent systems. The pipeline has six major components.
+multi-agent systems. This document describes the pipeline as six
+components; `ALGORITHM.md` groups the same pipeline into four, folding
+bottleneck detection, the analyst fleet, and patch consolidation
+(Components 3–5 here) into its single "Evolution Engine" component.
 
 ### Component 1: Traffic Generation
 
@@ -438,9 +450,10 @@ dataset against failures.
 - Contain at least one root cause category keyword from
   `ROOT_CAUSE_CATEGORIES`
 
-Optional: LLM-based patch scoring (`--score-patches`, via `patch_scoring.py`)
-to filter low-quality patches by having another LLM rate each patch on
-relevance and specificity before consolidation.
+Standalone LLM-based patch scoring (a separate `patch_scoring.py` rating
+each patch on relevance and specificity) existed in an earlier revision
+and was dropped in the SDK engine; the structural quality gate above is
+the only patch filter.
 
 **Key differences from Trace2Skill**:
 - Agentic mode is optional (off by default), not the primary mode

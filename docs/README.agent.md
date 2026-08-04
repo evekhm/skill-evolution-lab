@@ -7,9 +7,10 @@ A multi-agent GCP system (ADK + Vertex AI Agent Engine) that learns from its own
 The system consists of:
 1. **knowledge_supervisor**: Root agent (Vertex AI Agent Engine).
 2. **policy_agent**: Specialist (Cloud Run A2A). Evolves its `SKILL.md`.
-3. **hr_calculator**: Deterministic specialist (Cloud Run A2A).
-4. **quality_agent**: Runs daily via Cloud Scheduler, evaluates BQ logs, files GitHub Issues for failures.
-5. **skill_evolution_agent**: Runs on demand or via heuristic, consumes GitHub Issues, patches `SKILL.md`, and creates a PR.
+3. **benefits_agent**: Specialist (Cloud Run A2A). The supervisor discovers its URL at startup and silently runs without a benefits tool if the service is absent — deploy it before the supervisor.
+4. **hr_calculator**: Deterministic specialist (Cloud Run A2A).
+5. **quality_agent**: Runs daily via Cloud Scheduler, evaluates BQ logs, files GitHub Issues for failures.
+6. **skill_evolution_agent**: Runs on demand or via heuristic, consumes GitHub Issues, patches `SKILL.md`, and creates a PR. The evolution algorithm itself is the BigQuery-Agent-Analytics-SDK's `scripts/skill_evolution.py`, pinned via `SDK_REPO`/`SDK_BRANCH` in `.env`; the local `evolve.py` is an adapter over it.
 
 ## Directory Structure
 - `agents/enterprise/`: Agents serving end users (supervisor, policy, hr). Configuration and `SKILL.md` files are located here. Target for evolution patches.
