@@ -301,10 +301,29 @@ The model pinned in the workflows (`--model` and
 with a `rawPredict` probe against the global endpoint before changing
 either side.
 
-The WIF service account (`WIF_SERVICE_ACCOUNT` repo variable) needs
-`roles/aiplatform.user` on that project. Model auth reuses the WIF
-setup from this doc's Step 5 — no Anthropic API key is stored
-anywhere.
+The workflows authenticate as a dedicated service account
+(`ARGUS_SERVICE_ACCOUNT` repo variable) holding exactly one role:
+`roles/aiplatform.user` on the Claude project. Never point them at
+the shared CI account — the agent can read its own credential file,
+so the account's roles are the blast radius, and the CI account's
+Secret Manager access reaches the repo's write-capable GitHub
+credentials. Create it once:
+
+```bash
+gcloud iam service-accounts create argus-reviewer --project=<claude-project>
+gcloud projects add-iam-policy-binding <claude-project> \
+  --member="serviceAccount:argus-reviewer@<claude-project>.iam.gserviceaccount.com" \
+  --role=roles/aiplatform.user
+gcloud iam service-accounts add-iam-policy-binding \
+  argus-reviewer@<claude-project>.iam.gserviceaccount.com \
+  --project=<claude-project> --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/<wif-pool-name>/attribute.repository/<owner>/<repo>"
+gh variable set ARGUS_SERVICE_ACCOUNT \
+  --body "argus-reviewer@<claude-project>.iam.gserviceaccount.com"
+```
+
+Model auth reuses the WIF provider from this doc's Step 5 — no
+Anthropic API key is stored anywhere.
 
 ### Updating the review standards
 
@@ -317,11 +336,10 @@ where to post) and rarely need changing.
 ### Renaming the bot
 
 Four places: the app name in GitHub settings, `trigger_phrase` in
-`claude-pr-review.yml`, the login literal in the
-`claude-hourly-sweep.yml` prompt (the app slug, e.g.
-`evekhm-odyssey-argus` — the sweep matches it with the `[bot]` suffix
-optional, because GraphQL output omits the suffix while REST includes
-it), and the CLAUDE.md section header.
+`claude-pr-review.yml`, the `ARGUS_LOGIN` env at the top of
+`claude-hourly-sweep.yml` (the app slug — the sweep matches it with
+the `[bot]` suffix optional, because GraphQL output omits the suffix
+while REST includes it), and the CLAUDE.md section header.
 
 ### Security notes (public repo)
 
@@ -348,10 +366,13 @@ it), and the CLAUDE.md section header.
   entries are prefix matches with no argument inspection, so before
   adding one, check the command has no flag that executes an
   arbitrary program OR reads an arbitrary path. Both cases were
-  proven by Argus on its own runners and fixed: `git fetch
-  --upload-pack=<cmd>` executed commands (entry removed), and `git
-  diff --no-index <path>` read the WIF credential file (the file is
-  now moved out of the workspace before the agent starts).
+  proven by Argus on its own runners: `git fetch --upload-pack=<cmd>`
+  executed commands (entry removed), and `git diff --no-index <path>`
+  read the WIF credential file. Moving that file out of the workspace
+  closed the git vector but only narrowed the read — the harness file
+  tools are not path-scoped, and a job cannot hide a credential from
+  itself. That is why the reviewer's service account holds a single
+  role: its permissions are the real boundary.
 
 ---
 

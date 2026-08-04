@@ -23,10 +23,8 @@
 # edit that file to change what Argus flags; edit the prompts here only
 # to change the mechanics. Renaming the bot touches four places (same
 # list in docs/GITHUB_APP_SETUP.md): the app name in GitHub settings,
-# `trigger_phrase` below, the login literal in claude-hourly-sweep.yml
-# (the app slug, e.g. evekhm-odyssey-argus — GraphQL output omits the
-# "[bot]" suffix, so the sweep matches the slug with the suffix
-# optional), and the CLAUDE.md section header.
+# `trigger_phrase` below, the ARGUS_LOGIN env at the top of
+# claude-hourly-sweep.yml, and the CLAUDE.md section header.
 #
 # Auth:
 #   GitHub — short-lived token minted from the Argus GitHub App
@@ -110,7 +108,13 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
-          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          # Dedicated least-privilege account: roles/aiplatform.user
+          # and nothing else. Never point this at the shared CI
+          # account (github-actions-fixer) — its 13 roles include
+          # Secret Manager access to the repo's write-capable GitHub
+          # credentials, and the agent can read its own credential
+          # file, so the SA's roles ARE the blast radius.
+          service_account: ${{ vars.ARGUS_SERVICE_ACCOUNT }}
 
       # auth@v2 drops the credential file (live OIDC token + project
       # number) into $GITHUB_WORKSPACE, and allowlisted git commands
@@ -199,7 +203,13 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
-          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          # Dedicated least-privilege account: roles/aiplatform.user
+          # and nothing else. Never point this at the shared CI
+          # account (github-actions-fixer) — its 13 roles include
+          # Secret Manager access to the repo's write-capable GitHub
+          # credentials, and the agent can read its own credential
+          # file, so the SA's roles ARE the blast radius.
+          service_account: ${{ vars.ARGUS_SERVICE_ACCOUNT }}
 
       # auth@v2 drops the credential file (live OIDC token + project
       # number) into $GITHUB_WORKSPACE, and allowlisted git commands
@@ -288,7 +298,13 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
-          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          # Dedicated least-privilege account: roles/aiplatform.user
+          # and nothing else. Never point this at the shared CI
+          # account (github-actions-fixer) — its 13 roles include
+          # Secret Manager access to the repo's write-capable GitHub
+          # credentials, and the agent can read its own credential
+          # file, so the SA's roles ARE the blast radius.
+          service_account: ${{ vars.ARGUS_SERVICE_ACCOUNT }}
 
       # auth@v2 drops the credential file (live OIDC token + project
       # number) into $GITHUB_WORKSPACE, and allowlisted git commands

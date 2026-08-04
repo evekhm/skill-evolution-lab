@@ -38,6 +38,12 @@ concurrency:
   group: argus-hourly-sweep
   cancel-in-progress: false
 
+env:
+  # Single source for the reviewer's login, interpolated into the
+  # prompt below (rename the bot here). This is the app slug: GraphQL
+  # output (gh --json) omits the "[bot]" suffix, REST appends it.
+  ARGUS_LOGIN: evekhm-odyssey-argus
+
 jobs:
   sweep:
     name: Sweep Unanswered PRs/Issues
@@ -66,7 +72,10 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
-          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          # Dedicated least-privilege account: roles/aiplatform.user
+          # and nothing else. Never point this at the shared CI
+          # account (github-actions-fixer) — see claude-pr-review.yml.
+          service_account: ${{ vars.ARGUS_SERVICE_ACCOUNT }}
 
       # auth@v2 drops the credential file (live OIDC token + project
       # number) into $GITHUB_WORKSPACE, and allowlisted git commands
@@ -95,16 +104,19 @@ jobs:
 
             1. List open PRs and open issues updated in the last 24
                hours (`gh pr list` / `gh issue list` with --json
-               including number, updatedAt, author, labels). The wide
-               window is deliberate — cron runs get delayed or dropped;
-               the rules below make re-processing a no-op.
+               including number, updatedAt, author, labels — ALWAYS
+               with `--limit 100`: gh's silent default is 30,
+               newest-created first, which would hide an old but
+               still-active item). The wide window is deliberate —
+               cron runs get delayed or dropped; the rules below make
+               re-processing a no-op.
             2. For each, read `gh pr view --json headRefOid,comments`
                / `gh issue view --json comments` and DROP it when any
                of:
                - PR: a comment by Argus contains the line
                  "Reviewed-head: <oid>" where <oid> equals the PR's
                  current headRefOid. Argus's login is
-                 "evekhm-odyssey-argus" — GraphQL output (gh --json)
+                 "${{ env.ARGUS_LOGIN }}" — GraphQL output (gh --json)
                  omits the "[bot]" suffix, REST includes it; treat
                  both forms as Argus. A comment WITHOUT a matching
                  marker is not a completed review — a run that died
