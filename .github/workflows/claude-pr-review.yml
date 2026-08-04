@@ -23,8 +23,10 @@
 # edit that file to change what Argus flags; edit the prompts here only
 # to change the mechanics. Renaming the bot touches four places (same
 # list in docs/GITHUB_APP_SETUP.md): the app name in GitHub settings,
-# `trigger_phrase` below, the login literal in claude-hourly-sweep.yml,
-# and the CLAUDE.md section header.
+# `trigger_phrase` below, the login literal in claude-hourly-sweep.yml
+# (the app slug, e.g. evekhm-odyssey-argus — GraphQL output omits the
+# "[bot]" suffix, so the sweep matches the slug with the suffix
+# optional), and the CLAUDE.md section header.
 #
 # Auth:
 #   GitHub — short-lived token minted from the Argus GitHub App
@@ -67,16 +69,17 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # One Argus agent at a time per thread — the group is shared with
-    # the mention job (same argus-thread-<n> key; PR number and issue
-    # number coincide for a PR), so an @argus reply and an auto-review
-    # of the same PR queue instead of racing. cancel-in-progress must
-    # stay false: canceling mid-run would strand the track_progress
-    # comment on a permanent spinner. With false, GitHub keeps only
-    # the newest queued run, so a push burst costs at most one extra
-    # review.
+    # One review at a time per PR. Deliberately NOT shared with the
+    # mention job's group: in a shared group, GitHub keeps only the
+    # newest pending run, so a queued @argus question would be evicted
+    # by a newer push's review and vanish with no trace and no
+    # recovery path (the sweep never re-answers comments). An
+    # occasional review/mention double-comment is the cheaper failure.
+    # cancel-in-progress must stay false: canceling mid-run would
+    # strand the track_progress comment on a permanent spinner; with
+    # false, a push burst costs at most one extra review.
     concurrency:
-      group: argus-thread-${{ github.event.pull_request.number }}
+      group: argus-review-${{ github.event.pull_request.number }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -108,6 +111,22 @@ jobs:
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      # auth@v2 drops the credential file (live OIDC token + project
+      # number) into $GITHUB_WORKSPACE, and allowlisted git commands
+      # can read any workspace path (git diff --no-index — Argus PoC
+      # on run 30960678094). Move it out before the agent starts; the
+      # auth action's post-job cleanup follows GOOGLE_GHA_CREDS_PATH,
+      # so deletion still works.
+      - name: Move WIF credentials out of the workspace
+        run: |
+          DEST="$RUNNER_TEMP/gcp-wif-creds.json"
+          mv "$GOOGLE_GHA_CREDS_PATH" "$DEST"
+          {
+            echo "GOOGLE_GHA_CREDS_PATH=$DEST"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$DEST"
+            echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
+          } >> "$GITHUB_ENV"
 
       - name: Review the PR
         uses: anthropics/claude-code-action@v1
@@ -182,6 +201,22 @@ jobs:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
+      # auth@v2 drops the credential file (live OIDC token + project
+      # number) into $GITHUB_WORKSPACE, and allowlisted git commands
+      # can read any workspace path (git diff --no-index — Argus PoC
+      # on run 30960678094). Move it out before the agent starts; the
+      # auth action's post-job cleanup follows GOOGLE_GHA_CREDS_PATH,
+      # so deletion still works.
+      - name: Move WIF credentials out of the workspace
+        run: |
+          DEST="$RUNNER_TEMP/gcp-wif-creds.json"
+          mv "$GOOGLE_GHA_CREDS_PATH" "$DEST"
+          {
+            echo "GOOGLE_GHA_CREDS_PATH=$DEST"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$DEST"
+            echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
+          } >> "$GITHUB_ENV"
+
       - name: Respond to the issue
         uses: anthropics/claude-code-action@v1
         with:
@@ -223,11 +258,12 @@ jobs:
       contains(github.event.comment.body, '@argus')
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Shares the argus-thread-<n> group with the auto-review job, so
-    # mentions queue behind an in-flight review of the same PR (and
-    # behind each other) instead of racing it.
+    # Mentions get their own group, NOT shared with auto-review (see
+    # the comment on that job): sharing would let a queued human
+    # question be evicted silently. Two mentions on one thread still
+    # queue behind each other.
     concurrency:
-      group: argus-thread-${{ github.event.issue.number }}
+      group: argus-mention-${{ github.event.issue.number }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -253,6 +289,22 @@ jobs:
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      # auth@v2 drops the credential file (live OIDC token + project
+      # number) into $GITHUB_WORKSPACE, and allowlisted git commands
+      # can read any workspace path (git diff --no-index — Argus PoC
+      # on run 30960678094). Move it out before the agent starts; the
+      # auth action's post-job cleanup follows GOOGLE_GHA_CREDS_PATH,
+      # so deletion still works.
+      - name: Move WIF credentials out of the workspace
+        run: |
+          DEST="$RUNNER_TEMP/gcp-wif-creds.json"
+          mv "$GOOGLE_GHA_CREDS_PATH" "$DEST"
+          {
+            echo "GOOGLE_GHA_CREDS_PATH=$DEST"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$DEST"
+            echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
+          } >> "$GITHUB_ENV"
 
       - name: Answer the mention
         uses: anthropics/claude-code-action@v1

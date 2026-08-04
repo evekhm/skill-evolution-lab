@@ -317,9 +317,11 @@ where to post) and rarely need changing.
 ### Renaming the bot
 
 Four places: the app name in GitHub settings, `trigger_phrase` in
-`claude-pr-review.yml`, the literal bot login
-(`<app-name>[bot]`) in the `claude-hourly-sweep.yml` prompt, and the
-CLAUDE.md section header.
+`claude-pr-review.yml`, the login literal in the
+`claude-hourly-sweep.yml` prompt (the app slug, e.g.
+`evekhm-odyssey-argus` — the sweep matches it with the `[bot]` suffix
+optional, because GraphQL output omits the suffix while REST includes
+it), and the CLAUDE.md section header.
 
 ### Security notes (public repo)
 
@@ -345,9 +347,11 @@ CLAUDE.md section header.
   beyond commenting and no unrestricted `gh api`. Allowlist hygiene:
   entries are prefix matches with no argument inspection, so before
   adding one, check the command has no flag that executes an
-  arbitrary program — `git fetch --upload-pack=<cmd>` is the proven
-  case (it was allowlisted briefly; Argus demonstrated the escape on
-  its own runner and it was removed).
+  arbitrary program OR reads an arbitrary path. Both cases were
+  proven by Argus on its own runners and fixed: `git fetch
+  --upload-pack=<cmd>` executed commands (entry removed), and `git
+  diff --no-index <path>` read the WIF credential file (the file is
+  now moved out of the workspace before the agent starts).
 
 ---
 
