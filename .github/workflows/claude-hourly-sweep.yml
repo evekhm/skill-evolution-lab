@@ -1,0 +1,200 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Argus hourly sweep — catch-all behind claude-pr-review.yml.
+#
+# If an event-triggered run failed or was missed, this pass picks the
+# item up within the hour. It finds open PRs/issues with unanswered
+# activity in the last 24h and applies the same CLAUDE.md review
+# standards. An idle hour still starts a short claude-opus-5 session
+# (a few gh list calls, then exit) — 24 of them a day; lower the cron
+# frequency if that cost matters.
+#
+# NOTE: GitHub suspends cron schedules after ~60 days without repo
+# activity; re-enable under Actions if the repo has been dormant.
+#
+# Auth is identical to claude-pr-review.yml (reviewer app + Vertex WIF).
+
+name: Argus Hourly Sweep
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+# One sweep at a time; a queued sweep covers the same window anyway.
+concurrency:
+  group: argus-hourly-sweep
+  cancel-in-progress: false
+
+env:
+  # Single source for the reviewer's login, interpolated into the
+  # prompt below (rename the bot here). This is the app slug: GraphQL
+  # output (gh --json) omits the "[bot]" suffix, REST appends it.
+  ARGUS_LOGIN: evekhm-odyssey-argus
+
+jobs:
+  sweep:
+    name: Sweep Unanswered PRs/Issues
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write   # WIF OIDC (Vertex)
+      actions: write    # dispatch missed PRs to the event pipeline
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mint reviewer app token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.REVIEWER_APP_ID }}
+          private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+
+      # An unset repo variable interpolates to "", and auth@v2 treats
+      # an empty service_account as direct WIF instead of an error —
+      # the run would go green here and die at the first Vertex call.
+      - name: Fail fast if reviewer variables are unset
+        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == ''
+        run: |
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT and/or CLAUDE_VERTEX_PROJECT_ID is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          exit 1
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          # Dedicated least-privilege account: the argusVertexPredict
+          # custom role (aiplatform.endpoints.predict) and nothing
+          # else. Never point this at the shared CI account
+          # (github-actions-fixer) — see claude-pr-review.yml.
+          service_account: ${{ vars.ARGUS_SERVICE_ACCOUNT }}
+
+      # auth@v2 drops the credential file (live OIDC token + project
+      # number) into $GITHUB_WORKSPACE, and allowlisted git commands
+      # can read any workspace path (git diff --no-index — Argus PoC
+      # on run 30960678094). Move it out before the agent starts; the
+      # auth action's post-job cleanup follows GOOGLE_GHA_CREDS_PATH,
+      # so deletion still works.
+      - name: Move WIF credentials out of the workspace
+        run: |
+          DEST="$RUNNER_TEMP/gcp-wif-creds.json"
+          mv "$GOOGLE_GHA_CREDS_PATH" "$DEST"
+          {
+            echo "GOOGLE_GHA_CREDS_PATH=$DEST"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$DEST"
+            echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
+          } >> "$GITHUB_ENV"
+
+      - name: Sweep for unanswered items
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_vertex: "true"
+          prompt: |
+            You are the catch-all sweep behind the event-triggered Argus
+            reviewer in ${{ github.repository }}. Work with `gh`:
+
+            1. List open PRs and open issues updated in the last 24
+               hours (`gh pr list` / `gh issue list` with --json
+               including number, updatedAt, author, labels — ALWAYS
+               with `--limit 100`: gh's silent default is 30,
+               newest-created first, which would hide an old but
+               still-active item). If either list returns exactly 100
+               items the cap itself may have truncated coverage — say
+               so in your output, same as the 5-item review cap. The
+               wide window is deliberate — cron runs get delayed or
+               dropped; the rules below make re-processing a no-op.
+            2. For each, read
+               `gh pr view --json headRefOid,comments,reviews`
+               / `gh issue view --json comments` and DROP it when any
+               of:
+               - PR: a comment OR review by Argus contains the line
+                 "Reviewed-head: <oid>" where <oid> equals the PR's
+                 current headRefOid (the event-driven job posts PR
+                 REVIEWS, not comments — check both). Argus's login is
+                 "${{ env.ARGUS_LOGIN }}" — GraphQL output (gh --json)
+                 omits the "[bot]" suffix, REST includes it; treat
+                 both forms as Argus. A comment WITHOUT a matching
+                 marker is not a completed review — a run that died
+                 mid-way leaves a markerless tracking comment, and
+                 that PR still needs you. Do not compare timestamps
+                 (commit dates are not push dates). Human comments
+                 alone NEVER trigger a re-review — replies are the
+                 @argus mention path's job, not yours (mention
+                 replies carry no markers and neither block nor
+                 trigger a review);
+               - PR: it is from a fork (`gh pr view --json
+                 isCrossRepository` is true) — the dispatch path
+                 refuses forks by design; maintainers review those by
+                 commenting @argus themselves;
+               - issue: Argus has ever commented on it (follow-ups
+                 are the mention path's job);
+               - it is machine-filed: labeled "quality", or its content
+                 is a quality report or a skill-evolution companion
+                 issue — those belong to the evolution dispatcher.
+               Items authored by other bots and machine accounts are
+               otherwise IN scope: machine-opened skill-evolution/*
+               candidate PRs with no review yet are the main class
+               this sweep exists to catch.
+            3. For each remaining item (at most 5 per run — list any
+               overflow in your output, the next sweep gets them):
+               - PR: do NOT review it yourself — the event pipeline
+                 owns reviews, the ledger, and the labels. Add its
+                 number to the dispatch list (step 4); a trusted step
+                 dispatches the review workflow for it.
+               - Issue: investigate against the repository code and
+                 post ONE comment answering it, starting with
+                 "### Argus", citing file paths.
+            4. ALWAYS write ${{ runner.temp }}/argus-dispatch.json —
+               {"prs": [<numbers to dispatch>]} — with an empty array
+               when no PR qualifies. If nothing qualifies at all,
+               write the empty list and finish without posting
+               anything.
+          claude_args: |
+            --model claude-opus-5
+            --max-turns 50
+            --allowedTools "Write,Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
+        env:
+          ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
+          CLOUD_ML_REGION: global
+          ANTHROPIC_SMALL_FAST_MODEL: claude-opus-5
+
+      # Trusted dispatch: the agent only nominates PR numbers; this
+      # step validates them and triggers the event pipeline with the
+      # job's own GITHUB_TOKEN (actions: write). workflow_dispatch is
+      # one of the two event types GITHUB_TOKEN is allowed to chain.
+      - name: Dispatch missed PRs to the review pipeline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          F="${{ runner.temp }}/argus-dispatch.json"
+          if [ ! -f "$F" ]; then echo "no dispatch file"; exit 0; fi
+          if ! jq -e '(.prs | type == "array" and length <= 5) and
+                      (.prs | all(type == "number"))' "$F" >/dev/null; then
+            echo "::error::argus-dispatch.json failed validation"; exit 1
+          fi
+          for N in $(jq -r '.prs[]' "$F"); do
+            echo "dispatching review for PR #$N"
+            gh workflow run claude-pr-review.yml \
+              --repo "${{ github.repository }}" --ref main \
+              -f pr_number="$N"
+          done

@@ -51,11 +51,56 @@ echo "    Log: ${LOG_FILE}"
 echo "=========================================================="
 
 # --- Load .env ---
+# Step 9's documented interface is an exported CLAUDE_VERTEX_PROJECT_ID;
+# capture it BEFORE the source, because .env assignments overwrite
+# exported values (the repo's known env-stomp class) and a stale .env
+# entry would silently win over the operator's explicit export.
+CVP_EXPORT="${CLAUDE_VERTEX_PROJECT_ID:-}"
+# Placeholder literal: keep in sync with docs/GITHUB_APP_SETUP.md,
+# "Reviewer app (Argus)" setup snippet.
+if [ "${SETUP_ARGUS:-0}" = "1" ] && [ "$CVP_EXPORT" = "my-gcp-project" ]; then
+    echo "ERROR: CLAUDE_VERTEX_PROJECT_ID is still the documentation placeholder"
+    echo "'my-gcp-project'. Export your real GCP project id (or unset the"
+    echo "variable to use the default). Aborting before any step runs — Steps 1-8"
+    echo "rewrite repo variables and branch protection."
+    exit 1
+fi
 if [ -f "$PROJECT_ROOT/.env" ]; then
     source "$PROJECT_ROOT/.env"
 else
     echo "ERROR: .env file not found at $PROJECT_ROOT/.env"
     exit 1
+fi
+# .env is not a supported source for CLAUDE_VERTEX_PROJECT_ID (step 9
+# reads the pre-source export only). Abort HERE, before Steps 1-8
+# rewrite repo variables and branch protection — same reasoning as
+# the placeholder guard above.
+if [ "${SETUP_ARGUS:-0}" = "1" ] && [ -n "${CLAUDE_VERTEX_PROJECT_ID:-}" ] \
+    && [ "$CLAUDE_VERTEX_PROJECT_ID" != "$CVP_EXPORT" ]; then
+    # An .env value that MATCHES the live repo variable is inert —
+    # continuing is correct. The lookup is lenient on purpose: a
+    # failed lookup keeps the abort, which is the safe direction.
+    _early_repo=$(git remote get-url origin 2>/dev/null \
+        | sed 's|.*github.com[:/]\(.*\)\.git|\1|' || echo "")
+    _early_live=$(gh api "repos/${_early_repo}/actions/variables/CLAUDE_VERTEX_PROJECT_ID" \
+        --jq .value 2>/dev/null || true)
+    if [ -n "$_early_live" ] && [ "$_early_live" = "$CLAUDE_VERTEX_PROJECT_ID" ]; then
+        echo "NOTE: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID', matching"
+        echo "the live repo variable — inert, continuing. (.env remains unsupported"
+        echo "as a source for this variable; prefer removing the entry.)"
+    else
+        echo "ERROR: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID',"
+        echo "which this script does not read for the Argus setup."
+        if [ -n "$CVP_EXPORT" ]; then
+            echo "Your shell export '$CVP_EXPORT' is the value that would be used."
+            echo "Remove the contradicting .env entry, then re-run."
+        else
+            echo "Remove the .env entry and export the real GCP project id in the"
+            echo "shell instead (see docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+        fi
+        echo "Aborting before any step runs."
+        exit 1
+    fi
 fi
 
 if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "your-project-id" ] || [ "$PROJECT_ID" = "<YOUR_PROJECT_ID>" ]; then
@@ -83,7 +128,7 @@ echo "----------------------------------------------------------"
 # Step 1: Install Python dependencies
 # =========================================================================
 echo ""
-echo "[1/8] Installing Python dependencies..."
+echo "[1/9] Installing Python dependencies..."
 if command -v uv &>/dev/null; then
     uv pip install PyGithub PyJWT cryptography google-cloud-secret-manager --quiet
 else
@@ -95,7 +140,7 @@ echo "  Done."
 # Step 2: Create GitHub issue labels
 # =========================================================================
 echo ""
-echo "[2/8] Creating GitHub issue labels..."
+echo "[2/9] Creating GitHub issue labels..."
 
 create_label() {
     local name="$1" color="$2" description="$3"
@@ -121,7 +166,7 @@ fi
 # Step 3: Set up Workload Identity Federation for GitHub Actions
 # =========================================================================
 echo ""
-echo "[3/8] Setting up Workload Identity Federation..."
+echo "[3/9] Setting up Workload Identity Federation..."
 
 WIF_POOL="github-actions"
 WIF_PROVIDER="github-provider"
@@ -183,7 +228,7 @@ echo "  WIF Provider: $WIF_PROVIDER_FULL"
 # Step 4: Create & configure service account for GitHub Actions
 # =========================================================================
 echo ""
-echo "[4/8] Configuring service account for GitHub Actions..."
+echo "[4/9] Configuring service account for GitHub Actions..."
 
 GH_SA_NAME="github-actions-fixer"
 GH_SA_EMAIL="${GH_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -244,17 +289,28 @@ echo "  Done."
 # Step 5: Set GitHub repo variables
 # =========================================================================
 echo ""
-echo "[5/8] Setting GitHub repo variables..."
+echo "[5/9] Setting GitHub repo variables..."
 
 if command -v gh &>/dev/null; then
-    gh variable set PROJECT_ID          --body "$PROJECT_ID"              --repo "$GITHUB_REPO" && echo "  PROJECT_ID=$PROJECT_ID"
-    gh variable set REGION              --body "${REGION:-us-central1}"   --repo "$GITHUB_REPO" && echo "  REGION=${REGION:-us-central1}"
-    gh variable set DATASET_ID          --body "$DATASET_ID"             --repo "$GITHUB_REPO" && echo "  DATASET_ID=$DATASET_ID"
-    gh variable set TABLE_ID            --body "$TABLE_ID"               --repo "$GITHUB_REPO" && echo "  TABLE_ID=$TABLE_ID"
-    gh variable set DATASET_LOCATION    --body "$DATASET_LOCATION"       --repo "$GITHUB_REPO" && echo "  DATASET_LOCATION=$DATASET_LOCATION"
-    gh variable set WIF_PROVIDER        --body "$WIF_PROVIDER_FULL"      --repo "$GITHUB_REPO" && echo "  WIF_PROVIDER=$WIF_PROVIDER_FULL"
-    gh variable set WIF_SERVICE_ACCOUNT --body "$GH_SA_EMAIL"            --repo "$GITHUB_REPO" && echo "  WIF_SERVICE_ACCOUNT=$GH_SA_EMAIL"
-    gh variable set TEST_DATASET_ID     --body "${TEST_DATASET_ID:-logging_test}" --repo "$GITHUB_REPO" && echo "  TEST_DATASET_ID=${TEST_DATASET_ID:-logging_test}"
+    # Sole command per line: under set -e a failed set aborts the run
+    # instead of silently skipping its confirmation echo and letting
+    # the closing summary claim success (same class as step 9's sets).
+    gh variable set PROJECT_ID          --body "$PROJECT_ID"              --repo "$GITHUB_REPO"
+    echo "  PROJECT_ID=$PROJECT_ID"
+    gh variable set REGION              --body "${REGION:-us-central1}"   --repo "$GITHUB_REPO"
+    echo "  REGION=${REGION:-us-central1}"
+    gh variable set DATASET_ID          --body "$DATASET_ID"             --repo "$GITHUB_REPO"
+    echo "  DATASET_ID=$DATASET_ID"
+    gh variable set TABLE_ID            --body "$TABLE_ID"               --repo "$GITHUB_REPO"
+    echo "  TABLE_ID=$TABLE_ID"
+    gh variable set DATASET_LOCATION    --body "$DATASET_LOCATION"       --repo "$GITHUB_REPO"
+    echo "  DATASET_LOCATION=$DATASET_LOCATION"
+    gh variable set WIF_PROVIDER        --body "$WIF_PROVIDER_FULL"      --repo "$GITHUB_REPO"
+    echo "  WIF_PROVIDER=$WIF_PROVIDER_FULL"
+    gh variable set WIF_SERVICE_ACCOUNT --body "$GH_SA_EMAIL"            --repo "$GITHUB_REPO"
+    echo "  WIF_SERVICE_ACCOUNT=$GH_SA_EMAIL"
+    gh variable set TEST_DATASET_ID     --body "${TEST_DATASET_ID:-logging_test}" --repo "$GITHUB_REPO"
+    echo "  TEST_DATASET_ID=${TEST_DATASET_ID:-logging_test}"
 else
     echo "  WARNING: 'gh' CLI not found. Set these variables manually:"
     echo "    GitHub > Settings > Secrets and variables > Actions > Variables"
@@ -276,7 +332,7 @@ fi
 # the repo and opens PRs with GH_TOKEN read from this secret
 # (skill_evolution_agent/deploy.sh mounts github-pat:latest).
 echo ""
-echo "[6/8] Storing github-pat secret in Secret Manager..."
+echo "[6/9] Storing github-pat secret in Secret Manager..."
 
 if gcloud secrets describe github-pat --project="$PROJECT_ID" >/dev/null 2>&1; then
     echo "  Secret 'github-pat' already exists (skipped)."
@@ -312,7 +368,7 @@ fi
 # Step 7: Protect main (require the eval gate checks)
 # =========================================================================
 echo ""
-echo "[7/8] Setting branch protection on main..."
+echo "[7/9] Setting branch protection on main..."
 
 if gh api -X PUT "repos/${GITHUB_REPO}/branches/main/protection" --input - >/dev/null <<'PROTECTION'
 {
@@ -340,7 +396,7 @@ echo ""
 # Step 8: Bot identity (GitHub App) — optional
 # =========================================================================
 echo ""
-echo "[8/8] Bot identity (GitHub App secrets)..."
+echo "[8/9] Bot identity (GitHub App secrets)..."
 if [ -n "${GH_APP_ID:-}" ] && [ -n "${GH_APP_INSTALLATION_ID:-}" ] && [ -n "${GH_APP_KEY_FILE:-}" ]; then
     if gcloud secrets describe github-app-key --project="$PROJECT_ID" >/dev/null 2>&1; then
         # Secret already stored — the local .pem may legitimately be
@@ -371,6 +427,145 @@ else
     echo "   the GitHub App, then re-run this script with the three vars.)"
 fi
 
+# =========================================================================
+# Step 9: Argus reviewer identity (optional — run with SETUP_ARGUS=1)
+# =========================================================================
+# The Argus review workflows impersonate a dedicated service account
+# holding a single predict-only custom role. Never point them at the
+# CI service account above: the review agent can read its own
+# credential file, so the account's roles are the blast radius.
+if [ "${SETUP_ARGUS:-0}" = "1" ]; then
+    echo ""
+    echo "[9/9] Argus reviewer identity (Vertex-only, least privilege)..."
+    # Precedence: explicit export > existing repo variable >
+    # PROJECT_ID. An explicit export always wins (the deliberate
+    # change — printed when it differs); the existing variable keeps
+    # a re-run in a fresh shell from silently repointing a
+    # separated-project setup at the infra project; the PROJECT_ID
+    # fallback applies only when neither exists.
+    # The lookup must distinguish "variable absent" (404 — fall back)
+    # from any other failure (rate limit, missing scope, transient
+    # 5xx): treating those as absent would restore the silent-repoint
+    # bug through a transient error, so they are fatal instead.
+    if CVP_LOOKUP=$(gh api "repos/${GITHUB_REPO}/actions/variables/CLAUDE_VERTEX_PROJECT_ID" \
+        --jq .value 2>&1); then
+        EXISTING_CVP="$CVP_LOOKUP"
+    elif echo "$CVP_LOOKUP" | grep -q "404"; then
+        EXISTING_CVP=""
+    else
+        echo "  ERROR: could not read repo variable CLAUDE_VERTEX_PROJECT_ID:"
+        echo "    $CVP_LOOKUP"
+        echo "  Refusing to guess — a failed lookup treated as 'not set' would"
+        echo "  silently repoint the reviewer at '$PROJECT_ID'. Fix the gh error"
+        echo "  and re-run."
+        exit 1
+    fi
+    OLD_CVP=""
+    if [ -n "$CVP_EXPORT" ]; then
+        CLAUDE_PROJECT="$CVP_EXPORT"
+        if [ -n "$EXISTING_CVP" ] && [ "$EXISTING_CVP" != "$CLAUDE_PROJECT" ]; then
+            echo "  Changing repo variable CLAUDE_VERTEX_PROJECT_ID:"
+            echo "    $EXISTING_CVP -> $CLAUDE_PROJECT"
+            OLD_CVP="$EXISTING_CVP"
+        fi
+    elif [ -n "$EXISTING_CVP" ]; then
+        CLAUDE_PROJECT="$EXISTING_CVP"
+    else
+        CLAUDE_PROJECT="$PROJECT_ID"
+    fi
+    ARGUS_SA_EMAIL="argus-reviewer@${CLAUDE_PROJECT}.iam.gserviceaccount.com"
+
+    # The WIF impersonation exchange needs this API enabled in the
+    # service account's OWN project — invisible when it equals
+    # PROJECT_ID (enabled above), a hard failure when it does not.
+    gcloud services enable iamcredentials.googleapis.com \
+        --project="$CLAUDE_PROJECT" --quiet
+
+    # gcloud iam roles delete only soft-deletes: describe still
+    # succeeds and binding a deleted role passes — auth green, every
+    # Vertex call denied. Undelete instead of skipping in that state.
+    if ROLE_DELETED=$(gcloud iam roles describe argusVertexPredict \
+        --project="$CLAUDE_PROJECT" --format="value(deleted)" 2>/dev/null); then
+        if [ "$(echo "$ROLE_DELETED" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+            gcloud iam roles undelete argusVertexPredict \
+                --project="$CLAUDE_PROJECT" --quiet >/dev/null
+            echo "  Custom role argusVertexPredict was soft-deleted — undeleted."
+        else
+            echo "  Custom role argusVertexPredict already exists (skipped)."
+        fi
+    else
+        gcloud iam roles create argusVertexPredict \
+            --project="$CLAUDE_PROJECT" \
+            --title="Argus Vertex predict-only" \
+            --description="rawPredict on publisher models; nothing else" \
+            --permissions="aiplatform.endpoints.predict" --quiet
+        echo "  Created custom role argusVertexPredict."
+    fi
+
+    if gcloud iam service-accounts describe "$ARGUS_SA_EMAIL" \
+        --project="$CLAUDE_PROJECT" >/dev/null 2>&1; then
+        echo "  Service account argus-reviewer already exists (skipped)."
+    else
+        # A soft-deleted SA (deletion is soft for ~30 days) fails
+        # describe with NOT_FOUND but fails create with
+        # ALREADY_EXISTS — explain the undelete path instead of dying
+        # on a bare set -e abort.
+        if ! gcloud iam service-accounts create argus-reviewer \
+            --project="$CLAUDE_PROJECT" \
+            --display-name="Argus reviewer (Vertex-only, least privilege)"; then
+            echo "  ERROR: create failed. If this account was deleted in the last"
+            echo "  ~30 days its name is still reserved; undelete it by uniqueId:"
+            echo "    gcloud logging read 'protoPayload.methodName=\"google.iam.admin.v1.DeleteServiceAccount\"' \\"
+            echo "      --project=${CLAUDE_PROJECT} --limit=5 --format='value(protoPayload.request.name)'"
+            echo "    gcloud iam service-accounts undelete <uniqueId> --project=${CLAUDE_PROJECT}"
+            exit 1
+        fi
+        echo "  Created service account argus-reviewer."
+    fi
+
+    gcloud projects add-iam-policy-binding "$CLAUDE_PROJECT" \
+        --member="serviceAccount:${ARGUS_SA_EMAIL}" \
+        --role="projects/${CLAUDE_PROJECT}/roles/argusVertexPredict" \
+        --quiet --no-user-output-enabled
+    echo "    projects/${CLAUDE_PROJECT}/roles/argusVertexPredict"
+
+    WIF_POOL_NAME="${WIF_PROVIDER_FULL%/providers/*}"
+    gcloud iam service-accounts add-iam-policy-binding "$ARGUS_SA_EMAIL" \
+        --project="$CLAUDE_PROJECT" \
+        --role="roles/iam.workloadIdentityUser" \
+        --member="principalSet://iam.googleapis.com/${WIF_POOL_NAME}/attribute.repository/${GITHUB_REPO}" \
+        --quiet
+    echo "  WIF binding done."
+
+    # Sole command per line: under set -e a failed set aborts the run
+    # (an `X && echo` list would swallow the failure and the closing
+    # summary would claim CONFIGURED for a variable never written).
+    # The trap names the repair when a failure between the two writes
+    # leaves the pair inconsistent (project updated, SA not).
+    trap 'echo "NOTE: the two Argus repo variables may now be inconsistent — re-run SETUP_ARGUS=1 to repair." >&2' ERR
+    gh variable set CLAUDE_VERTEX_PROJECT_ID --body "$CLAUDE_PROJECT" \
+        --repo "$GITHUB_REPO"
+    echo "  CLAUDE_VERTEX_PROJECT_ID=$CLAUDE_PROJECT"
+    gh variable set ARGUS_SERVICE_ACCOUNT --body "$ARGUS_SA_EMAIL" \
+        --repo "$GITHUB_REPO"
+    echo "  ARGUS_SERVICE_ACCOUNT=$ARGUS_SA_EMAIL"
+    trap - ERR
+    # Cleanup notice only AFTER the new project is fully configured —
+    # printed earlier, a failure mid-step would leave the operator
+    # instructed to delete the only working reviewer identity.
+    if [ -n "$OLD_CVP" ]; then
+        echo "  NOTE: the previous project keeps its argus-reviewer account and"
+        echo "  custom role, still impersonable by this repo's workflows."
+        echo "  Remove them (both deletions are soft for ~30 days; the role can be"
+        echo "  undeleted by name, the account only by its numeric uniqueId — record"
+        echo "  it first if you might move back):"
+        echo "    gcloud iam service-accounts describe argus-reviewer@${OLD_CVP}.iam.gserviceaccount.com --project=${OLD_CVP} --format='value(uniqueId)'"
+        echo "    gcloud iam service-accounts delete argus-reviewer@${OLD_CVP}.iam.gserviceaccount.com --project=${OLD_CVP}"
+        echo "    gcloud iam roles delete argusVertexPredict --project=${OLD_CVP}"
+    fi
+    echo "  Done."
+fi
+
 echo "=========================================================="
 echo "GitHub Integration Setup Complete!"
 echo ""
@@ -389,5 +584,12 @@ if gcloud secrets describe github-app-config --project="$PROJECT_ID" >/dev/null 
 else
     echo "  [8] Bot identity: not configured — issues attribute to the PAT owner"
     echo "      (optional; see docs/GITHUB_APP_SETUP.md Steps 2-4, then re-run)"
+fi
+if [ "${SETUP_ARGUS:-0}" = "1" ]; then
+    echo "  [9] Argus reviewer identity: CONFIGURED (argus-reviewer@${CLAUDE_PROJECT}, predict-only)"
+else
+    echo "  [9] Argus reviewer identity: not configured"
+    echo "      (optional; SETUP_ARGUS=1 re-run — see docs/GITHUB_APP_SETUP.md,"
+    echo "       'Reviewer app (Argus)')"
 fi
 echo "=========================================================="
