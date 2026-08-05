@@ -83,7 +83,7 @@ echo "----------------------------------------------------------"
 # Step 1: Install Python dependencies
 # =========================================================================
 echo ""
-echo "[1/8] Installing Python dependencies..."
+echo "[1/9] Installing Python dependencies..."
 if command -v uv &>/dev/null; then
     uv pip install PyGithub PyJWT cryptography google-cloud-secret-manager --quiet
 else
@@ -95,7 +95,7 @@ echo "  Done."
 # Step 2: Create GitHub issue labels
 # =========================================================================
 echo ""
-echo "[2/8] Creating GitHub issue labels..."
+echo "[2/9] Creating GitHub issue labels..."
 
 create_label() {
     local name="$1" color="$2" description="$3"
@@ -121,7 +121,7 @@ fi
 # Step 3: Set up Workload Identity Federation for GitHub Actions
 # =========================================================================
 echo ""
-echo "[3/8] Setting up Workload Identity Federation..."
+echo "[3/9] Setting up Workload Identity Federation..."
 
 WIF_POOL="github-actions"
 WIF_PROVIDER="github-provider"
@@ -183,7 +183,7 @@ echo "  WIF Provider: $WIF_PROVIDER_FULL"
 # Step 4: Create & configure service account for GitHub Actions
 # =========================================================================
 echo ""
-echo "[4/8] Configuring service account for GitHub Actions..."
+echo "[4/9] Configuring service account for GitHub Actions..."
 
 GH_SA_NAME="github-actions-fixer"
 GH_SA_EMAIL="${GH_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -239,7 +239,7 @@ echo "  Done."
 # Step 5: Set GitHub repo variables
 # =========================================================================
 echo ""
-echo "[5/8] Setting GitHub repo variables..."
+echo "[5/9] Setting GitHub repo variables..."
 
 if command -v gh &>/dev/null; then
     gh variable set PROJECT_ID          --body "$PROJECT_ID"              --repo "$GITHUB_REPO" && echo "  PROJECT_ID=$PROJECT_ID"
@@ -271,7 +271,7 @@ fi
 # the repo and opens PRs with GH_TOKEN read from this secret
 # (skill_evolution_agent/deploy.sh mounts github-pat:latest).
 echo ""
-echo "[6/8] Storing github-pat secret in Secret Manager..."
+echo "[6/9] Storing github-pat secret in Secret Manager..."
 
 if gcloud secrets describe github-pat --project="$PROJECT_ID" >/dev/null 2>&1; then
     echo "  Secret 'github-pat' already exists (skipped)."
@@ -300,7 +300,7 @@ fi
 # Step 7: Protect main (require the eval gate checks)
 # =========================================================================
 echo ""
-echo "[7/8] Setting branch protection on main..."
+echo "[7/9] Setting branch protection on main..."
 
 if gh api -X PUT "repos/${GITHUB_REPO}/branches/main/protection" --input - >/dev/null <<'PROTECTION'
 {
@@ -328,7 +328,7 @@ echo ""
 # Step 8: Bot identity (GitHub App) — optional
 # =========================================================================
 echo ""
-echo "[8/8] Bot identity (GitHub App secrets)..."
+echo "[8/9] Bot identity (GitHub App secrets)..."
 if [ -n "${GH_APP_ID:-}" ] && [ -n "${GH_APP_INSTALLATION_ID:-}" ] && [ -n "${GH_APP_KEY_FILE:-}" ]; then
     if gcloud secrets describe github-app-key --project="$PROJECT_ID" >/dev/null 2>&1; then
         # Secret already stored — the local .pem may legitimately be
@@ -368,8 +368,21 @@ fi
 # credential file, so the account's roles are the blast radius.
 if [ "${SETUP_ARGUS:-0}" = "1" ]; then
     echo ""
-    echo "[9] Argus reviewer identity (Vertex-only, least privilege)..."
-    CLAUDE_PROJECT="${CLAUDE_VERTEX_PROJECT_ID:-$PROJECT_ID}"
+    echo "[9/9] Argus reviewer identity (Vertex-only, least privilege)..."
+    # Precedence: explicit env > existing repo variable > PROJECT_ID.
+    # Without the middle step, a re-run in a fresh shell (no export)
+    # would fall back to PROJECT_ID and silently repoint a correct
+    # separated-project setup at the infra project — auth would go
+    # green and every job would die at the first Vertex call.
+    EXISTING_CVP=$(gh api "repos/${GITHUB_REPO}/actions/variables/CLAUDE_VERTEX_PROJECT_ID" \
+        --jq .value 2>/dev/null || true)
+    CLAUDE_PROJECT="${CLAUDE_VERTEX_PROJECT_ID:-${EXISTING_CVP:-$PROJECT_ID}}"
+    if [ -n "$EXISTING_CVP" ] && [ "$EXISTING_CVP" != "$CLAUDE_PROJECT" ]; then
+        echo "  ERROR: repo variable CLAUDE_VERTEX_PROJECT_ID is '$EXISTING_CVP'"
+        echo "  but this run would set '$CLAUDE_PROJECT'. Refusing to overwrite a"
+        echo "  live value — export CLAUDE_VERTEX_PROJECT_ID explicitly to change it."
+        exit 1
+    fi
     ARGUS_SA_EMAIL="argus-reviewer@${CLAUDE_PROJECT}.iam.gserviceaccount.com"
 
     # The WIF impersonation exchange needs this API enabled in the

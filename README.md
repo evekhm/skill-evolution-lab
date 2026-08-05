@@ -439,8 +439,10 @@ Claude on Vertex AI (WIF — no API key stored) under a dedicated
 GitHub App identity.
 
 Setup (app creation, `REVIEWER_APP_ID` / `REVIEWER_APP_PRIVATE_KEY`
-secrets, `CLAUDE_VERTEX_PROJECT_ID` variable) and the fork-PR security
-notes: the "Reviewer app (Argus)" section of
+secrets, then `SETUP_ARGUS=1 bash scripts/setup/setup_github.sh` for
+the GCP side — a predict-only service account and the
+`CLAUDE_VERTEX_PROJECT_ID` / `ARGUS_SERVICE_ACCOUNT` variables) and
+the fork-PR security notes: the "Reviewer app (Argus)" section of
 [GITHUB_APP_SETUP](docs/GITHUB_APP_SETUP.md). Review standards live in
 the "Automated review standards" section of [CLAUDE.md](CLAUDE.md) —
 edit there, not in the workflows.

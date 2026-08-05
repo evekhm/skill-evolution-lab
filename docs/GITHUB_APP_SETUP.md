@@ -143,6 +143,7 @@ What the script configures, in order:
 | 6. PR credential | Stores `GH_PAT` (the Step 1 fine-grained PAT) as the `github-pat` secret — the evolution job opens PRs with it. Unset, it falls back to your gh CLI token with a warning |
 | 7. Branch protection | main requires the Golden Eval + Load Test checks before merge |
 | 8. Bot identity | With `GH_APP_*` set: stores `github-app-key` + `github-app-config` — quality issues then post as `<your-app>[bot]` |
+| 9. Argus reviewer identity | With `SETUP_ARGUS=1`: iamcredentials API, `argusVertexPredict` custom role, `argus-reviewer` SA, WIF binding, and the `CLAUDE_VERTEX_PROJECT_ID` + `ARGUS_SERVICE_ACCOUNT` repo variables (see [Reviewer app (Argus)](#reviewer-app-argus)) |
 
 Success signals in the output: every step prints `Created ...` or
 `already exists (skipped)`, and the closing summary shows
@@ -289,7 +290,11 @@ rm ~/Downloads/<your-app>.*.private-key.pem
 ```
 
 The GCP side (project variable + a dedicated least-privilege service
-account) is one script run:
+account) is one script run. Note it re-executes Steps 1–8 too, which
+is not purely additive: Step 5 rewrites the 8 core repo variables
+from your local `.env`, and Step 7 resets branch protection to
+exactly the Golden Eval + Load Test checks — if you have added
+required checks since, re-add them after.
 
 ```bash
 export SETUP_ARGUS=1
@@ -315,7 +320,12 @@ repo variables.
 Never point the workflows at the shared CI account instead — the
 agent can read its own credential file, so the account's roles are
 the blast radius, and the CI account's Secret Manager access reaches
-the repo's write-capable GitHub credentials. The workflows fail fast
+the repo's write-capable GitHub credentials. Stated precisely, the
+residual with the custom role: `aiplatform.endpoints.predict` is
+bound project-wide, so a credential read from a run reaches inference
+(spend) on any model or endpoint in the Claude project — not data or
+configuration, and not the Agent Engine (querying it needs
+`aiplatform.reasoningEngines.query`, which the role does not grant). The workflows fail fast
 with a pointer here when `ARGUS_SERVICE_ACCOUNT` is unset; an empty
 value would otherwise silently downgrade auth@v2 to direct WIF and
 die at the first Vertex call.
