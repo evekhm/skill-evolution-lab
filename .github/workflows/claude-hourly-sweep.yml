@@ -54,6 +54,7 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write   # WIF OIDC (Vertex)
+      actions: write    # dispatch missed PRs to the event pipeline
 
     steps:
       - name: Checkout repository
@@ -156,23 +157,45 @@ jobs:
                candidate PRs with no review yet are the main class
                this sweep exists to catch.
             3. For each remaining item (at most 5 per run — list any
-               overflow in the run log, the next sweep gets them):
-               - PR: review the diff (`gh pr diff`, `gh pr view`) and
-                 post ONE review comment following the "Automated
-                 review standards" section of CLAUDE.md exactly:
-                 summary, bugs/edge cases, security concerns, at most
-                 3 significant suggestions. Comment only — never
-                 approve, merge, or close. End the comment with a
-                 final line of exactly "Reviewed-head: <headRefOid>"
-                 for the oid you reviewed.
+               overflow in your output, the next sweep gets them):
+               - PR: do NOT review it yourself — the event pipeline
+                 owns reviews, the ledger, and the labels. Add its
+                 number to the dispatch list (step 4); a trusted step
+                 dispatches the review workflow for it.
                - Issue: investigate against the repository code and
-                 post ONE comment answering it, citing file paths.
-            4. If nothing qualifies, finish without posting anything.
+                 post ONE comment answering it, starting with
+                 "### Argus", citing file paths.
+            4. ALWAYS write ${{ runner.temp }}/argus-dispatch.json —
+               {"prs": [<numbers to dispatch>]} — with an empty array
+               when no PR qualifies. If nothing qualifies at all,
+               write the empty list and finish without posting
+               anything.
           claude_args: |
             --model claude-opus-5
             --max-turns 50
-            --allowedTools "Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
+            --allowedTools "Write,Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
           CLOUD_ML_REGION: global
           ANTHROPIC_SMALL_FAST_MODEL: claude-opus-5
+
+      # Trusted dispatch: the agent only nominates PR numbers; this
+      # step validates them and triggers the event pipeline with the
+      # job's own GITHUB_TOKEN (actions: write). workflow_dispatch is
+      # one of the two event types GITHUB_TOKEN is allowed to chain.
+      - name: Dispatch missed PRs to the review pipeline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          F="${{ runner.temp }}/argus-dispatch.json"
+          if [ ! -f "$F" ]; then echo "no dispatch file"; exit 0; fi
+          if ! jq -e '(.prs | type == "array" and length <= 5) and
+                      (.prs | all(type == "number"))' "$F" >/dev/null; then
+            echo "::error::argus-dispatch.json failed validation"; exit 1
+          fi
+          for N in $(jq -r '.prs[]' "$F"); do
+            echo "dispatching review for PR #$N"
+            gh workflow run claude-pr-review.yml \
+              --repo "${{ github.repository }}" --ref main \
+              -f pr_number="$N"
+          done

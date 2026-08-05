@@ -77,17 +77,30 @@ fi
 # the placeholder guard above.
 if [ "${SETUP_ARGUS:-0}" = "1" ] && [ -n "${CLAUDE_VERTEX_PROJECT_ID:-}" ] \
     && [ "$CLAUDE_VERTEX_PROJECT_ID" != "$CVP_EXPORT" ]; then
-    echo "ERROR: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID',"
-    echo "which this script does not read for the Argus setup."
-    if [ -n "$CVP_EXPORT" ]; then
-        echo "Your shell export '$CVP_EXPORT' is the value that would be used."
-        echo "Remove the contradicting .env entry, then re-run."
+    # An .env value that MATCHES the live repo variable is inert —
+    # continuing is correct. The lookup is lenient on purpose: a
+    # failed lookup keeps the abort, which is the safe direction.
+    _early_repo=$(git remote get-url origin 2>/dev/null \
+        | sed 's|.*github.com[:/]\(.*\)\.git|\1|' || echo "")
+    _early_live=$(gh api "repos/${_early_repo}/actions/variables/CLAUDE_VERTEX_PROJECT_ID" \
+        --jq .value 2>/dev/null || true)
+    if [ -n "$_early_live" ] && [ "$_early_live" = "$CLAUDE_VERTEX_PROJECT_ID" ]; then
+        echo "NOTE: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID', matching"
+        echo "the live repo variable — inert, continuing. (.env remains unsupported"
+        echo "as a source for this variable; prefer removing the entry.)"
     else
-        echo "Remove the .env entry and export the real Claude project id in the"
-        echo "shell instead (see docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+        echo "ERROR: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID',"
+        echo "which this script does not read for the Argus setup."
+        if [ -n "$CVP_EXPORT" ]; then
+            echo "Your shell export '$CVP_EXPORT' is the value that would be used."
+            echo "Remove the contradicting .env entry, then re-run."
+        else
+            echo "Remove the .env entry and export the real Claude project id in the"
+            echo "shell instead (see docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+        fi
+        echo "Aborting before any step runs."
+        exit 1
     fi
-    echo "Aborting before any step runs."
-    exit 1
 fi
 
 if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "your-project-id" ] || [ "$PROJECT_ID" = "<YOUR_PROJECT_ID>" ]; then
@@ -481,9 +494,20 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
         --project="$CLAUDE_PROJECT" >/dev/null 2>&1; then
         echo "  Service account argus-reviewer already exists (skipped)."
     else
-        gcloud iam service-accounts create argus-reviewer \
+        # A soft-deleted SA (deletion is soft for ~30 days) fails
+        # describe with NOT_FOUND but fails create with
+        # ALREADY_EXISTS — explain the undelete path instead of dying
+        # on a bare set -e abort.
+        if ! gcloud iam service-accounts create argus-reviewer \
             --project="$CLAUDE_PROJECT" \
-            --display-name="Argus reviewer (Vertex-only, least privilege)"
+            --display-name="Argus reviewer (Vertex-only, least privilege)"; then
+            echo "  ERROR: create failed. If this account was deleted in the last"
+            echo "  ~30 days its name is still reserved; undelete it by uniqueId:"
+            echo "    gcloud logging read 'protoPayload.methodName=\"google.iam.admin.v1.DeleteServiceAccount\"' \\"
+            echo "      --project=${CLAUDE_PROJECT} --limit=5 --format='value(protoPayload.request.name)'"
+            echo "    gcloud iam service-accounts undelete <uniqueId> --project=${CLAUDE_PROJECT}"
+            exit 1
+        fi
         echo "  Created service account argus-reviewer."
     fi
 
@@ -504,12 +528,16 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
     # Sole command per line: under set -e a failed set aborts the run
     # (an `X && echo` list would swallow the failure and the closing
     # summary would claim CONFIGURED for a variable never written).
+    # The trap names the repair when a failure between the two writes
+    # leaves the pair inconsistent (project updated, SA not).
+    trap 'echo "NOTE: the two Argus repo variables may now be inconsistent — re-run SETUP_ARGUS=1 to repair." >&2' ERR
     gh variable set CLAUDE_VERTEX_PROJECT_ID --body "$CLAUDE_PROJECT" \
         --repo "$GITHUB_REPO"
     echo "  CLAUDE_VERTEX_PROJECT_ID=$CLAUDE_PROJECT"
     gh variable set ARGUS_SERVICE_ACCOUNT --body "$ARGUS_SA_EMAIL" \
         --repo "$GITHUB_REPO"
     echo "  ARGUS_SERVICE_ACCOUNT=$ARGUS_SA_EMAIL"
+    trap - ERR
     # Cleanup notice only AFTER the new project is fully configured —
     # printed earlier, a failure mid-step would leave the operator
     # instructed to delete the only working reviewer identity.

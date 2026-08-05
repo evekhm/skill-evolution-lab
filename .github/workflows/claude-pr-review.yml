@@ -23,8 +23,9 @@
 # edit that file to change what Argus flags; edit the prompts here only
 # to change the mechanics. Renaming the bot touches four places (same
 # list in docs/GITHUB_APP_SETUP.md): the app name in GitHub settings,
-# `trigger_phrase` below, the ARGUS_LOGIN env at the top of
-# claude-hourly-sweep.yml, and the CLAUDE.md section header.
+# the "@argus" literals in the mention job (its `if:` gate and
+# prompt), the ARGUS_LOGIN env at the top of claude-hourly-sweep.yml,
+# and the CLAUDE.md section header.
 #
 # Auth:
 #   GitHub — short-lived token minted from the Argus GitHub App
@@ -56,6 +57,13 @@ on:
     types: [opened]
   issue_comment:
     types: [created]
+  # The hourly sweep dispatches missed PRs here instead of reviewing
+  # them itself, so ledger and labels have exactly one writer.
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review (same-repo PRs only)"
+        required: true
 
 jobs:
   # -----------------------------------------------------------------------
@@ -64,8 +72,9 @@ jobs:
   auto-review:
     name: PR Auto-Review
     if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # One review at a time per PR. Deliberately NOT shared with the
@@ -78,7 +87,7 @@ jobs:
     # strand the track_progress comment on a permanent spinner; with
     # false, a push burst costs at most one extra review.
     concurrency:
-      group: argus-review-${{ github.event.pull_request.number }}
+      group: argus-review-${{ github.event.pull_request.number || inputs.pr_number }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -104,6 +113,28 @@ jobs:
         with:
           app-id: ${{ secrets.REVIEWER_APP_ID }}
           private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+
+      # One source of truth for PR number and head SHA across both
+      # trigger paths; on dispatch it also re-applies the same-repo
+      # gate the pull_request path gets from its `if:`.
+      - name: Resolve PR context
+        id: pr
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          N="${{ github.event.pull_request.number || inputs.pr_number }}"
+          case "$N" in (*[!0-9]*|'') echo "::error::bad PR number '$N'"; exit 1;; esac
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            CROSS=$(gh pr view "$N" --repo "${{ github.repository }}" \
+              --json isCrossRepository --jq .isCrossRepository)
+            if [ "$CROSS" != "false" ]; then
+              echo "::error::PR #$N is from a fork — dispatch review refused."
+              exit 1
+            fi
+          fi
+          SHA=$(gh pr view "$N" --repo "${{ github.repository }}" \
+            --json headRefOid --jq .headRefOid)
+          { echo "number=$N"; echo "sha=$SHA"; } >> "$GITHUB_OUTPUT"
 
       # An unset repo variable interpolates to "", and auth@v2 treats
       # an empty service_account as direct WIF instead of an error —
@@ -144,6 +175,13 @@ jobs:
             echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
           } >> "$GITHUB_ENV"
 
+      # The agent holds Write on the whole workspace, so the trusted
+      # step must never execute anything the agent could have edited
+      # (Argus finding R1-1). Stage the posting script outside the
+      # workspace BEFORE the agent starts.
+      - name: Stage trusted posting script
+        run: cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
+
       # No track_progress: the agent posts nothing itself, so nothing
       # in the thread ever carries the action's "Claude finished ..."
       # header — the trusted step below publishes the Argus-branded
@@ -155,9 +193,13 @@ jobs:
           github_token: ${{ steps.app-token.outputs.token }}
           use_vertex: "true"
           prompt: |
-            Review this pull request following the "Automated review
-            standards" section of CLAUDE.md exactly — authority rules
-            (comment only), what to flag, what not to comment on.
+            Review pull request #${{ steps.pr.outputs.number }} of
+            ${{ github.repository }} (head SHA
+            ${{ steps.pr.outputs.sha }}) — use that number explicitly
+            in gh commands (`gh pr diff ${{ steps.pr.outputs.number }}`
+            etc.). Follow the "Automated review standards" section of
+            CLAUDE.md exactly — authority rules (comment only), what
+            to flag, what not to comment on.
 
             OUTPUT CONTRACT — post NOTHING yourself; a trusted
             workflow step publishes the review. Write exactly one
@@ -207,11 +249,11 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          bash scripts/ci/argus_post_review.sh review \
+          bash "$RUNNER_TEMP/argus_post_review.sh" review \
             "${{ github.repository }}" \
-            "${{ github.event.pull_request.number }}" \
+            "${{ steps.pr.outputs.number }}" \
             "${{ runner.temp }}/argus-findings.json" \
-            "${{ github.event.pull_request.head.sha }}"
+            "${{ steps.pr.outputs.sha }}"
 
   # -----------------------------------------------------------------------
   # Job 2: Respond to new human-filed issues.
@@ -402,6 +444,11 @@ jobs:
             echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
           } >> "$GITHUB_ENV"
 
+      # The agent holds Write on the whole workspace; the consensus
+      # step below must execute a copy the agent cannot have edited.
+      - name: Stage trusted posting script
+        run: cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
+
       # Prompt mode, not tag mode: the reply posts via gh as a plain
       # "### Argus" comment — no "Claude finished ..." header — and
       # peer-review consensus gets recorded by the trusted step below.
@@ -489,7 +536,7 @@ jobs:
         run: |
           F="${{ runner.temp }}/argus-consensus.json"
           if [ -f "$F" ]; then
-            bash scripts/ci/argus_post_review.sh consensus \
+            bash "$RUNNER_TEMP/argus_post_review.sh" consensus \
               "${{ github.repository }}" \
               "${{ github.event.issue.number }}" "$F"
           else

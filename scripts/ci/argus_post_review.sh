@@ -225,7 +225,9 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
         .findings as $old
         | ($old | map(.id)) as $ids
         | .findings += [$new[0].findings[] | select(.id as $i | $ids | index($i) | not) |
-            {id, severity, title, status: "open",
+            {id, severity,
+             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+             status: "open",
              atlas: (if .severity == "suggestion" then "—" else "pending" end),
              fixed_in: null, outcome: null}]
         | ($new[0].resolved) as $res
@@ -270,7 +272,9 @@ mode_consensus() {
               end)
         | (.findings | map(.id)) as $ids
         | .findings += [$c[0].new_findings[] | select(.id as $i | $ids | index($i) | not) |
-            {id, severity, title, status: "open",
+            {id, severity,
+             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+             status: "open",
              fixed_in: null, outcome: null}
             + (if .argus_verdict == "dispute"
                then {atlas: "dispute"}              # the open disagreement

@@ -336,15 +336,20 @@ export a different value explicitly — the script prints the change
 when it makes one, along with the cleanup commands for the previous
 project's now-orphaned `argus-reviewer` account. The export is
 captured before the script sources `.env`; `.env` is not a supported
-source for this variable. Two aborts protect the setting: a `.env`-set
-`CLAUDE_VERTEX_PROJECT_ID` that the script would not use stops the
-run before Step 1 (free — nothing has run yet), and inside Step 9 a
-repo-variable lookup that fails for any reason other than "not set"
-(rate limit, missing token scope) stops with the `gh` error rather
-than guess — a failed lookup treated as absent would silently
-repoint the reviewer at the infra project. The second abort is not
-free: by the time it fires, Steps 1–8 have already rewritten the
-core variables and reset branch protection.
+source for this variable. Three aborts protect the setting. Two are free (they fire before
+Step 1 runs anything): the placeholder guard — pasting the snippet
+above with the literal `"my-claude-project"` unchanged stops the run
+immediately (that literal is kept in sync between the snippet and
+the guard in `setup_github.sh`) — and the `.env` guard, which stops
+when `.env` sets a `CLAUDE_VERTEX_PROJECT_ID` the script would not
+use (a `.env` value that merely matches the live repo variable is
+inert and only warns). The third is inside Step 9: a repo-variable
+lookup that fails for any reason other than "not set" (rate limit,
+missing token scope) stops with the `gh` error rather than guess — a
+failed lookup treated as absent would silently repoint the reviewer
+at the infra project. That one is not free: by the time it fires,
+Steps 1–8 have already rewritten the core variables and reset branch
+protection.
 
 Model auth reuses the WIF provider from this doc's Step 5 — no
 Anthropic API key is stored anywhere.
@@ -397,6 +402,10 @@ Atlas's runner configuration and keep the two in sync:
   you can execute (a command, a reproduction, a line reference at the
   stated SHA), run it and report the actual output. A reproduced or
   refuted claim outranks any argument.
+- REVIEW VERDICTS: when posting a PR review, always use COMMENT —
+  never APPROVE, never REQUEST_CHANGES. Blocking verdicts are gating
+  acts reserved for the owner and CI; a bot verdict also goes stale
+  and blocks merges after the findings are fixed.
 - ALWAYS include "@argus" in a verdict comment on security/bug
   findings — including full agreement; agreement without @argus
   cannot be recorded. Argus will not reply to a pure agreement:
@@ -431,8 +440,9 @@ where to post) and rarely need changing.
 
 ### Renaming the bot
 
-Four places: the app name in GitHub settings, `trigger_phrase` in
-`claude-pr-review.yml`, the `ARGUS_LOGIN` env at the top of
+Four places: the app name in GitHub settings, the `"@argus"`
+literals in `claude-pr-review.yml`'s mention job (its `if:` gate and
+prompt), the `ARGUS_LOGIN` env at the top of
 `claude-hourly-sweep.yml` (the app slug — the sweep matches it with
 the `[bot]` suffix optional, because GraphQL output omits the suffix
 while REST includes it), and the CLAUDE.md section header.
