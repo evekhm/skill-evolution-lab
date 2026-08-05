@@ -441,8 +441,11 @@ GitHub App identity.
 Setup (app creation, `REVIEWER_APP_ID` / `REVIEWER_APP_PRIVATE_KEY`
 secrets, then `SETUP_ARGUS=1 bash scripts/setup/setup_github.sh` for
 the GCP side — a predict-only service account and the
-`CLAUDE_VERTEX_PROJECT_ID` / `ARGUS_SERVICE_ACCOUNT` variables) and
-the fork-PR security notes: the "Reviewer app (Argus)" section of
+`CLAUDE_VERTEX_PROJECT_ID` / `ARGUS_SERVICE_ACCOUNT` variables;
+export `CLAUDE_VERTEX_PROJECT_ID` first when Claude models live in a
+different project, and note the run re-executes setup Steps 1–8,
+which rewrite the core repo variables and reset branch protection)
+and the fork-PR security notes: the "Reviewer app (Argus)" section of
 [GITHUB_APP_SETUP](docs/GITHUB_APP_SETUP.md). Review standards live in
 the "Automated review standards" section of [CLAUDE.md](CLAUDE.md) —
 edit there, not in the workflows.

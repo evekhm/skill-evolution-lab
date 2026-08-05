@@ -336,14 +336,15 @@ export a different value explicitly — the script prints the change
 when it makes one, along with the cleanup commands for the previous
 project's now-orphaned `argus-reviewer` account. The export is
 captured before the script sources `.env`; `.env` is not a supported
-source for this variable. Two aborts protect the setting, both
-before anything is misconfigured: a `.env`-set
+source for this variable. Two aborts protect the setting: a `.env`-set
 `CLAUDE_VERTEX_PROJECT_ID` that the script would not use stops the
-run before Step 1 (with the remedy printed), and inside Step 9 a
+run before Step 1 (free — nothing has run yet), and inside Step 9 a
 repo-variable lookup that fails for any reason other than "not set"
 (rate limit, missing token scope) stops with the `gh` error rather
 than guess — a failed lookup treated as absent would silently
-repoint the reviewer at the infra project.
+repoint the reviewer at the infra project. The second abort is not
+free: by the time it fires, Steps 1–8 have already rewritten the
+core variables and reset branch protection.
 
 Model auth reuses the WIF provider from this doc's Step 5 — no
 Anthropic API key is stored anywhere.
