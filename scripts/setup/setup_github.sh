@@ -56,6 +56,13 @@ echo "=========================================================="
 # exported values (the repo's known env-stomp class) and a stale .env
 # entry would silently win over the operator's explicit export.
 CVP_EXPORT="${CLAUDE_VERTEX_PROJECT_ID:-}"
+if [ "${SETUP_ARGUS:-0}" = "1" ] && [ "$CVP_EXPORT" = "my-claude-project" ]; then
+    echo "ERROR: CLAUDE_VERTEX_PROJECT_ID is still the documentation placeholder"
+    echo "'my-claude-project'. Export your real Claude project id (or unset the"
+    echo "variable to use the default). Aborting before any step runs — Steps 1-8"
+    echo "rewrite repo variables and branch protection."
+    exit 1
+fi
 if [ -f "$PROJECT_ROOT/.env" ]; then
     source "$PROJECT_ROOT/.env"
 else
@@ -397,16 +404,21 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
         echo "  and re-run."
         exit 1
     fi
+    # .env is NOT a supported source for this variable (the export is
+    # captured before the source) — warn when it would mislead.
+    if [ -n "${CLAUDE_VERTEX_PROJECT_ID:-}" ] \
+        && [ "$CLAUDE_VERTEX_PROJECT_ID" != "$CVP_EXPORT" ]; then
+        echo "  WARNING: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID',"
+        echo "  which step 9 IGNORES — precedence is shell export > existing repo"
+        echo "  variable > PROJECT_ID. Export it in the shell if you meant it."
+    fi
+    OLD_CVP=""
     if [ -n "$CVP_EXPORT" ]; then
         CLAUDE_PROJECT="$CVP_EXPORT"
         if [ -n "$EXISTING_CVP" ] && [ "$EXISTING_CVP" != "$CLAUDE_PROJECT" ]; then
             echo "  Changing repo variable CLAUDE_VERTEX_PROJECT_ID:"
             echo "    $EXISTING_CVP -> $CLAUDE_PROJECT"
-            echo "  NOTE: the previous project keeps its argus-reviewer account and"
-            echo "  custom role, still impersonable by this repo's workflows."
-            echo "  Remove them:"
-            echo "    gcloud iam service-accounts delete argus-reviewer@${EXISTING_CVP}.iam.gserviceaccount.com --project=${EXISTING_CVP}"
-            echo "    gcloud iam roles delete argusVertexPredict --project=${EXISTING_CVP}"
+            OLD_CVP="$EXISTING_CVP"
         fi
     elif [ -n "$EXISTING_CVP" ]; then
         CLAUDE_PROJECT="$EXISTING_CVP"
@@ -421,9 +433,18 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
     gcloud services enable iamcredentials.googleapis.com \
         --project="$CLAUDE_PROJECT" --quiet
 
-    if gcloud iam roles describe argusVertexPredict \
-        --project="$CLAUDE_PROJECT" >/dev/null 2>&1; then
-        echo "  Custom role argusVertexPredict already exists (skipped)."
+    # gcloud iam roles delete only soft-deletes: describe still
+    # succeeds and binding a deleted role passes — auth green, every
+    # Vertex call denied. Undelete instead of skipping in that state.
+    if ROLE_DELETED=$(gcloud iam roles describe argusVertexPredict \
+        --project="$CLAUDE_PROJECT" --format="value(deleted)" 2>/dev/null); then
+        if [ "$ROLE_DELETED" = "True" ]; then
+            gcloud iam roles undelete argusVertexPredict \
+                --project="$CLAUDE_PROJECT" --quiet >/dev/null
+            echo "  Custom role argusVertexPredict was soft-deleted — undeleted."
+        else
+            echo "  Custom role argusVertexPredict already exists (skipped)."
+        fi
     else
         gcloud iam roles create argusVertexPredict \
             --project="$CLAUDE_PROJECT" \
@@ -461,6 +482,16 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
         --repo "$GITHUB_REPO" && echo "  CLAUDE_VERTEX_PROJECT_ID=$CLAUDE_PROJECT"
     gh variable set ARGUS_SERVICE_ACCOUNT --body "$ARGUS_SA_EMAIL" \
         --repo "$GITHUB_REPO" && echo "  ARGUS_SERVICE_ACCOUNT=$ARGUS_SA_EMAIL"
+    # Cleanup notice only AFTER the new project is fully configured —
+    # printed earlier, a failure mid-step would leave the operator
+    # instructed to delete the only working reviewer identity.
+    if [ -n "$OLD_CVP" ]; then
+        echo "  NOTE: the previous project keeps its argus-reviewer account and"
+        echo "  custom role, still impersonable by this repo's workflows."
+        echo "  Remove them (undelete the role if you ever move back):"
+        echo "    gcloud iam service-accounts delete argus-reviewer@${OLD_CVP}.iam.gserviceaccount.com --project=${OLD_CVP}"
+        echo "    gcloud iam roles delete argusVertexPredict --project=${OLD_CVP}"
+    fi
     echo "  Done."
 fi
 

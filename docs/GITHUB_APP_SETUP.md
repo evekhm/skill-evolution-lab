@@ -335,8 +335,9 @@ tracking comment is posted. On re-runs, an existing
 export a different value explicitly — the script prints the change
 when it makes one, along with the cleanup commands for the previous
 project's now-orphaned `argus-reviewer` account. The export is
-captured before the script sources `.env`, so a stale `.env` entry
-cannot override it. One abort exists: if reading the current repo
+captured before the script sources `.env`; `.env` is not a supported
+source for this variable — the script warns if `.env` sets a value
+step 9 will ignore. One abort exists: if reading the current repo
 variable fails for any reason other than "not set" (rate limit,
 missing token scope), Step 9 stops with the `gh` error rather than
 guess — a failed lookup treated as absent would silently repoint the
