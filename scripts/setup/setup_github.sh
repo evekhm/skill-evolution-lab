@@ -56,6 +56,8 @@ echo "=========================================================="
 # exported values (the repo's known env-stomp class) and a stale .env
 # entry would silently win over the operator's explicit export.
 CVP_EXPORT="${CLAUDE_VERTEX_PROJECT_ID:-}"
+# Placeholder literal: keep in sync with docs/GITHUB_APP_SETUP.md,
+# "Reviewer app (Argus)" setup snippet.
 if [ "${SETUP_ARGUS:-0}" = "1" ] && [ "$CVP_EXPORT" = "my-claude-project" ]; then
     echo "ERROR: CLAUDE_VERTEX_PROJECT_ID is still the documentation placeholder"
     echo "'my-claude-project'. Export your real Claude project id (or unset the"
@@ -405,12 +407,19 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
         exit 1
     fi
     # .env is NOT a supported source for this variable (the export is
-    # captured before the source) — warn when it would mislead.
+    # captured before the source). Proceeding would knowingly
+    # configure a different project than the one the operator wrote
+    # down, so this is fatal, not a warning — the remedy is one
+    # export away.
     if [ -n "${CLAUDE_VERTEX_PROJECT_ID:-}" ] \
         && [ "$CLAUDE_VERTEX_PROJECT_ID" != "$CVP_EXPORT" ]; then
-        echo "  WARNING: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID',"
-        echo "  which step 9 IGNORES — precedence is shell export > existing repo"
-        echo "  variable > PROJECT_ID. Export it in the shell if you meant it."
+        echo "  ERROR: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID',"
+        echo "  which step 9 does not read — precedence is shell export > existing"
+        echo "  repo variable > PROJECT_ID. Refusing to configure a project other"
+        echo "  than the one you wrote down. Remove the .env entry, or run:"
+        echo "    export CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID'"
+        echo "    SETUP_ARGUS=1 bash scripts/setup/setup_github.sh"
+        exit 1
     fi
     OLD_CVP=""
     if [ -n "$CVP_EXPORT" ]; then
@@ -438,7 +447,7 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
     # Vertex call denied. Undelete instead of skipping in that state.
     if ROLE_DELETED=$(gcloud iam roles describe argusVertexPredict \
         --project="$CLAUDE_PROJECT" --format="value(deleted)" 2>/dev/null); then
-        if [ "$ROLE_DELETED" = "True" ]; then
+        if [ "$(echo "$ROLE_DELETED" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
             gcloud iam roles undelete argusVertexPredict \
                 --project="$CLAUDE_PROJECT" --quiet >/dev/null
             echo "  Custom role argusVertexPredict was soft-deleted — undeleted."
@@ -488,7 +497,10 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
     if [ -n "$OLD_CVP" ]; then
         echo "  NOTE: the previous project keeps its argus-reviewer account and"
         echo "  custom role, still impersonable by this repo's workflows."
-        echo "  Remove them (undelete the role if you ever move back):"
+        echo "  Remove them (both deletions are soft for ~30 days; the role can be"
+        echo "  undeleted by name, the account only by its numeric uniqueId — record"
+        echo "  it first if you might move back):"
+        echo "    gcloud iam service-accounts describe argus-reviewer@${OLD_CVP}.iam.gserviceaccount.com --project=${OLD_CVP} --format='value(uniqueId)'"
         echo "    gcloud iam service-accounts delete argus-reviewer@${OLD_CVP}.iam.gserviceaccount.com --project=${OLD_CVP}"
         echo "    gcloud iam roles delete argusVertexPredict --project=${OLD_CVP}"
     fi
@@ -515,7 +527,7 @@ else
     echo "      (optional; see docs/GITHUB_APP_SETUP.md Steps 2-4, then re-run)"
 fi
 if [ "${SETUP_ARGUS:-0}" = "1" ]; then
-    echo "  [9] Argus reviewer identity: CONFIGURED (argus-reviewer@, predict-only)"
+    echo "  [9] Argus reviewer identity: CONFIGURED (argus-reviewer@${CLAUDE_PROJECT}, predict-only)"
 else
     echo "  [9] Argus reviewer identity: not configured"
     echo "      (optional; SETUP_ARGUS=1 re-run — see docs/GITHUB_APP_SETUP.md,"
