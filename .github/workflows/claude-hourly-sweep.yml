@@ -122,12 +122,14 @@ jobs:
                so in your output, same as the 5-item review cap. The
                wide window is deliberate — cron runs get delayed or
                dropped; the rules below make re-processing a no-op.
-            2. For each, read `gh pr view --json headRefOid,comments`
+            2. For each, read
+               `gh pr view --json headRefOid,comments,reviews`
                / `gh issue view --json comments` and DROP it when any
                of:
-               - PR: a comment by Argus contains the line
+               - PR: a comment OR review by Argus contains the line
                  "Reviewed-head: <oid>" where <oid> equals the PR's
-                 current headRefOid. Argus's login is
+                 current headRefOid (the event-driven job posts PR
+                 REVIEWS, not comments — check both). Argus's login is
                  "${{ env.ARGUS_LOGIN }}" — GraphQL output (gh --json)
                  omits the "[bot]" suffix, REST includes it; treat
                  both forms as Argus. A comment WITHOUT a matching

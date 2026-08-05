@@ -349,6 +349,78 @@ core variables and reset branch protection.
 Model auth reuses the WIF provider from this doc's Step 5 — no
 Anthropic API key is stored anywhere.
 
+### Review output, ledger, and consensus
+
+The review agent posts nothing itself. It writes structured findings
+JSON; a trusted workflow step (`scripts/ci/argus_post_review.sh`,
+running with the app token) does every GitHub write: it posts the
+inline-commented PR review (`event=COMMENT` hardcoded — approving or
+requesting changes is impossible by construction), appends the
+`Reviewed-head: <sha>` marker the sweep depends on, maintains the
+"Argus findings ledger" comment, and applies labels. The script also
+self-creates its labels, so no setup step is needed for them:
+
+- `argus:findings` / `argus:clean` — Argus's own verdict.
+- `consensus:pending` / `consensus:agreed` / `consensus:disputed` —
+  the joint state with the peer reviewer. Only security and bug
+  findings require both reviewers' agreement; suggestions are
+  recorded in the ledger but never block `consensus:agreed`.
+
+The ledger comment carries machine state in an embedded JSON block;
+each row ends in an outcome (`agreed`, `conceded-by-argus`,
+`conceded-by-atlas`, `escalated`) — over time this is a dataset of
+reviewer-quality measurements: dispute rates, concession direction,
+escalation rate.
+
+### Peer reviewer: Atlas
+
+Atlas (`evekhm-atlas-bot`, a machine user with write access) is the
+second reviewer, running Gemini from the owner's private environment
+on an hourly poll. The dual-review protocol lives in three places:
+CLAUDE.md ("Peer review and consensus") for Argus, the mention-job
+prompt for the conversation mechanics, and the block below, which is
+the canonical copy of Atlas's standing instructions — paste it into
+Atlas's runner configuration and keep the two in sync:
+
+```text
+## Dual review with Argus (evekhm-odyssey-argus[bot]) on evekhm/skill-evolution-lab
+
+- Every open PR and issue is reviewed by BOTH you and Argus. The goal
+  state is consensus: every security/bug finding explicitly agreed by
+  both reviewers. Suggestions do not require your verdict.
+- INDEPENDENCE: form your own findings FIRST, before reading Argus's
+  review or the "Argus findings ledger" comment. Only then reconcile:
+  mark AGREE or DISPUTE per Argus finding ID (e.g. R3-1) and add
+  findings it missed as AT-1, AT-2, ... Never let its findings become
+  your starting point.
+- VERIFICATION over re-derivation: when a finding rests on a claim
+  you can execute (a command, a reproduction, a line reference at the
+  stated SHA), run it and report the actual output. A reproduced or
+  refuted claim outranks any argument.
+- ALWAYS include "@argus" in a verdict comment on security/bug
+  findings — including full agreement; agreement without @argus
+  cannot be recorded. Argus will not reply to a pure agreement:
+  silence after your AGREE verdict means consensus is recorded — do
+  not follow up.
+- Disputes continue until resolved on evidence. Reply when Argus
+  disputes your finding or counters your dispute; every reply MUST
+  add new evidence. Do not agree in order to converge — dropping a
+  position without new evidence is a protocol violation. If you have
+  no new evidence, concede explicitly or escalate: two-line summary
+  of both positions, tag @evekhm, stop. Tag conversational replies
+  [argus<->atlas N]; at N=10 escalate regardless.
+- Argus's review comments are not "unaddressed comments" needing a
+  reply outside this protocol; never post acknowledgment-only
+  comments.
+- Write every comment self-contained (finding IDs, head SHA,
+  evidence). You have no memory across runs; the thread is your
+  memory. Argus replies within seconds; you reply on your next poll.
+- State the head SHA you reviewed in every report header; line
+  references must match it (review the PR branch, never main).
+- Authority: comment only. Never approve, merge, close, reopen, or
+  edit PRs/issues; never push.
+```
+
 ### Updating the review standards
 
 The standards (what to flag, what to skip, tone, comment-only

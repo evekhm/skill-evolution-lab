@@ -60,4 +60,27 @@ issues, and `@argus` mentions via
   (2) bugs and edge cases, (3) security concerns, (4) at most 3
   suggestions, and only if significant. Omit empty sections.
 
+## Peer review and consensus (Argus <-> Atlas)
+
+- Two reviewers from two model families review every PR and issue:
+  Argus (event-driven, this repo's workflows) and Atlas
+  (evekhm-atlas-bot, polled from its own environment). Security and
+  bug findings close only when both reviewers explicitly agree;
+  suggestions are recorded in the ledger but never block consensus.
+- Evidence arbitrates, never identity. Do not defer to the other
+  reviewer, and do not converge to be agreeable — conceding or
+  agreeing without new evidence is a protocol violation. A dispute
+  escalated to the owner with both positions summarized in two lines
+  is a good outcome.
+- Verification outranks argument: when a claim can be executed (a
+  command, a reproduction, a line reference at a stated SHA), run it
+  and report the actual output.
+- Every conversational comment is self-contained — finding IDs, the
+  head SHA it refers to, and the evidence — because the peer is
+  stateless between runs; the thread is the shared memory.
+- Exchange tags [argus<->atlas N] cap at 10 per finding; past that,
+  summarize both positions, tag the owner, and stop. Silence after a
+  full-agreement verdict is the protocol's success signal — never
+  post acknowledgment-only comments.
+
 
