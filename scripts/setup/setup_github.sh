@@ -369,19 +369,39 @@ fi
 if [ "${SETUP_ARGUS:-0}" = "1" ]; then
     echo ""
     echo "[9/9] Argus reviewer identity (Vertex-only, least privilege)..."
-    # Precedence: explicit env > existing repo variable > PROJECT_ID.
-    # Without the middle step, a re-run in a fresh shell (no export)
-    # would fall back to PROJECT_ID and silently repoint a correct
-    # separated-project setup at the infra project — auth would go
-    # green and every job would die at the first Vertex call.
-    EXISTING_CVP=$(gh api "repos/${GITHUB_REPO}/actions/variables/CLAUDE_VERTEX_PROJECT_ID" \
-        --jq .value 2>/dev/null || true)
-    CLAUDE_PROJECT="${CLAUDE_VERTEX_PROJECT_ID:-${EXISTING_CVP:-$PROJECT_ID}}"
-    if [ -n "$EXISTING_CVP" ] && [ "$EXISTING_CVP" != "$CLAUDE_PROJECT" ]; then
-        echo "  ERROR: repo variable CLAUDE_VERTEX_PROJECT_ID is '$EXISTING_CVP'"
-        echo "  but this run would set '$CLAUDE_PROJECT'. Refusing to overwrite a"
-        echo "  live value — export CLAUDE_VERTEX_PROJECT_ID explicitly to change it."
+    # Precedence: explicit export > existing repo variable >
+    # PROJECT_ID. An explicit export always wins (the deliberate
+    # change — printed when it differs); the existing variable keeps
+    # a re-run in a fresh shell from silently repointing a
+    # separated-project setup at the infra project; the PROJECT_ID
+    # fallback applies only when neither exists.
+    # The lookup must distinguish "variable absent" (404 — fall back)
+    # from any other failure (rate limit, missing scope, transient
+    # 5xx): treating those as absent would restore the silent-repoint
+    # bug through a transient error, so they are fatal instead.
+    if CVP_LOOKUP=$(gh api "repos/${GITHUB_REPO}/actions/variables/CLAUDE_VERTEX_PROJECT_ID" \
+        --jq .value 2>&1); then
+        EXISTING_CVP="$CVP_LOOKUP"
+    elif echo "$CVP_LOOKUP" | grep -q "404"; then
+        EXISTING_CVP=""
+    else
+        echo "  ERROR: could not read repo variable CLAUDE_VERTEX_PROJECT_ID:"
+        echo "    $CVP_LOOKUP"
+        echo "  Refusing to guess — a failed lookup treated as 'not set' would"
+        echo "  silently repoint the reviewer at '$PROJECT_ID'. Fix the gh error"
+        echo "  and re-run."
         exit 1
+    fi
+    if [ -n "$CLAUDE_VERTEX_PROJECT_ID" ]; then
+        CLAUDE_PROJECT="$CLAUDE_VERTEX_PROJECT_ID"
+        if [ -n "$EXISTING_CVP" ] && [ "$EXISTING_CVP" != "$CLAUDE_PROJECT" ]; then
+            echo "  Changing repo variable CLAUDE_VERTEX_PROJECT_ID:"
+            echo "    $EXISTING_CVP -> $CLAUDE_PROJECT"
+        fi
+    elif [ -n "$EXISTING_CVP" ]; then
+        CLAUDE_PROJECT="$EXISTING_CVP"
+    else
+        CLAUDE_PROJECT="$PROJECT_ID"
     fi
     ARGUS_SA_EMAIL="argus-reviewer@${CLAUDE_PROJECT}.iam.gserviceaccount.com"
 

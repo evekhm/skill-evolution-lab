@@ -147,8 +147,9 @@ What the script configures, in order:
 
 Success signals in the output: every step prints `Created ...` or
 `already exists (skipped)`, and the closing summary shows
-`[8] Bot identity: CONFIGURED` (or the not-configured note if you
-skipped the App).
+`[8] Bot identity: CONFIGURED` and `[9] Argus reviewer identity:
+CONFIGURED` (or the not-configured notes for whichever optional
+steps you skipped).
 
 Run it BEFORE deleting the `.pem` (Step 6). Verify:
 
@@ -326,9 +327,13 @@ bound project-wide, so a credential read from a run reaches inference
 (spend) on any model or endpoint in the Claude project — not data or
 configuration, and not the Agent Engine (querying it needs
 `aiplatform.reasoningEngines.query`, which the role does not grant). The workflows fail fast
-with a pointer here when `ARGUS_SERVICE_ACCOUNT` is unset; an empty
-value would otherwise silently downgrade auth@v2 to direct WIF and
-die at the first Vertex call.
+with a pointer here when `ARGUS_SERVICE_ACCOUNT` or
+`CLAUDE_VERTEX_PROJECT_ID` is unset; an empty value would otherwise
+pass auth silently and die at the first Vertex call, after the
+tracking comment is posted. On re-runs, an existing
+`CLAUDE_VERTEX_PROJECT_ID` repo variable is preserved unless you
+export a different value explicitly — the script prints the change
+when it makes one.
 
 Model auth reuses the WIF provider from this doc's Step 5 — no
 Anthropic API key is stored anywhere.
