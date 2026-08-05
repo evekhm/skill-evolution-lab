@@ -265,6 +265,84 @@ Keep it separate from the quality-agent app above: the reviewer is
 comment-only and never needs Contents write, so a leaked reviewer
 credential cannot touch code.
 
+### Goal and design philosophy
+
+The goal is a review pipeline where nothing merges on one model's
+opinion. Every PR and issue is reviewed by two agents from two model
+families — Argus (Claude on Vertex AI, event-driven, seconds of
+latency) and Atlas (Gemini, polled from the owner's private
+environment) — and a security or bug finding closes only when both
+explicitly agree. Different model families have different blind
+spots, and cross-checking catches defects a single reviewer misses.
+The protocol keeps disagreements open until evidence settles them or
+the owner does.
+
+Design rules the implementation follows:
+
+1. **Authority lives in code, not prompts.** The model only writes
+   findings JSON. A deterministic step
+   (`scripts/ci/argus_post_review.sh`) performs every GitHub write:
+   review events are hardcoded to `COMMENT` (approving, blocking,
+   closing, or merging is impossible by construction), the sweep's
+   `Reviewed-head` marker is appended by code, and the ledger and
+   labels are updated from validated JSON. A prompt-injected agent
+   can change the text of its findings but cannot make the pipeline
+   perform an action outside this fixed set.
+2. **Least privilege at every layer.** The GitHub App holds Contents
+   read-only + Issues/PR write; the GCP service account holds one
+   custom role (`aiplatform.endpoints.predict` — predict, nothing
+   else); agent tool allowlists expose read-only `gh`/`git` commands;
+   the WIF credential file is moved out of the workspace before the
+   agent starts; the trusted script executes only after its sha256
+   matches the hash recorded before the agent ran. The assumption
+   throughout: the agent reads untrusted text and can be subverted,
+   so what it *can reach* is the security boundary, not what it is
+   *told to do*.
+3. **Evidence arbitrates, never identity.** Neither reviewer defers
+   to the other; re-running a claim outranks arguing about it;
+   conceding without new evidence is a protocol violation; an
+   escalated disagreement is a good outcome, not a failure.
+4. **The ledger is both state and dataset.** Every finding's row ends
+   in an outcome (`agreed`, `conceded-by-argus`, `conceded-by-atlas`,
+   `escalated`), so over time the ledger measures the reviewers
+   themselves — dispute rate, concession direction, escalation rate.
+
+### How it was built (recap, in order)
+
+1. **GitHub App** `evekhm-odyssey-argus` created and installed on
+   this repo only — the bot identity and its comment-only
+   permissions ("Create and install" below).
+2. **Actions secrets** `REVIEWER_APP_ID` + `REVIEWER_APP_PRIVATE_KEY`
+   stored; workflows mint 1-hour installation tokens from them
+   ("Store the credentials" below).
+3. **GCP identity** via `SETUP_ARGUS=1 bash scripts/setup/setup_github.sh`
+   (Step 9): enables `iamcredentials.googleapis.com` on the Claude
+   project, creates the `argusVertexPredict` custom role and the
+   `argus-reviewer` service account, binds WIF, and sets the
+   `CLAUDE_VERTEX_PROJECT_ID` + `ARGUS_SERVICE_ACCOUNT` repo
+   variables. (The first deployment ran the equivalent `gcloud`
+   commands by hand; the script step is the durable form.)
+4. **Workflows**: `claude-pr-review.yml` (same-repo PR auto-review,
+   new-issue response, `@argus` mention replies — each job pairing an
+   agent step with a trusted posting step) and
+   `claude-hourly-sweep.yml` (hourly catch-all that answers missed
+   issues itself and dispatches missed PRs back to the event
+   pipeline, so ledger and labels have exactly one writer).
+5. **Trusted posting script** `scripts/ci/argus_post_review.sh` —
+   also self-creates the `argus:*` / `consensus:*` labels on first
+   run.
+6. **Standards and protocol**: the root CLAUDE.md sections
+   "Automated review standards" and "Peer review and consensus";
+   Atlas's standing instructions (next section) pasted into the
+   Atlas runner.
+7. **Self-hardening**: the pipeline was reviewed by itself on the PR
+   that introduced it, across multiple rounds. Proven findings from
+   those rounds — a `git fetch --upload-pack` command-execution
+   escape, the credential file being readable from the workspace, a
+   rewritable trusted script — produced the defenses listed above.
+   Each design rule in this section traces to a specific finding
+   from those rounds.
+
 ### Create and install
 
 Same flow as Steps 2–4 above, with these values:
