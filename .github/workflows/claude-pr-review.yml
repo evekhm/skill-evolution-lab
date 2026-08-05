@@ -121,8 +121,12 @@ jobs:
         id: pr
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          # Env indirection, not ${{ }} inside run: — a crafted
+          # dispatch input must reach the shell as data, never as
+          # script text (R2-2).
+          PR_INPUT: ${{ github.event.pull_request.number || inputs.pr_number }}
         run: |
-          N="${{ github.event.pull_request.number || inputs.pr_number }}"
+          N="$PR_INPUT"
           case "$N" in (*[!0-9]*|'') echo "::error::bad PR number '$N'"; exit 1;; esac
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             CROSS=$(gh pr view "$N" --repo "${{ github.repository }}" \
@@ -175,12 +179,17 @@ jobs:
             echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
           } >> "$GITHUB_ENV"
 
-      # The agent holds Write on the whole workspace, so the trusted
-      # step must never execute anything the agent could have edited
-      # (Argus finding R1-1). Stage the posting script outside the
-      # workspace BEFORE the agent starts.
+      # The agent's Write tool is not path-restricted, so it can edit
+      # the workspace AND anything staged in RUNNER_TEMP (R1-1, then
+      # R2-1). The defense is the hash: recorded here as a STEP
+      # OUTPUT before the agent runs — outputs are kept by the runner
+      # process and later steps cannot rewrite them — and re-verified
+      # by the trusted step before execution.
       - name: Stage trusted posting script
-        run: cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
+        id: stage
+        run: |
+          cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
+          echo "hash=$(sha256sum "$RUNNER_TEMP/argus_post_review.sh" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       # No track_progress: the agent posts nothing itself, so nothing
       # in the thread ever carries the action's "Claude finished ..."
@@ -249,7 +258,12 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          bash "$RUNNER_TEMP/argus_post_review.sh" review \
+          STAGED="$RUNNER_TEMP/argus_post_review.sh"
+          if [ "$(sha256sum "$STAGED" | cut -d' ' -f1)" != "${{ steps.stage.outputs.hash }}" ]; then
+            echo "::error::staged trusted script changed during the agent run — refusing to execute it."
+            exit 1
+          fi
+          bash "$STAGED" review \
             "${{ github.repository }}" \
             "${{ steps.pr.outputs.number }}" \
             "${{ runner.temp }}/argus-findings.json" \
@@ -444,10 +458,14 @@ jobs:
             echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
           } >> "$GITHUB_ENV"
 
-      # The agent holds Write on the whole workspace; the consensus
-      # step below must execute a copy the agent cannot have edited.
+      # Same hash discipline as the auto-review job (R1-1/R2-1): the
+      # agent can write anywhere, so the recorded step output is the
+      # only thing it cannot forge.
       - name: Stage trusted posting script
-        run: cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
+        id: stage
+        run: |
+          cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
+          echo "hash=$(sha256sum "$RUNNER_TEMP/argus_post_review.sh" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       # Prompt mode, not tag mode: the reply posts via gh as a plain
       # "### Argus" comment — no "Claude finished ..." header — and
@@ -535,8 +553,13 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           F="${{ runner.temp }}/argus-consensus.json"
+          STAGED="$RUNNER_TEMP/argus_post_review.sh"
+          if [ "$(sha256sum "$STAGED" | cut -d' ' -f1)" != "${{ steps.stage.outputs.hash }}" ]; then
+            echo "::error::staged trusted script changed during the agent run — refusing to execute it."
+            exit 1
+          fi
           if [ -f "$F" ]; then
-            bash "$RUNNER_TEMP/argus_post_review.sh" consensus \
+            bash "$STAGED" consensus \
               "${{ github.repository }}" \
               "${{ github.event.issue.number }}" "$F"
           else

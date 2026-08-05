@@ -142,11 +142,10 @@ jobs:
                  @argus mention path's job, not yours (mention
                  replies carry no markers and neither block nor
                  trigger a review);
-               - PR: the newest Argus comment is markerless and less
-                 than 30 minutes old — that is a review still in
-                 flight (the tracking comment appears at run start,
-                 the marker only at the end), not a dead run. Leave
-                 it for the next sweep;
+               - PR: it is from a fork (`gh pr view --json
+                 isCrossRepository` is true) — the dispatch path
+                 refuses forks by design; maintainers review those by
+                 commenting @argus themselves;
                - issue: Argus has ever commented on it (follow-ups
                  are the mention path's job);
                - it is machine-filed: labeled "quality", or its content
