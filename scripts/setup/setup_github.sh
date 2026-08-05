@@ -51,6 +51,11 @@ echo "    Log: ${LOG_FILE}"
 echo "=========================================================="
 
 # --- Load .env ---
+# Step 9's documented interface is an exported CLAUDE_VERTEX_PROJECT_ID;
+# capture it BEFORE the source, because .env assignments overwrite
+# exported values (the repo's known env-stomp class) and a stale .env
+# entry would silently win over the operator's explicit export.
+CVP_EXPORT="${CLAUDE_VERTEX_PROJECT_ID:-}"
 if [ -f "$PROJECT_ROOT/.env" ]; then
     source "$PROJECT_ROOT/.env"
 else
@@ -392,11 +397,16 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
         echo "  and re-run."
         exit 1
     fi
-    if [ -n "$CLAUDE_VERTEX_PROJECT_ID" ]; then
-        CLAUDE_PROJECT="$CLAUDE_VERTEX_PROJECT_ID"
+    if [ -n "$CVP_EXPORT" ]; then
+        CLAUDE_PROJECT="$CVP_EXPORT"
         if [ -n "$EXISTING_CVP" ] && [ "$EXISTING_CVP" != "$CLAUDE_PROJECT" ]; then
             echo "  Changing repo variable CLAUDE_VERTEX_PROJECT_ID:"
             echo "    $EXISTING_CVP -> $CLAUDE_PROJECT"
+            echo "  NOTE: the previous project keeps its argus-reviewer account and"
+            echo "  custom role, still impersonable by this repo's workflows."
+            echo "  Remove them:"
+            echo "    gcloud iam service-accounts delete argus-reviewer@${EXISTING_CVP}.iam.gserviceaccount.com --project=${EXISTING_CVP}"
+            echo "    gcloud iam roles delete argusVertexPredict --project=${EXISTING_CVP}"
         fi
     elif [ -n "$EXISTING_CVP" ]; then
         CLAUDE_PROJECT="$EXISTING_CVP"

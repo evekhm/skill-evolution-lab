@@ -303,7 +303,7 @@ export SETUP_ARGUS=1
 # The model pinned in the workflows (--model and
 # ANTHROPIC_SMALL_FAST_MODEL) must be enabled on it; verify with a
 # rawPredict probe against the global endpoint before changing either.
-export CLAUDE_VERTEX_PROJECT_ID=<gcp project with Claude models enabled>
+export CLAUDE_VERTEX_PROJECT_ID="my-claude-project"
 bash scripts/setup/setup_github.sh
 ```
 
@@ -333,7 +333,14 @@ pass auth silently and die at the first Vertex call, after the
 tracking comment is posted. On re-runs, an existing
 `CLAUDE_VERTEX_PROJECT_ID` repo variable is preserved unless you
 export a different value explicitly — the script prints the change
-when it makes one.
+when it makes one, along with the cleanup commands for the previous
+project's now-orphaned `argus-reviewer` account. The export is
+captured before the script sources `.env`, so a stale `.env` entry
+cannot override it. One abort exists: if reading the current repo
+variable fails for any reason other than "not set" (rate limit,
+missing token scope), Step 9 stops with the `gh` error rather than
+guess — a failed lookup treated as absent would silently repoint the
+reviewer at the infra project.
 
 Model auth reuses the WIF provider from this doc's Step 5 — no
 Anthropic API key is stored anywhere.
