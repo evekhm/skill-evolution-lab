@@ -334,7 +334,7 @@ Design rules the implementation follows:
 6. **Standards and protocol**: the root CLAUDE.md sections
    "Automated review standards" and "Peer review and consensus";
    Atlas's standing instructions (next section) pasted into the
-   Atlas runner.
+   owner's Atlas runner.
 7. **Self-hardening**: the pipeline was reviewed by itself on the PR
    that introduced it, across multiple rounds. Proven findings from
    those rounds — a `git fetch --upload-pack` command-execution
@@ -458,12 +458,12 @@ escalation rate.
 ### Peer reviewer: Atlas
 
 Atlas (`evekhm-atlas-bot`, a machine user with write access) is the
-second reviewer, running Gemini from the owner's private environment
-on an hourly poll. The dual-review protocol lives in three places:
-CLAUDE.md ("Peer review and consensus") for Argus, the mention-job
-prompt for the conversation mechanics, and the block below, which is
-the canonical copy of Atlas's standing instructions — paste it into
-Atlas's runner configuration and keep the two in sync:
+second reviewer, running Gemini from a private environment of the
+owner's on an hourly poll. The dual-review protocol lives in three
+places: CLAUDE.md ("Peer review and consensus") for Argus, the
+mention-job prompt for the conversation mechanics, and the block
+below, which is the canonical copy of Atlas's standing instructions —
+install it in Atlas's runner configuration and keep the two in sync:
 
 ```text
 ## Dual review with Argus (evekhm-odyssey-argus[bot]) on evekhm/skill-evolution-lab
