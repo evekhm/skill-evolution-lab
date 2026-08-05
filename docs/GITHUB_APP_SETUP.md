@@ -307,41 +307,43 @@ Design rules the implementation follows:
    `escalated`), so over time the ledger measures the reviewers
    themselves — dispute rate, concession direction, escalation rate.
 
-### How it was built (recap, in order)
+### Setup checklist (in order)
 
-1. **GitHub App** `evekhm-odyssey-argus` created and installed on
-   this repo only — the bot identity and its comment-only
+1. **Create the reviewer GitHub App** and install it on the target
+   repository only — the bot identity and its comment-only
    permissions ("Create and install" below).
-2. **Actions secrets** `REVIEWER_APP_ID` + `REVIEWER_APP_PRIVATE_KEY`
-   stored; workflows mint 1-hour installation tokens from them
-   ("Store the credentials" below).
-3. **GCP identity** via `SETUP_ARGUS=1 bash scripts/setup/setup_github.sh`
-   (Step 9): enables `iamcredentials.googleapis.com` on the Claude
-   project, creates the `argusVertexPredict` custom role and the
-   `argus-reviewer` service account, binds WIF, and sets the
-   `CLAUDE_VERTEX_PROJECT_ID` + `ARGUS_SERVICE_ACCOUNT` repo
-   variables. (The first deployment ran the equivalent `gcloud`
-   commands by hand; the script step is the durable form.)
-4. **Workflows**: `claude-pr-review.yml` (same-repo PR auto-review,
-   new-issue response, `@argus` mention replies — each job pairing an
-   agent step with a trusted posting step) and
-   `claude-hourly-sweep.yml` (hourly catch-all that answers missed
-   issues itself and dispatches missed PRs back to the event
-   pipeline, so ledger and labels have exactly one writer).
-5. **Trusted posting script** `scripts/ci/argus_post_review.sh` —
-   also self-creates the `argus:*` / `consensus:*` labels on first
-   run.
-6. **Standards and protocol**: the root CLAUDE.md sections
-   "Automated review standards" and "Peer review and consensus";
-   Atlas's standing instructions (next section) pasted into the
-   owner's Atlas runner.
-7. **Self-hardening**: the pipeline was reviewed by itself on the PR
-   that introduced it, across multiple rounds. Proven findings from
-   those rounds — a `git fetch --upload-pack` command-execution
-   escape, the credential file being readable from the workspace, a
-   rewritable trusted script — produced the defenses listed above.
-   Each design rule in this section traces to a specific finding
-   from those rounds.
+2. **Store the credentials**: the app id and private key go into the
+   `REVIEWER_APP_ID` and `REVIEWER_APP_PRIVATE_KEY` Actions secrets;
+   the workflows mint 1-hour installation tokens from them ("Store
+   the credentials" below).
+3. **Create the GCP identity**: run
+   `SETUP_ARGUS=1 bash scripts/setup/setup_github.sh`. Step 9 enables
+   `iamcredentials.googleapis.com` on the Claude project, creates the
+   `argusVertexPredict` custom role and the `argus-reviewer` service
+   account, binds WIF, and sets the `CLAUDE_VERTEX_PROJECT_ID` +
+   `ARGUS_SERVICE_ACCOUNT` repo variables (details and guards in the
+   section below).
+4. **Ship the workflows** — `claude-pr-review.yml` (same-repo PR
+   auto-review, new-issue response, `@argus` mention replies; each
+   job pairs an agent step with a trusted posting step) and
+   `claude-hourly-sweep.yml` (hourly catch-all: answers missed
+   issues itself, dispatches missed PRs back to the event pipeline
+   so ledger and labels have exactly one writer). Both are in
+   `.github/workflows/`; nothing to configure beyond the secrets and
+   variables above.
+5. **No label or script setup is needed** — the trusted posting
+   script `scripts/ci/argus_post_review.sh` self-creates the
+   `argus:*` / `consensus:*` labels on first run.
+6. **Adjust the standards, not the workflows**: review standards
+   live in the root CLAUDE.md ("Automated review standards", "Peer
+   review and consensus"). Install the peer reviewer's standing
+   instructions (next section) in its runner.
+7. **Shakedown before merge**: open the PR that introduces the
+   reviewer and let it review that PR — `pull_request` workflows run
+   from the PR's own branch, so the whole pipeline (auth, model,
+   trusted step, ledger, labels) is exercised end to end before it
+   reaches `main`. Issue response, mentions, and the sweep activate
+   only after the merge.
 
 ### Create and install
 
