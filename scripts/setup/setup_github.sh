@@ -71,6 +71,24 @@ else
     echo "ERROR: .env file not found at $PROJECT_ROOT/.env"
     exit 1
 fi
+# .env is not a supported source for CLAUDE_VERTEX_PROJECT_ID (step 9
+# reads the pre-source export only). Abort HERE, before Steps 1-8
+# rewrite repo variables and branch protection — same reasoning as
+# the placeholder guard above.
+if [ "${SETUP_ARGUS:-0}" = "1" ] && [ -n "${CLAUDE_VERTEX_PROJECT_ID:-}" ] \
+    && [ "$CLAUDE_VERTEX_PROJECT_ID" != "$CVP_EXPORT" ]; then
+    echo "ERROR: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID',"
+    echo "which this script does not read for the Argus setup."
+    if [ -n "$CVP_EXPORT" ]; then
+        echo "Your shell export '$CVP_EXPORT' is the value that would be used."
+        echo "Remove the contradicting .env entry, then re-run."
+    else
+        echo "Remove the .env entry and export the real Claude project id in the"
+        echo "shell instead (see docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+    fi
+    echo "Aborting before any step runs."
+    exit 1
+fi
 
 if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "your-project-id" ] || [ "$PROJECT_ID" = "<YOUR_PROJECT_ID>" ]; then
     echo "ERROR: PROJECT_ID not set. Please edit .env."
@@ -256,14 +274,25 @@ echo ""
 echo "[5/9] Setting GitHub repo variables..."
 
 if command -v gh &>/dev/null; then
-    gh variable set PROJECT_ID          --body "$PROJECT_ID"              --repo "$GITHUB_REPO" && echo "  PROJECT_ID=$PROJECT_ID"
-    gh variable set REGION              --body "${REGION:-us-central1}"   --repo "$GITHUB_REPO" && echo "  REGION=${REGION:-us-central1}"
-    gh variable set DATASET_ID          --body "$DATASET_ID"             --repo "$GITHUB_REPO" && echo "  DATASET_ID=$DATASET_ID"
-    gh variable set TABLE_ID            --body "$TABLE_ID"               --repo "$GITHUB_REPO" && echo "  TABLE_ID=$TABLE_ID"
-    gh variable set DATASET_LOCATION    --body "$DATASET_LOCATION"       --repo "$GITHUB_REPO" && echo "  DATASET_LOCATION=$DATASET_LOCATION"
-    gh variable set WIF_PROVIDER        --body "$WIF_PROVIDER_FULL"      --repo "$GITHUB_REPO" && echo "  WIF_PROVIDER=$WIF_PROVIDER_FULL"
-    gh variable set WIF_SERVICE_ACCOUNT --body "$GH_SA_EMAIL"            --repo "$GITHUB_REPO" && echo "  WIF_SERVICE_ACCOUNT=$GH_SA_EMAIL"
-    gh variable set TEST_DATASET_ID     --body "${TEST_DATASET_ID:-logging_test}" --repo "$GITHUB_REPO" && echo "  TEST_DATASET_ID=${TEST_DATASET_ID:-logging_test}"
+    # Sole command per line: under set -e a failed set aborts the run
+    # instead of silently skipping its confirmation echo and letting
+    # the closing summary claim success (same class as step 9's sets).
+    gh variable set PROJECT_ID          --body "$PROJECT_ID"              --repo "$GITHUB_REPO"
+    echo "  PROJECT_ID=$PROJECT_ID"
+    gh variable set REGION              --body "${REGION:-us-central1}"   --repo "$GITHUB_REPO"
+    echo "  REGION=${REGION:-us-central1}"
+    gh variable set DATASET_ID          --body "$DATASET_ID"             --repo "$GITHUB_REPO"
+    echo "  DATASET_ID=$DATASET_ID"
+    gh variable set TABLE_ID            --body "$TABLE_ID"               --repo "$GITHUB_REPO"
+    echo "  TABLE_ID=$TABLE_ID"
+    gh variable set DATASET_LOCATION    --body "$DATASET_LOCATION"       --repo "$GITHUB_REPO"
+    echo "  DATASET_LOCATION=$DATASET_LOCATION"
+    gh variable set WIF_PROVIDER        --body "$WIF_PROVIDER_FULL"      --repo "$GITHUB_REPO"
+    echo "  WIF_PROVIDER=$WIF_PROVIDER_FULL"
+    gh variable set WIF_SERVICE_ACCOUNT --body "$GH_SA_EMAIL"            --repo "$GITHUB_REPO"
+    echo "  WIF_SERVICE_ACCOUNT=$GH_SA_EMAIL"
+    gh variable set TEST_DATASET_ID     --body "${TEST_DATASET_ID:-logging_test}" --repo "$GITHUB_REPO"
+    echo "  TEST_DATASET_ID=${TEST_DATASET_ID:-logging_test}"
 else
     echo "  WARNING: 'gh' CLI not found. Set these variables manually:"
     echo "    GitHub > Settings > Secrets and variables > Actions > Variables"
@@ -406,21 +435,6 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
         echo "  and re-run."
         exit 1
     fi
-    # .env is NOT a supported source for this variable (the export is
-    # captured before the source). Proceeding would knowingly
-    # configure a different project than the one the operator wrote
-    # down, so this is fatal, not a warning — the remedy is one
-    # export away.
-    if [ -n "${CLAUDE_VERTEX_PROJECT_ID:-}" ] \
-        && [ "$CLAUDE_VERTEX_PROJECT_ID" != "$CVP_EXPORT" ]; then
-        echo "  ERROR: .env sets CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID',"
-        echo "  which step 9 does not read — precedence is shell export > existing"
-        echo "  repo variable > PROJECT_ID. Refusing to configure a project other"
-        echo "  than the one you wrote down. Remove the .env entry, or run:"
-        echo "    export CLAUDE_VERTEX_PROJECT_ID='$CLAUDE_VERTEX_PROJECT_ID'"
-        echo "    SETUP_ARGUS=1 bash scripts/setup/setup_github.sh"
-        exit 1
-    fi
     OLD_CVP=""
     if [ -n "$CVP_EXPORT" ]; then
         CLAUDE_PROJECT="$CVP_EXPORT"
@@ -487,10 +501,15 @@ if [ "${SETUP_ARGUS:-0}" = "1" ]; then
         --quiet
     echo "  WIF binding done."
 
+    # Sole command per line: under set -e a failed set aborts the run
+    # (an `X && echo` list would swallow the failure and the closing
+    # summary would claim CONFIGURED for a variable never written).
     gh variable set CLAUDE_VERTEX_PROJECT_ID --body "$CLAUDE_PROJECT" \
-        --repo "$GITHUB_REPO" && echo "  CLAUDE_VERTEX_PROJECT_ID=$CLAUDE_PROJECT"
+        --repo "$GITHUB_REPO"
+    echo "  CLAUDE_VERTEX_PROJECT_ID=$CLAUDE_PROJECT"
     gh variable set ARGUS_SERVICE_ACCOUNT --body "$ARGUS_SA_EMAIL" \
-        --repo "$GITHUB_REPO" && echo "  ARGUS_SERVICE_ACCOUNT=$ARGUS_SA_EMAIL"
+        --repo "$GITHUB_REPO"
+    echo "  ARGUS_SERVICE_ACCOUNT=$ARGUS_SA_EMAIL"
     # Cleanup notice only AFTER the new project is fully configured —
     # printed earlier, a failure mid-step would leave the operator
     # instructed to delete the only working reviewer identity.
