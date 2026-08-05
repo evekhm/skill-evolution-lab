@@ -318,7 +318,7 @@ Design rules the implementation follows:
    the credentials" below).
 3. **Create the GCP identity**: run
    `SETUP_ARGUS=1 bash scripts/setup/setup_github.sh`. Step 9 enables
-   `iamcredentials.googleapis.com` on the Claude project, creates the
+   `iamcredentials.googleapis.com` on the GCP project serving Claude models, creates the
    `argusVertexPredict` custom role and the `argus-reviewer` service
    account, binds WIF, and sets the `CLAUDE_VERTEX_PROJECT_ID` +
    `ARGUS_SERVICE_ACCOUNT` repo variables (details and guards in the
@@ -383,13 +383,14 @@ export SETUP_ARGUS=1
 # The model pinned in the workflows (--model and
 # ANTHROPIC_SMALL_FAST_MODEL) must be enabled on it; verify with a
 # rawPredict probe against the global endpoint before changing either.
-export CLAUDE_VERTEX_PROJECT_ID="my-claude-project"
+export CLAUDE_VERTEX_PROJECT_ID="my-gcp-project"
 bash scripts/setup/setup_github.sh
 ```
 
 Step 9 of the script enables `iamcredentials.googleapis.com` on the
-Claude project (the WIF impersonation exchange needs it there — a
-hard failure when that project differs from the infra project),
+GCP project serving Claude models (the WIF impersonation exchange
+needs it there — a hard failure when it differs from the infra
+project),
 creates the `argusVertexPredict` custom role
 (`aiplatform.endpoints.predict` only — NOT the mutating
 `roles/aiplatform.user`, which can create and delete Vertex resources
@@ -404,7 +405,7 @@ the blast radius, and the CI account's Secret Manager access reaches
 the repo's write-capable GitHub credentials. Stated precisely, the
 residual with the custom role: `aiplatform.endpoints.predict` is
 bound project-wide, so a credential read from a run reaches inference
-(spend) on any model or endpoint in the Claude project — not data or
+(spend) on any model or endpoint in the GCP project serving Claude models — not data or
 configuration, and not the Agent Engine (querying it needs
 `aiplatform.reasoningEngines.query`, which the role does not grant). The workflows fail fast
 with a pointer here when `ARGUS_SERVICE_ACCOUNT` or
@@ -418,7 +419,7 @@ project's now-orphaned `argus-reviewer` account. The export is
 captured before the script sources `.env`; `.env` is not a supported
 source for this variable. Three aborts protect the setting. Two are free (they fire before
 Step 1 runs anything): the placeholder guard — pasting the snippet
-above with the literal `"my-claude-project"` unchanged stops the run
+above with the literal `"my-gcp-project"` unchanged stops the run
 immediately (that literal is kept in sync between the snippet and
 the guard in `setup_github.sh`) — and the `.env` guard, which stops
 when `.env` sets a `CLAUDE_VERTEX_PROJECT_ID` the script would not
@@ -573,6 +574,6 @@ while REST includes it), and the CLAUDE.md section header.
 | Permissions | Issues, Pull requests, Contents (all Read & Write) |
 | Reviewer App | e.g. `odyssey-argus` (your GitHub account settings) |
 | Reviewer credentials | repo Actions secrets `REVIEWER_APP_ID`, `REVIEWER_APP_PRIVATE_KEY`; repo variables `CLAUDE_VERTEX_PROJECT_ID`, `ARGUS_SERVICE_ACCOUNT` |
-| Reviewer GCP identity | `argus-reviewer@<claude-project>` — custom role `argusVertexPredict` (`aiplatform.endpoints.predict` only), created by `SETUP_ARGUS=1 setup_github.sh` |
+| Reviewer GCP identity | `argus-reviewer@<gcp-project>` — custom role `argusVertexPredict` (`aiplatform.endpoints.predict` only), created by `SETUP_ARGUS=1 setup_github.sh` |
 | Reviewer identity | `<your-reviewer-app>[bot]`, mentions via `@argus` |
 | Reviewer permissions | Issues + Pull requests Read & Write, Contents Read-only |

@@ -58,9 +58,9 @@ echo "=========================================================="
 CVP_EXPORT="${CLAUDE_VERTEX_PROJECT_ID:-}"
 # Placeholder literal: keep in sync with docs/GITHUB_APP_SETUP.md,
 # "Reviewer app (Argus)" setup snippet.
-if [ "${SETUP_ARGUS:-0}" = "1" ] && [ "$CVP_EXPORT" = "my-claude-project" ]; then
+if [ "${SETUP_ARGUS:-0}" = "1" ] && [ "$CVP_EXPORT" = "my-gcp-project" ]; then
     echo "ERROR: CLAUDE_VERTEX_PROJECT_ID is still the documentation placeholder"
-    echo "'my-claude-project'. Export your real Claude project id (or unset the"
+    echo "'my-gcp-project'. Export your real GCP project id (or unset the"
     echo "variable to use the default). Aborting before any step runs — Steps 1-8"
     echo "rewrite repo variables and branch protection."
     exit 1
@@ -95,7 +95,7 @@ if [ "${SETUP_ARGUS:-0}" = "1" ] && [ -n "${CLAUDE_VERTEX_PROJECT_ID:-}" ] \
             echo "Your shell export '$CVP_EXPORT' is the value that would be used."
             echo "Remove the contradicting .env entry, then re-run."
         else
-            echo "Remove the .env entry and export the real Claude project id in the"
+            echo "Remove the .env entry and export the real GCP project id in the"
             echo "shell instead (see docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
         fi
         echo "Aborting before any step runs."
