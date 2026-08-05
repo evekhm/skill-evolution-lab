@@ -139,7 +139,7 @@ What the script configures, in order:
 | 2. Labels | Issue labels the quality agent uses (`quality`, `routing`, `hallucination`, `prompt-gap`, `tool-error`) |
 | 3. Workload Identity Federation | Pool + OIDC provider in your GCP project, scoped to your GitHub user/org — GitHub Actions authenticate to GCP with zero stored keys |
 | 4. CI service account | `github-actions-fixer@<project>` with the roles the workflows need, bound to this repo via WIF |
-| 5. Repo variables | The 8 Actions variables the workflows read (`PROJECT_ID`, `REGION`, dataset/table ids, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `TEST_DATASET_ID`) |
+| 5. Repo variables | The 8 core Actions variables the workflows read (`PROJECT_ID`, `REGION`, dataset/table ids, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `TEST_DATASET_ID`); Step 9 (`SETUP_ARGUS=1`) adds `CLAUDE_VERTEX_PROJECT_ID` and `ARGUS_SERVICE_ACCOUNT` |
 | 6. PR credential | Stores `GH_PAT` (the Step 1 fine-grained PAT) as the `github-pat` secret — the evolution job opens PRs with it. Unset, it falls back to your gh CLI token with a warning |
 | 7. Branch protection | main requires the Golden Eval + Load Test checks before merge |
 | 8. Bot identity | With `GH_APP_*` set: stores `github-app-key` + `github-app-config` — quality issues then post as `<your-app>[bot]` |
@@ -288,39 +288,37 @@ gh secret set REVIEWER_APP_PRIVATE_KEY < ~/Downloads/<your-app>.*.private-key.pe
 rm ~/Downloads/<your-app>.*.private-key.pem
 ```
 
-One repo variable tells the workflows which GCP project serves Claude
-on Vertex (it is NOT this repo's infra project if Claude models are
-enabled elsewhere):
+The GCP side (project variable + a dedicated least-privilege service
+account) is one script run:
 
 ```bash
-gh variable set CLAUDE_VERTEX_PROJECT_ID --body "<gcp project with Claude models enabled>"
+export SETUP_ARGUS=1
+# The project where Claude models are enabled — defaults to PROJECT_ID.
+# The model pinned in the workflows (--model and
+# ANTHROPIC_SMALL_FAST_MODEL) must be enabled on it; verify with a
+# rawPredict probe against the global endpoint before changing either.
+export CLAUDE_VERTEX_PROJECT_ID=<gcp project with Claude models enabled>
+bash scripts/setup/setup_github.sh
 ```
 
-The model pinned in the workflows (`--model` and
-`ANTHROPIC_SMALL_FAST_MODEL`) must be enabled on that project — verify
-with a `rawPredict` probe against the global endpoint before changing
-either side.
+Step 9 of the script enables `iamcredentials.googleapis.com` on the
+Claude project (the WIF impersonation exchange needs it there — a
+hard failure when that project differs from the infra project),
+creates the `argusVertexPredict` custom role
+(`aiplatform.endpoints.predict` only — NOT the mutating
+`roles/aiplatform.user`, which can create and delete Vertex resources
+including this repo's reasoning engines), creates the
+`argus-reviewer` service account with that single role, binds WIF,
+and sets the `CLAUDE_VERTEX_PROJECT_ID` and `ARGUS_SERVICE_ACCOUNT`
+repo variables.
 
-The workflows authenticate as a dedicated service account
-(`ARGUS_SERVICE_ACCOUNT` repo variable) holding exactly one role:
-`roles/aiplatform.user` on the Claude project. Never point them at
-the shared CI account — the agent can read its own credential file,
-so the account's roles are the blast radius, and the CI account's
-Secret Manager access reaches the repo's write-capable GitHub
-credentials. Create it once:
-
-```bash
-gcloud iam service-accounts create argus-reviewer --project=<claude-project>
-gcloud projects add-iam-policy-binding <claude-project> \
-  --member="serviceAccount:argus-reviewer@<claude-project>.iam.gserviceaccount.com" \
-  --role=roles/aiplatform.user
-gcloud iam service-accounts add-iam-policy-binding \
-  argus-reviewer@<claude-project>.iam.gserviceaccount.com \
-  --project=<claude-project> --role=roles/iam.workloadIdentityUser \
-  --member="principalSet://iam.googleapis.com/<wif-pool-name>/attribute.repository/<owner>/<repo>"
-gh variable set ARGUS_SERVICE_ACCOUNT \
-  --body "argus-reviewer@<claude-project>.iam.gserviceaccount.com"
-```
+Never point the workflows at the shared CI account instead — the
+agent can read its own credential file, so the account's roles are
+the blast radius, and the CI account's Secret Manager access reaches
+the repo's write-capable GitHub credentials. The workflows fail fast
+with a pointer here when `ARGUS_SERVICE_ACCOUNT` is unset; an empty
+value would otherwise silently downgrade auth@v2 to direct WIF and
+die at the first Vertex call.
 
 Model auth reuses the WIF provider from this doc's Step 5 — no
 Anthropic API key is stored anywhere.
@@ -386,6 +384,7 @@ while REST includes it), and the CLAUDE.md section header.
 | Bot identity | `skill-evolution-lab-bot[bot]` |
 | Permissions | Issues, Pull requests, Contents (all Read & Write) |
 | Reviewer App | e.g. `odyssey-argus` (your GitHub account settings) |
-| Reviewer credentials | repo Actions secrets `REVIEWER_APP_ID`, `REVIEWER_APP_PRIVATE_KEY`; repo variable `CLAUDE_VERTEX_PROJECT_ID` |
+| Reviewer credentials | repo Actions secrets `REVIEWER_APP_ID`, `REVIEWER_APP_PRIVATE_KEY`; repo variables `CLAUDE_VERTEX_PROJECT_ID`, `ARGUS_SERVICE_ACCOUNT` |
+| Reviewer GCP identity | `argus-reviewer@<claude-project>` — custom role `argusVertexPredict` (`aiplatform.endpoints.predict` only), created by `SETUP_ARGUS=1 setup_github.sh` |
 | Reviewer identity | `<your-reviewer-app>[bot]`, mentions via `@argus` |
 | Reviewer permissions | Issues + Pull requests Read & Write, Contents Read-only |

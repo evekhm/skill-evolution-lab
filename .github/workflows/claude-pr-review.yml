@@ -32,7 +32,8 @@
 #            comments post as <app-name>[bot]. Setup:
 #            docs/GITHUB_APP_SETUP.md, "Reviewer app" section.
 #   Model  — Claude on Vertex AI via Workload Identity Federation
-#            (vars WIF_PROVIDER / WIF_SERVICE_ACCOUNT, no stored keys).
+#            (vars WIF_PROVIDER / ARGUS_SERVICE_ACCOUNT, no stored
+#            keys; the SA holds a single predict-only custom role).
 #            vars.CLAUDE_VERTEX_PROJECT_ID is the project where Claude
 #            models are enabled. claude-opus-5 is the only Claude
 #            model enabled there, global endpoint only (probed
@@ -103,6 +104,15 @@ jobs:
         with:
           app-id: ${{ secrets.REVIEWER_APP_ID }}
           private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+
+      # An unset repo variable interpolates to "", and auth@v2 treats
+      # an empty service_account as direct WIF instead of an error —
+      # the run would go green here and die at the first Vertex call.
+      - name: Fail fast if ARGUS_SERVICE_ACCOUNT is unset
+        if: vars.ARGUS_SERVICE_ACCOUNT == ''
+        run: |
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT is not set. Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          exit 1
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -199,6 +209,15 @@ jobs:
           app-id: ${{ secrets.REVIEWER_APP_ID }}
           private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
 
+      # An unset repo variable interpolates to "", and auth@v2 treats
+      # an empty service_account as direct WIF instead of an error —
+      # the run would go green here and die at the first Vertex call.
+      - name: Fail fast if ARGUS_SERVICE_ACCOUNT is unset
+        if: vars.ARGUS_SERVICE_ACCOUNT == ''
+        run: |
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT is not set. Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          exit 1
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -293,6 +312,15 @@ jobs:
         with:
           app-id: ${{ secrets.REVIEWER_APP_ID }}
           private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
+
+      # An unset repo variable interpolates to "", and auth@v2 treats
+      # an empty service_account as direct WIF instead of an error —
+      # the run would go green here and die at the first Vertex call.
+      - name: Fail fast if ARGUS_SERVICE_ACCOUNT is unset
+        if: vars.ARGUS_SERVICE_ACCOUNT == ''
+        run: |
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT is not set. Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          exit 1
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2

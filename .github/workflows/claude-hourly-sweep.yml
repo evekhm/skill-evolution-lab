@@ -68,6 +68,15 @@ jobs:
           app-id: ${{ secrets.REVIEWER_APP_ID }}
           private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
 
+      # An unset repo variable interpolates to "", and auth@v2 treats
+      # an empty service_account as direct WIF instead of an error —
+      # the run would go green here and die at the first Vertex call.
+      - name: Fail fast if ARGUS_SERVICE_ACCOUNT is unset
+        if: vars.ARGUS_SERVICE_ACCOUNT == ''
+        run: |
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT is not set. Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          exit 1
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -107,9 +116,11 @@ jobs:
                including number, updatedAt, author, labels — ALWAYS
                with `--limit 100`: gh's silent default is 30,
                newest-created first, which would hide an old but
-               still-active item). The wide window is deliberate —
-               cron runs get delayed or dropped; the rules below make
-               re-processing a no-op.
+               still-active item). If either list returns exactly 100
+               items the cap itself may have truncated coverage — say
+               so in your output, same as the 5-item review cap. The
+               wide window is deliberate — cron runs get delayed or
+               dropped; the rules below make re-processing a no-op.
             2. For each, read `gh pr view --json headRefOid,comments`
                / `gh issue view --json comments` and DROP it when any
                of:

@@ -359,6 +359,68 @@ else
     echo "   the GitHub App, then re-run this script with the three vars.)"
 fi
 
+# =========================================================================
+# Step 9: Argus reviewer identity (optional — run with SETUP_ARGUS=1)
+# =========================================================================
+# The Argus review workflows impersonate a dedicated service account
+# holding a single predict-only custom role. Never point them at the
+# CI service account above: the review agent can read its own
+# credential file, so the account's roles are the blast radius.
+if [ "${SETUP_ARGUS:-0}" = "1" ]; then
+    echo ""
+    echo "[9] Argus reviewer identity (Vertex-only, least privilege)..."
+    CLAUDE_PROJECT="${CLAUDE_VERTEX_PROJECT_ID:-$PROJECT_ID}"
+    ARGUS_SA_EMAIL="argus-reviewer@${CLAUDE_PROJECT}.iam.gserviceaccount.com"
+
+    # The WIF impersonation exchange needs this API enabled in the
+    # service account's OWN project — invisible when it equals
+    # PROJECT_ID (enabled above), a hard failure when it does not.
+    gcloud services enable iamcredentials.googleapis.com \
+        --project="$CLAUDE_PROJECT" --quiet
+
+    if gcloud iam roles describe argusVertexPredict \
+        --project="$CLAUDE_PROJECT" >/dev/null 2>&1; then
+        echo "  Custom role argusVertexPredict already exists (skipped)."
+    else
+        gcloud iam roles create argusVertexPredict \
+            --project="$CLAUDE_PROJECT" \
+            --title="Argus Vertex predict-only" \
+            --description="rawPredict on publisher models; nothing else" \
+            --permissions="aiplatform.endpoints.predict" --quiet
+        echo "  Created custom role argusVertexPredict."
+    fi
+
+    if gcloud iam service-accounts describe "$ARGUS_SA_EMAIL" \
+        --project="$CLAUDE_PROJECT" >/dev/null 2>&1; then
+        echo "  Service account argus-reviewer already exists (skipped)."
+    else
+        gcloud iam service-accounts create argus-reviewer \
+            --project="$CLAUDE_PROJECT" \
+            --display-name="Argus reviewer (Vertex-only, least privilege)"
+        echo "  Created service account argus-reviewer."
+    fi
+
+    gcloud projects add-iam-policy-binding "$CLAUDE_PROJECT" \
+        --member="serviceAccount:${ARGUS_SA_EMAIL}" \
+        --role="projects/${CLAUDE_PROJECT}/roles/argusVertexPredict" \
+        --quiet --no-user-output-enabled
+    echo "    projects/${CLAUDE_PROJECT}/roles/argusVertexPredict"
+
+    WIF_POOL_NAME="${WIF_PROVIDER_FULL%/providers/*}"
+    gcloud iam service-accounts add-iam-policy-binding "$ARGUS_SA_EMAIL" \
+        --project="$CLAUDE_PROJECT" \
+        --role="roles/iam.workloadIdentityUser" \
+        --member="principalSet://iam.googleapis.com/${WIF_POOL_NAME}/attribute.repository/${GITHUB_REPO}" \
+        --quiet
+    echo "  WIF binding done."
+
+    gh variable set CLAUDE_VERTEX_PROJECT_ID --body "$CLAUDE_PROJECT" \
+        --repo "$GITHUB_REPO" && echo "  CLAUDE_VERTEX_PROJECT_ID=$CLAUDE_PROJECT"
+    gh variable set ARGUS_SERVICE_ACCOUNT --body "$ARGUS_SA_EMAIL" \
+        --repo "$GITHUB_REPO" && echo "  ARGUS_SERVICE_ACCOUNT=$ARGUS_SA_EMAIL"
+    echo "  Done."
+fi
+
 echo "=========================================================="
 echo "GitHub Integration Setup Complete!"
 echo ""
@@ -377,5 +439,12 @@ if gcloud secrets describe github-app-config --project="$PROJECT_ID" >/dev/null 
 else
     echo "  [8] Bot identity: not configured — issues attribute to the PAT owner"
     echo "      (optional; see docs/GITHUB_APP_SETUP.md Steps 2-4, then re-run)"
+fi
+if [ "${SETUP_ARGUS:-0}" = "1" ]; then
+    echo "  [9] Argus reviewer identity: CONFIGURED (argus-reviewer@, predict-only)"
+else
+    echo "  [9] Argus reviewer identity: not configured"
+    echo "      (optional; SETUP_ARGUS=1 re-run — see docs/GITHUB_APP_SETUP.md,"
+    echo "       'Reviewer app (Argus)')"
 fi
 echo "=========================================================="
