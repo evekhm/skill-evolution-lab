@@ -81,11 +81,23 @@ extract_ledger_data() { # stdin: comment body -> data json (or {})
         || echo '{"findings":[],"atlas_seen":false}'
 }
 
+load_ledger() { # -> ledger data json (default shape when no ledger exists yet)
+    local row
+    row=$(find_ledger_comment || true)
+    if [ -n "$row" ]; then
+        echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data
+    else
+        echo '{"findings":[],"atlas_seen":false}'
+    fi
+}
+
 render_ledger() { # $1 data json -> markdown body
     local data="$1"
     {
         echo "$LEDGER_MARK"
         echo "### Argus findings ledger"
+        echo ""
+        echo "_Maintained by Argus (Claude on Vertex AI); the Atlas column is Atlas's independent verdict (Gemini)._"
         echo ""
         echo "Consensus scope: security and bug findings need both reviewers'"
         echo "agreement; suggestions are recorded but never block it."
@@ -149,6 +161,27 @@ apply_labels_from() { # $1 data json
     echo "labels: open=${open} disputed=${disputed} pending=${pending} atlas_seen=${seen}"
 }
 
+# ---- review body -------------------------------------------------------
+
+# Build the PR-review markdown from findings.json. $1 "true" folds every
+# finding into the body with a file:line suffix (used by the inline-anchor
+# retry); "false" lists only non-inline findings and leaves the inline
+# ones for inline review comments. The header, the model-family trailer,
+# and the "Reviewed-head:" marker (the sweep's completion signal) are
+# appended here in code, never trusted to the model.
+review_body() { # $1 fold(true|false)  $2 verdict_line -> body on stdout
+    jq -r --arg v "$2" --arg sha "$HEAD_SHA" --argjson fold "$1" '
+        def fmt:
+            if $fold
+            then "\n**[\(.id)] \(.title)** (\(.severity)\(if .file then ", \(.file):\(.line // "?")" else "" end))\n\n\(.body)"
+            else "\n**[\(.id)] \(.title)** (\(.severity))\n\n\(.body)"
+            end;
+        "### Argus review\n\n" + $v + "\n\n" + .summary + "\n" +
+        ([.findings[] | select($fold or (.inline != true)) | fmt] | join("\n")) +
+        "\n\n— Argus · Claude on Vertex AI" +
+        "\n\nReviewed-head: " + $sha' "$INPUT"
+}
+
 # ---- mode: review ------------------------------------------------------
 
 mode_review() {
@@ -169,6 +202,8 @@ mode_review() {
 
 The review ran but its structured output failed validation — see the workflow run log for the raw findings.
 
+— Argus · Claude on Vertex AI
+
 Reviewed-head: ${HEAD_SHA}" >/dev/null
         echo "ERROR: findings.json failed validation" >&2
         exit 1
@@ -186,11 +221,7 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
     fi
     [ "$n_res" -gt 0 ] && verdict_line="${verdict_line} · resolved this round: ${n_res}"
 
-    body=$(jq -r --arg v "$verdict_line" --arg sha "$HEAD_SHA" '
-        "### Argus review\n\n" + $v + "\n\n" + .summary + "\n" +
-        ([.findings[] | select(.inline != true) |
-            "\n**[\(.id)] \(.title)** (\(.severity))\n\n\(.body)"] | join("\n")) +
-        "\n\nReviewed-head: " + $sha' "$INPUT")
+    body=$(review_body false "$verdict_line")
 
     payload=$(jq -c --arg body "$body" --arg sha "$HEAD_SHA" '
         {commit_id: $sha, event: "COMMENT", body: $body,
@@ -204,11 +235,7 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
         # Inline anchors can 422 when a line is not in the diff — retry
         # with every finding folded into the body instead of dropping it.
         echo "inline review rejected — retrying with body-only findings" >&2
-        body=$(jq -r --arg v "$verdict_line" --arg sha "$HEAD_SHA" '
-            "### Argus review\n\n" + $v + "\n\n" + .summary + "\n" +
-            ([.findings[] |
-                "\n**[\(.id)] \(.title)** (\(.severity)\(if .file then ", \(.file):\(.line // "?")" else "" end))\n\n\(.body)"] | join("\n")) +
-            "\n\nReviewed-head: " + $sha' "$INPUT")
+        body=$(review_body true "$verdict_line")
         jq -cn --arg body "$body" --arg sha "$HEAD_SHA" \
             '{commit_id: $sha, event: "COMMENT", body: $body}' \
             | gh api --method POST "repos/${REPO}/pulls/${NUMBER}/reviews" --input - >/dev/null
@@ -216,10 +243,8 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
     echo "review posted (${n_sec}s/${n_bug}b/${n_sug}sg, resolved ${n_res})"
 
     # Merge into ledger: new rows for new findings; resolved -> fixed.
-    local row data short
-    row=$(find_ledger_comment || true)
-    if [ -n "$row" ]; then data=$(echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data)
-    else data='{"findings":[],"atlas_seen":false}'; fi
+    local data short
+    data=$(load_ledger)
     short="${HEAD_SHA:0:7}"
     data=$(jq -c --slurpfile new "$INPUT" --arg short "$short" '
         .findings as $old
@@ -254,10 +279,8 @@ mode_consensus() {
         exit 1
     fi
 
-    local row data
-    row=$(find_ledger_comment || true)
-    if [ -n "$row" ]; then data=$(echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data)
-    else data='{"findings":[],"atlas_seen":false}'; fi
+    local data
+    data=$(load_ledger)
 
     data=$(jq -c --slurpfile c "$INPUT" '
         .atlas_seen = true

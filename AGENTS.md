@@ -60,13 +60,30 @@ issues, and `@argus` mentions via
   (2) bugs and edge cases, (3) security concerns, (4) at most 3
   suggestions, and only if significant. Omit empty sections.
 
+## Signature convention
+
+- Every comment and review a reviewer posts is signed so the reader
+  knows which reviewer and which model family is speaking, without
+  relying on the GitHub account name or avatar.
+- Argus: open with the header `### Argus` (`### Argus review` for a PR
+  review, `### Argus findings ledger` for the ledger) and end with the
+  exact trailer line `— Argus · Claude on Vertex AI`.
+- Atlas: open with `### Atlas` and end with `— Atlas · Gemini`.
+- Finding IDs are namespaced by reviewer so the ledger reconciliation
+  is unambiguous: Argus uses `R<round>-<n>` (e.g. `R1-3`), Atlas uses
+  `AT-<n>` (e.g. `AT-1`).
+- The head SHA a review refers to is carried by the machine marker
+  `Reviewed-head: <full-oid>` (the sweep matches on it); the trailer
+  is the human-facing signature and does not replace that marker.
+
 ## Peer review and consensus (Argus <-> Atlas)
 
 - Two reviewers from two model families review every PR and issue:
-  Argus (event-driven, this repo's workflows) and Atlas
-  (evekhm-atlas-bot, polled from its own environment). Security and
-  bug findings close only when both reviewers explicitly agree;
-  suggestions are recorded in the ledger but never block consensus.
+  Argus (event-driven, this repo's workflows, Claude) and Atlas
+  (evekhm-atlas-bot, polled from its own environment, Gemini).
+  Security and bug findings close only when both reviewers explicitly
+  agree; suggestions are recorded in the ledger but never block
+  consensus.
 - Evidence arbitrates, never identity. Do not defer to the other
   reviewer, and do not converge to be agreeable — conceding or
   agreeing without new evidence is a protocol violation. A dispute

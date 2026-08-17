@@ -365,7 +365,9 @@ jobs:
             `gh issue comment`: answer the question or confirm/refute
             the reported behavior, citing file paths. Follow the
             "Automated review standards" section of CLAUDE.md — tone,
-            authority (comment only), no praise. If the issue is a bug
+            authority (comment only), no praise, and the signature
+            convention (end the comment with the exact line
+            "— Argus · Claude on Vertex AI"). If the issue is a bug
             report, state the likely cause and where a fix would land;
             do not push any fix.
           claude_args: |
@@ -386,8 +388,16 @@ jobs:
     # The author_association gate is defense in depth on top of the
     # action's own write-access check: on a public repo anyone can
     # comment "@argus", and this job runs an agent over that comment.
+    # The Bot-author exclusion stops Argus re-firing on its own
+    # comments: a comment Argus posts that quotes the literal "@argus"
+    # (e.g. inside a code block) would otherwise re-trigger this job in
+    # a loop. Argus is a GitHub App, so its comments have author type
+    # "Bot"; excluding Bot authors keys on that identity without
+    # hardcoding the app name. Human reviewers and the Atlas peer
+    # (a User-type account) still trigger the mention path.
     if: >-
       github.event_name == 'issue_comment' &&
+      github.event.comment.user.type != 'Bot' &&
       contains(github.event.comment.body, '@argus') &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
                github.event.comment.author_association)
@@ -492,8 +502,9 @@ jobs:
 
             CASE 1 — the author is a human: answer their question
             with evidence from the repository. Post ONE comment
-            starting with "### Argus" via `gh pr comment` /
-            `gh issue comment`.
+            starting with "### Argus" and ending with the exact
+            signature line "— Argus · Claude on Vertex AI", via
+            `gh pr comment` / `gh issue comment`.
 
             CASE 2 — the author is evekhm-atlas-bot (the peer
             reviewer; it is stateless between runs — the thread is

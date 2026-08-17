@@ -39,10 +39,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Single source for the reviewer's login, interpolated into the
-  # prompt below (rename the bot here). This is the app slug: GraphQL
-  # output (gh --json) omits the "[bot]" suffix, REST appends it.
-  ARGUS_LOGIN: evekhm-odyssey-argus
+  # The reviewer's login, interpolated into the prompt below. Sourced
+  # from the repo variable so the bot name is never hardcoded in
+  # workflow code — set it once (vars.ARGUS_LOGIN) to rename the bot.
+  # This is the app slug: GraphQL output (gh --json) omits the "[bot]"
+  # suffix, REST appends it.
+  ARGUS_LOGIN: ${{ vars.ARGUS_LOGIN }}
 
 jobs:
   sweep:
@@ -163,7 +165,8 @@ jobs:
                  dispatches the review workflow for it.
                - Issue: investigate against the repository code and
                  post ONE comment answering it, starting with
-                 "### Argus", citing file paths.
+                 "### Argus" and ending with the exact signature line
+                 "— Argus · Claude on Vertex AI", citing file paths.
             4. ALWAYS write ${{ runner.temp }}/argus-dispatch.json —
                {"prs": [<numbers to dispatch>]} — with an empty array
                when no PR qualifies. If nothing qualifies at all,
