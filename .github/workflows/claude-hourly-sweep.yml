@@ -280,7 +280,7 @@ jobs:
           if [ ! -f "$F" ]; then echo "no dispatch file"; exit 0; fi
           if ! jq -e '(.nudges // []) | type == "array" and length <= 5 and
                       all((.number | type == "number") and
-                          (.sha | type == "string" and test("^[0-9a-f]{7,40}$")))' \
+                          (.sha | type == "string" and test("^[0-9a-f]{40}$")))' \
               "$F" >/dev/null; then
             echo "::error::nudges failed validation"; exit 1
           fi

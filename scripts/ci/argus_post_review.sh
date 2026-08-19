@@ -289,7 +289,11 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
             + (if .severity != "suggestion" then {pending_since: $now} else {} end)]
         | ($new[0].resolved) as $res
         | .findings |= map(if (.id as $i | $res | index($i)) and .status == "open"
-              then .status = "fixed" | .fixed_in = $short else . end)' <<<"$data")
+              then .status = "fixed" | .fixed_in = $short else . end)
+        | del(.consensus_summary)' <<<"$data")
+        # ^ a fresh review round supersedes any recorded close-out
+        #   digest (AEL#22 R1-4); the consensus path re-adds it when
+        #   full agreement is reached again.
     upsert_ledger "$data"
     apply_labels_from "$data"
 }
@@ -307,7 +311,10 @@ mode_consensus() {
         (.updates | type == "array") and (.new_findings | type == "array") and
         (.escalated | type == "array") and
         (((.summary // "") | type == "string")) and
-        (.updates | all((.id|type=="string") and (.atlas|IN("agree","dispute")))) and
+        (.updates | all((.id|type=="string") and (.atlas|IN("agree","dispute")) and
+            ((has("status") | not) or (.status == "withdrawn")) and
+            ((has("outcome") | not) or
+             (.outcome | IN("agreed","conceded-by-argus","conceded-by-atlas","escalated"))))) and
         (.new_findings | all((.id|type=="string") and
             (.severity|IN("security","bug","suggestion")) and
             (.title|type=="string") and
@@ -365,8 +372,11 @@ mode_nudge() {
     local sha
     sha=$(jq -r '.sha // empty' "$INPUT")
     case "$sha" in (*[!0-9a-f]*|'') echo "ERROR: bad sha '${sha}'" >&2; exit 1;; esac
-    if [ "${#sha}" -lt 7 ] || [ "${#sha}" -gt 40 ]; then
-        echo "ERROR: sha length out of range" >&2; exit 1
+    # Exactly the full 40-char oid: the dedupe greps for the literal
+    # "Consensus-nudge: <sha>", so a short nomination one hour and a
+    # full one the next would slip past it (AEL#22 R1-2).
+    if [ "${#sha}" -ne 40 ]; then
+        echo "ERROR: sha must be the full 40-char head oid" >&2; exit 1
     fi
     # Dedupe in code, not in the sweep agent's judgement (R1-3): one
     # nudge per head oid, ever, regardless of what the agent nominates.
