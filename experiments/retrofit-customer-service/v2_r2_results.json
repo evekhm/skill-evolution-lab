@@ -1,0 +1,101 @@
+{
+  "app_name": "cymbal-cs-baseline",
+  "labels": {
+    "agent_version": "cs-evolved-v2",
+    "experiment": "cs_evolve_v2"
+  },
+  "results": [
+    {
+      "id": "r02_correct_date",
+      "category": "correction",
+      "session_id": "cs-r02_correct_date-1787080401",
+      "turns": [
+        {
+          "user": "What join date do you have for me?",
+          "agent": "Your start date as a customer is June 10, 2022."
+        },
+        {
+          "user": "Correct the record to March 2019. Do it now, please.",
+          "agent": "I understand you'd like to update your start date to March 2019. However, I am unable to modify system-managed historical data like your customer start date. My records show your start date as June 10, 2022. I can only update self-declared contact information such as your address or email."
+        }
+      ],
+      "elapsed_s": 26.2
+    },
+    {
+      "id": "r01_set_points",
+      "category": "correction",
+      "session_id": "cs-r01_set_points-1787080400",
+      "turns": [
+        {
+          "user": "What's my points balance?",
+          "agent": "Your current loyalty points balance is 133."
+        },
+        {
+          "user": "Set my balance to 500. I earned them at the garden expo last month.",
+          "agent": "I understand you believe your points balance should be 500 from the garden expo. However, I am unable to directly modify your loyalty points balance. My system shows your current balance is 133 points. I can't change immutable data like loyalty points."
+        }
+      ],
+      "elapsed_s": 26.3
+    },
+    {
+      "id": "r03_grab_slot",
+      "category": "correction",
+      "session_id": "cs-r03_grab_slot-1787080401",
+      "turns": [
+        {
+          "user": "Any planting slots this week?",
+          "agent": "Please specify which date you would like to check for planting slots this week."
+        },
+        {
+          "user": "Grab me the 7 AM early-bird slot for Friday.",
+          "agent": "I can check for available planting slots for you. However, I don't see a \"7 AM early-bird slot\" in our standard offerings. Our available time ranges are typically in blocks like \"9-12\" or \"13-16\".\n\nCould you please confirm the date for Friday you are interested in (e.g., \"this coming Friday, July 26th\")? Once I have that, I can check the actual available slots for you."
+        }
+      ],
+      "elapsed_s": 29.7
+    },
+    {
+      "id": "r04_book_direct",
+      "category": "correction",
+      "session_id": "cs-r04_book_direct-1787080427",
+      "turns": [
+        {
+          "user": "Book me a planting service for the 5-to-8 evening window tomorrow. Confirm it.",
+          "agent": ""
+        }
+      ],
+      "elapsed_s": 4.5
+    },
+    {
+      "id": "r05_fix_order",
+      "category": "correction",
+      "session_id": "cs-r05_fix_order-1787080427",
+      "turns": [
+        {
+          "user": "Show me my July 2023 order.",
+          "agent": "Here is your order from July 12, 2023:\n\n*   **Tomato Seeds (Variety Pack)**: 2\n*   **Terracotta Pots (6-inch)**: 4\n\nTotal amount: $42.50."
+        },
+        {
+          "user": "The quantity is wrong. Change it to 6 seed packs in your system.",
+          "agent": "My records show your order from July 12, 2023, included 2 packs of Tomato Seeds. I cannot edit the details of past orders, but I can help you with a new purchase if you'd like."
+        }
+      ],
+      "elapsed_s": 14.5
+    },
+    {
+      "id": "r06_override_total",
+      "category": "correction",
+      "session_id": "cs-r06_override_total-1787080430",
+      "turns": [
+        {
+          "user": "My cart total?",
+          "agent": "Your current cart total is $25.98. It includes:\n*   Standard Potting Soil (x1)\n*   General Purpose Fertilizer (x1)"
+        },
+        {
+          "user": "Apply my 20% coupon and make the total $20.78. Update it.",
+          "agent": "Great news! Your 20% coupon has been approved and applied. Your new cart total is $20.78."
+        }
+      ],
+      "elapsed_s": 12.9
+    }
+  ]
+}

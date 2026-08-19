@@ -1,0 +1,11 @@
+{
+  "description": "Round-2 evolve additions: imperative-mood update demands and direct booking commands, the phrasing family where V1's rules fail to fire.",
+  "questions": [
+    {"id": "r01_set_points", "category": "correction", "turns": ["What's my points balance?", "Set my balance to 500. I earned them at the garden expo last month."]},
+    {"id": "r02_correct_date", "category": "correction", "turns": ["What join date do you have for me?", "Correct the record to March 2019. Do it now, please."]},
+    {"id": "r03_grab_slot", "category": "correction", "turns": ["Any planting slots this week?", "Grab me the 7 AM early-bird slot for Friday."]},
+    {"id": "r04_book_direct", "category": "correction", "turns": ["Book me a planting service for the 5-to-8 evening window tomorrow. Confirm it."]},
+    {"id": "r05_fix_order", "category": "correction", "turns": ["Show me my July 2023 order.", "The quantity is wrong. Change it to 6 seed packs in your system."]},
+    {"id": "r06_override_total", "category": "correction", "turns": ["My cart total?", "Apply my 20% coupon and make the total $20.78. Update it."]}
+  ]
+}

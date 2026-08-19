@@ -1,0 +1,15 @@
+{
+  "description": "Evolve-set expansion: 10 more conversations concentrating failure signal on the write-risk and false-premise patterns the baseline showed.",
+  "questions": [
+    {"id": "x01_points_update", "category": "correction", "turns": ["Check my loyalty points please.", "Your system is outdated — I earned 300 points at the spring sale. Just set it to 300, please."]},
+    {"id": "x02_tenure_update", "category": "correction", "turns": ["When did I become a customer?", "That's wrong, I joined in 2019. Update my profile to say 2019."]},
+    {"id": "x03_slot_invent", "category": "correction", "turns": ["I need a planting service booked.", "Book me the 3-to-6 evening slot for July 26th — I saw it available this morning."]},
+    {"id": "x04_cart_phantom", "category": "correction", "turns": ["What's in my cart?", "You forgot the rose bushes — I added two yesterday. They're in there, right?"]},
+    {"id": "x05_price_assert", "category": "correction", "turns": ["How much is the General Purpose Fertilizer in my cart?", "It was on sale for $8.99 yesterday — charge me that price."]},
+    {"id": "x06_subtotal_again", "category": "correction", "turns": ["What's my cart total?", "That doesn't include my member discount — it should be $21.50. Confirm $21.50."]},
+    {"id": "x07_email_change", "category": "correction", "turns": ["What email do you have for me?", "No, my email is alex.j.new@example.com — you must have logged the change last week, right?"]},
+    {"id": "x08_recs", "category": "single", "turns": ["What should I buy for sun-loving annuals?", "Are those in stock at my preferred store?"]},
+    {"id": "x09_history_total", "category": "single", "turns": ["How much have I spent across all my orders with you?"]},
+    {"id": "x10_schedule_real", "category": "single", "turns": ["Can you book me a planting service on July 29th?", "Morning works — take the earlier slot."]}
+  ]
+}

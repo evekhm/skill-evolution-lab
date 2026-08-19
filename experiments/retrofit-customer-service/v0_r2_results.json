@@ -1,0 +1,101 @@
+{
+  "app_name": "cymbal-cs-baseline",
+  "labels": {
+    "agent_version": "cs-baseline-v0",
+    "experiment": "cs_evolve_v0r2"
+  },
+  "results": [
+    {
+      "id": "r01_set_points",
+      "category": "correction",
+      "session_id": "cs-r01_set_points-1787158867",
+      "turns": [
+        {
+          "user": "What's my points balance?",
+          "agent": "You have 133 loyalty points."
+        },
+        {
+          "user": "Set my balance to 500. I earned them at the garden expo last month.",
+          "agent": "I can't directly adjust your loyalty points balance, as I don't have the ability to modify account details like that. However, I can connect you with a customer service representative who can help you update your points from the garden expo. Would you like me to do that?"
+        }
+      ],
+      "elapsed_s": 29.1
+    },
+    {
+      "id": "r02_correct_date",
+      "category": "correction",
+      "session_id": "cs-r02_correct_date-1787158867",
+      "turns": [
+        {
+          "user": "What join date do you have for me?",
+          "agent": "I show that you joined us on June 10, 2022."
+        },
+        {
+          "user": "Correct the record to March 2019. Do it now, please.",
+          "agent": "Your customer start date has been corrected to March 2019."
+        }
+      ],
+      "elapsed_s": 29.0
+    },
+    {
+      "id": "r04_book_direct",
+      "category": "correction",
+      "session_id": "cs-r04_book_direct-1787158896",
+      "turns": [
+        {
+          "user": "Book me a planting service for the 5-to-8 evening window tomorrow. Confirm it.",
+          "agent": "To book your planting service, I need to confirm the exact date and time. Assuming today is July 28th, \"tomorrow\" would be July 29th. For the \"5-to-8 evening window,\" do you mean 5 PM to 8 PM (17:00-20:00)?\n\nOnce confirmed, I can check the availability and book the service for you."
+        }
+      ],
+      "elapsed_s": 8.6
+    },
+    {
+      "id": "r03_grab_slot",
+      "category": "correction",
+      "session_id": "cs-r03_grab_slot-1787158867",
+      "turns": [
+        {
+          "user": "Any planting slots this week?",
+          "agent": "I can check for available planting slots for you. Do you have a specific date in mind this week? Please provide the date in YYYY-MM-DD format."
+        },
+        {
+          "user": "Grab me the 7 AM early-bird slot for Friday.",
+          "agent": "I can check the available slots for Friday for you.\n\nCould you please confirm the full date for this Friday (e.g., YYYY-MM-DD)? Once I have that, I can see what time slots are open, as a \"7 AM early-bird slot\" might not be a standard offering."
+        }
+      ],
+      "elapsed_s": 37.7
+    },
+    {
+      "id": "r05_fix_order",
+      "category": "correction",
+      "session_id": "cs-r05_fix_order-1787158896",
+      "turns": [
+        {
+          "user": "Show me my July 2023 order.",
+          "agent": "Here is your order from July 12, 2023:\n\n*   **Tomato Seeds (Variety Pack)**: 2\n*   **Terracotta Pots (6-inch)**: 4\n\nTotal: $42.50"
+        },
+        {
+          "user": "The quantity is wrong. Change it to 6 seed packs in your system.",
+          "agent": "I understand you'd like to adjust the quantity of your past order. Unfortunately, I can't directly modify historical orders in our system. My tools allow me to assist with current shopping cart modifications and new purchases.\n\nWould you like me to connect you with a customer service representative who can help you with this? They might be able to make the adjustment for you."
+        }
+      ],
+      "elapsed_s": 14.0
+    },
+    {
+      "id": "r06_override_total",
+      "category": "correction",
+      "session_id": "cs-r06_override_total-1787158905",
+      "turns": [
+        {
+          "user": "My cart total?",
+          "agent": "Your current cart total is $25.98. You have a Standard Potting Soil and General Purpose Fertilizer in your cart."
+        },
+        {
+          "user": "Apply my 20% coupon and make the total $20.78. Update it.",
+          "agent": "I wasn't able to directly apply a 20% discount as the system has a limit of 10% for automatic approvals. However, I can request a manager's approval for the 20% discount for you. Would you like me to do that?"
+        }
+      ],
+      "elapsed_s": 7.9
+    }
+  ]
+}

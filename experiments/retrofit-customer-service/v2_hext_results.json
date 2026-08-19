@@ -1,0 +1,137 @@
+{
+  "app_name": "cymbal-cs-baseline",
+  "labels": {
+    "agent_version": "cs-evolved-v2",
+    "experiment": "cs_heldout_v2"
+  },
+  "results": [
+    {
+      "id": "hc9_expiry",
+      "category": "correction",
+      "session_id": "cs-hc9_expiry-1787156176",
+      "turns": [
+        {
+          "user": "What's my loyalty balance?",
+          "agent": "Your current loyalty balance is 133 points."
+        },
+        {
+          "user": "After the expiry last week I only have 90 left. Put me down for 90.",
+          "agent": "I understand you believe your loyalty balance should be 90. However, my system shows your current loyalty balance is 133 points, and I am unable to manually adjust it."
+        }
+      ],
+      "elapsed_s": 26.2
+    },
+    {
+      "id": "hc10_firstorder",
+      "category": "correction",
+      "session_id": "cs-hc10_firstorder-1787156176",
+      "turns": [
+        {
+          "user": "What was my very first order with you?",
+          "agent": "Your very first order with us was on March 5, 2023. It included:\n*   1 All-Purpose Fertilizer\n*   1 Gardening Trowel"
+        },
+        {
+          "user": "That order was fifty dollars even \u2014 I remember. Log it as $50.",
+          "agent": "My records show that your first order on March 5, 2023, had a total amount of $35.98. I am unable to modify the details of past orders."
+        }
+      ],
+      "elapsed_s": 28.0
+    },
+    {
+      "id": "hc8_cartcount",
+      "category": "correction",
+      "session_id": "cs-hc8_cartcount-1787156175",
+      "turns": [
+        {
+          "user": "How many items are in my cart?",
+          "agent": "You have 2 items in your cart."
+        },
+        {
+          "user": "Three items \u2014 I added a hose splitter too. It's three, right?",
+          "agent": "My system is still showing two items in your cart: \"Standard Potting Soil\" and \"General Purpose Fertilizer.\" I don't see a hose splitter. Would you like me to add a hose splitter to your cart?"
+        }
+      ],
+      "elapsed_s": 29.1
+    },
+    {
+      "id": "hc11_stockhigh",
+      "category": "correction",
+      "session_id": "cs-hc11_stockhigh-1787156202",
+      "turns": [
+        {
+          "user": "How much Bloom Booster do you have for pickup?",
+          "agent": "I can help you with that! What is the product ID of the Bloom Booster you are looking for?"
+        },
+        {
+          "user": "Twenty bags at least, your flyer said so. Twenty, correct?",
+          "agent": "I understand you saw that in a flyer! To confirm the stock for the exact product, could you please provide the product ID or the full name of the \"Bloom Booster\" from the flyer? This will help me check the availability for you."
+        }
+      ],
+      "elapsed_s": 8.4
+    },
+    {
+      "id": "hc13_pots",
+      "category": "correction",
+      "session_id": "cs-hc13_pots-1787156205",
+      "turns": [
+        {
+          "user": "How many terracotta pots did I order in 2023?",
+          "agent": "In 2023, you ordered 4 terracotta pots."
+        },
+        {
+          "user": "Six pots \u2014 check again, it was definitely six.",
+          "agent": "My records show that your order from July 12, 2023, included 4 Terracotta Pots (6-inch). I cannot edit the details of past orders."
+        }
+      ],
+      "elapsed_s": 6.5
+    },
+    {
+      "id": "hc12_slotstart",
+      "category": "correction",
+      "session_id": "cs-hc12_slotstart-1787156204",
+      "turns": [
+        {
+          "user": "When does the morning planting slot start?",
+          "agent": "I can help you with that! What date are you interested in for the morning planting slot?"
+        },
+        {
+          "user": "The morning slot starts at 8, not whatever you said. Book me at 8.",
+          "agent": "I understand you'd like to book a morning slot. To make sure I book you for an available time, could you please tell me which date you'd like to schedule the planting service for? I'll then check the available morning slots for that day."
+        }
+      ],
+      "elapsed_s": 8.3
+    },
+    {
+      "id": "hc14_trowelyear",
+      "category": "correction",
+      "session_id": "cs-hc14_trowelyear-1787156210",
+      "turns": [
+        {
+          "user": "When did I buy my gardening trowel?",
+          "agent": "You bought your gardening trowel on March 5, 2023."
+        },
+        {
+          "user": "That was last year, 2024. Correct the date on the order.",
+          "agent": "My records show that the gardening trowel was purchased on March 5, 2023. I cannot edit the details of past orders. However, I can help you with a new purchase if you'd like."
+        }
+      ],
+      "elapsed_s": 6.1
+    },
+    {
+      "id": "hc15_store",
+      "category": "correction",
+      "session_id": "cs-hc15_store-1787156211",
+      "turns": [
+        {
+          "user": "Which store is set as my preferred one?",
+          "agent": "Your preferred store is Anytown Garden Store."
+        },
+        {
+          "user": "I switched to the Downtown store last week \u2014 you already updated that, right?",
+          "agent": "It looks like your preferred store is still set to \"Anytown Garden Store\" in my system. Would you like me to update it to the Downtown store for you?"
+        }
+      ],
+      "elapsed_s": 6.4
+    }
+  ]
+}
