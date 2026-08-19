@@ -120,14 +120,16 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           SINCE=$(date -u -d '30 days ago' +%Y-%m-%d)
-          # || echo '{}': search/issues is the endpoint most prone to
-          # secondary rate limits; a label cosmetic must never take
-          # down the sweep that finds unanswered PRs (R1-4).
-          RESP=$(gh api -X GET search/issues \
-            -f q="repo:${{ github.repository }} label:\"consensus:pending\" updated:>=${SINCE}" \
-            || echo '{}')
-          if [ "$RESP" = "{}" ]; then
+          # The failure signal is gh's exit status, never a payload
+          # sentinel (R6-1): a failing gh can still emit partial
+          # stdout, and a sentinel comparison would miss it. search/
+          # issues is the endpoint most prone to secondary rate
+          # limits; a label cosmetic must never take down the sweep
+          # that finds unanswered PRs (R1-4).
+          if ! RESP=$(gh api -X GET search/issues \
+            -f q="repo:${{ github.repository }} label:\"consensus:pending\" updated:>=${SINCE}"); then
             echo "::warning::self-heal search failed — skipping this cycle"
+            RESP='{"total_count":0,"items":[]}'
           fi
           TOTAL=$(echo "$RESP" | jq -r '.total_count // 0' 2>/dev/null || echo 0)
           NUMS=$(echo "$RESP" | jq -r '.items[:20][].number' 2>/dev/null || true)

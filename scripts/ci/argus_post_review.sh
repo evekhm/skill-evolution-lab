@@ -74,14 +74,23 @@ EOF
 
 # ---- ledger state ------------------------------------------------------
 
-find_ledger_comment() { # -> "id<TAB>body" or empty
+find_ledger_comment() { # -> base64 row or empty; rc 1 on FETCH failure
     # ARGUS_LOGIN (optional env, set by the workflows): restrict the
     # match to Argus-authored comments. Without it, any commenter on a
     # public repo could pre-plant a forged ledger comment that the
     # hourly relabel pass would then read unattended (R3-3). REST
     # appends "[bot]" to GitHub App logins, so both forms match.
-    gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" \
-        | jq -r --arg who "${ARGUS_LOGIN:-}" '.[]
+    # Capture-then-parse (R6-2): a fetch error must fail loudly, never
+    # read as "no ledger yet" — that misread would make mode_review
+    # POST a second ledger comment and fork the recorded state. Full
+    # capture also keeps head -1 from breaking gh's pagination pipe
+    # (the R3-1 SIGPIPE class).
+    local raw
+    if ! raw=$(gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" 2>/dev/null); then
+        echo "ERROR: comment fetch failed — cannot determine ledger state" >&2
+        return 1
+    fi
+    printf '%s' "$raw" | jq -r --arg who "${ARGUS_LOGIN:-}" '.[]
             | select(($who == "") or (.user.login == $who) or (.user.login == $who + "[bot]"))
             | select(.body | contains("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
         | head -1
@@ -111,7 +120,7 @@ extract_ledger_data() { # stdin: comment body -> data json (or {}); rc 1 on corr
 
 load_ledger() { # -> ledger data json (default shape when no ledger exists yet)
     local row
-    row=$(find_ledger_comment || true)
+    row=$(find_ledger_comment)
     if [ -n "$row" ]; then
         echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data
     else
@@ -152,7 +161,7 @@ render_ledger() { # $1 data json -> markdown body
 upsert_ledger() { # $1 data json
     local data="$1" body row
     body=$(render_ledger "$data")
-    row=$(find_ledger_comment || true)
+    row=$(find_ledger_comment)
     if [ -n "$row" ]; then
         local id
         id=$(echo "$row" | base64 -d | jq -r '.[0]')
@@ -408,8 +417,14 @@ mode_consensus() {
                   | any(. == "dispute"))
            then del(.consensus_summary) else . end)
         | (if (($c[0].summary // "") != "")
+             and (([.findings[] | select(.severity != "suggestion"
+                    and (.atlas == "pending" or .atlas == "dispute"))] | length) == 0)
            then .consensus_summary = ($c[0].summary | gsub("-->|<!--"; "→"))
            else . end)' <<<"$data")
+        # ^ the digest is code-gated (R6-3): it renders only when the
+        #   post-merge state carries no pending or disputed
+        #   security/bug verdict — an agent-supplied summary cannot
+        #   declare consensus the rows contradict.
 
     upsert_ledger "$data"
     apply_labels_from "$data"
@@ -465,7 +480,7 @@ Consensus-nudge: ${sha}" >/dev/null
 # a no-op when labels are already true. Run hourly by the sweep.
 mode_relabel() {
     local row data
-    row=$(find_ledger_comment || true)
+    row=$(find_ledger_comment)
     if [ -z "$row" ]; then
         echo "relabel: no ledger on #${NUMBER} — nothing to do"
         return 0
