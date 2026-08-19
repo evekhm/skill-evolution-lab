@@ -68,9 +68,44 @@ os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 # ---------------------------------------------------------------------------
 from ensure_sdk import import_sdk_module  # noqa: E402
 
-_sdk = import_sdk_module("quality_report")
+_sdk = None
 
-print_quality_report = _sdk.print_quality_report
+
+def _get_sdk():
+    """Load the SDK quality_report module on first use.
+
+    Lazy so this module stays importable (and its pure helpers testable)
+    in environments with no SDK checkout configured.
+    """
+    global _sdk
+    if _sdk is None:
+        _sdk = import_sdk_module("quality_report")
+    return _sdk
+
+
+def exclude_error_shaped(conversations: list[dict]) -> tuple[list[dict], list[str]]:
+    """Preflight: drop infrastructure failures before any judging.
+
+    The traffic generator writes ``ERROR: {e}`` into the transcript and
+    sets ``errors`` on the record when a send fails, and the record still
+    lands in the results file. A judge scores those strings as unhelpful
+    without complaint, which has produced fake 0% rates before
+    (Verification Contract, "error-shaped answers"). Returns
+    ``(scoreable, excluded_ids)``.
+    """
+    scoreable, excluded = [], []
+    for c in conversations:
+        texts = [
+            str(c.get("response") or c.get("final_response") or ""),
+        ]
+        for turn in c.get("conversation") or []:
+            if isinstance(turn, dict) and turn.get("role") != "user":
+                texts.append(str(turn.get("text") or ""))
+        if c.get("errors") or any(t.startswith("ERROR:") for t in texts):
+            excluded.append(str(c.get("session_id") or c.get("id") or "?"))
+        else:
+            scoreable.append(c)
+    return scoreable, excluded
 
 
 def compare_reports(report_files: list[str]) -> None:
@@ -177,13 +212,13 @@ def generate_quality_report(
     Returns:
         Quality report dict with summary and sessions.
     """
-    if _sdk.PROJECT_ID is None:
-        _sdk._load_config()
+    if _get_sdk().PROJECT_ID is None:
+        _get_sdk()._load_config()
     traj_count = trajectory_samples
     if isinstance(trajectory_samples, str) and trajectory_samples.lower() == "all":
         traj_count = len(conversations)
 
-    return _sdk.generate_quality_report_from_conversations(
+    return _get_sdk().generate_quality_report_from_conversations(
         conversations, model=model, eval_spec=eval_spec,
         tag_turns=tag_turns, trajectory_samples=traj_count,
         golden_threshold=golden_threshold,
@@ -485,7 +520,7 @@ def main():
         # Re-derive the skill-gap / knowledge-gap split from the per-session
         # dimensions already in the report (deterministic, no re-scoring), then
         # persist it so the JSON and Markdown both carry the breakdown.
-        _sdk._classify_failures(existing)
+        _get_sdk()._classify_failures(existing)
         with open(args.report_from_json, "w") as f:
             json.dump(existing, f, indent=2, default=str)
         md_path = write_md_report(existing, args.report_from_json)
@@ -509,7 +544,27 @@ def main():
         print("No conversations found in input file.")
         sys.exit(1)
 
-    logger.info("Scoring %d conversations...", len(conversations))
+    conversations, error_shaped = exclude_error_shaped(conversations)
+    if error_shaped:
+        preview = ", ".join(error_shaped[:5])
+        if len(error_shaped) > 5:
+            preview += f", ... ({len(error_shaped) - 5} more)"
+        logger.warning(
+            "Preflight excluded %d error-shaped conversation(s) — "
+            "infrastructure failures, not agent answers: %s",
+            len(error_shaped), preview,
+        )
+    if not conversations:
+        print(
+            f"No scoreable conversations: all {len(error_shaped)} records "
+            "in the input are error-shaped (infrastructure failures)."
+        )
+        sys.exit(1)
+
+    logger.info(
+        "Scoring %d conversations (%d excluded by preflight)...",
+        len(conversations), len(error_shaped),
+    )
 
     traj_samples_raw = args.trajectory_samples.strip().lower()
     if traj_samples_raw == "all":
@@ -519,7 +574,7 @@ def main():
 
     # Resolve eval spec: explicit --eval-spec, else auto-discover; the SDK does
     # the same auto-discovery, but loading here lets us log what was used.
-    eval_spec = _sdk._load_eval_spec(getattr(args, "eval_spec", None))
+    eval_spec = _get_sdk()._load_eval_spec(getattr(args, "eval_spec", None))
     if eval_spec:
         logger.info(
             "Eval spec: scope=%s, ground_truth=%s, golden_qa=%d",

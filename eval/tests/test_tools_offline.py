@@ -150,3 +150,31 @@ def test_incumbent_refresh_between_sequential_agents(tmp_path):
     assert coevolve._refresh_incumbent(str(tmp_path), 85.4) == 85.4
     (tmp_path / "evolved_score.json").write_text("{not json")
     assert coevolve._refresh_incumbent(str(tmp_path), 85.4) == 85.4
+
+
+# --- retrofit review R1-2 (#105): error-shaped answers must never be judged --
+
+
+def test_error_shaped_preflight_excludes_infrastructure_failures():
+    # The generator writes "ERROR: {e}" transcripts and errors=1 records on
+    # send failures; a judge scores those as unhelpful, producing fake rates.
+    from eval.scoring import score_conversations as sc
+
+    convs = [
+        {"session_id": "ok-1", "response": "You have 20 PTO days.",
+         "errors": 0},
+        {"session_id": "err-flag", "response": "fine text", "errors": 1},
+        {"session_id": "err-resp",
+         "response": "ERROR: 503 Service Unavailable", "errors": 0},
+        {"session_id": "err-turn", "errors": 0, "conversation": [
+            {"role": "user", "text": "hi"},
+            {"role": "system", "text": "ERROR: timeout"},
+        ]},
+        {"session_id": "ok-2", "conversation": [
+            {"role": "user", "text": "quoting"},
+            {"role": "agent", "text": "The log line says 'ERROR: x' means..."},
+        ]},
+    ]
+    kept, excluded = sc.exclude_error_shaped(convs)
+    assert [c["session_id"] for c in kept] == ["ok-1", "ok-2"]
+    assert excluded == ["err-flag", "err-resp", "err-turn"]
