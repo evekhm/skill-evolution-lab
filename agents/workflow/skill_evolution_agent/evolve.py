@@ -175,7 +175,8 @@ def load_current_skill(skill_dir: str) -> str:
 
 
 def _record_evolved_score(candidates_dir: str | None, score: float | None,
-                          unmeasurable: bool = False) -> None:
+                          unmeasurable: bool = False,
+                          reason: str | None = None) -> None:
     """Persist the deployed skill's authoritative selection score.
 
     Written to ``<run_dir>/evolved_score.json`` so ``compare_versions`` reports
@@ -189,6 +190,8 @@ def _record_evolved_score(candidates_dir: str | None, score: float | None,
     try:
         run_dir = os.path.dirname(candidates_dir.rstrip("/"))
         payload = {"version": "evolved", "meaningful_rate": score}
+        if reason:
+            payload["reason"] = reason
         if unmeasurable:
             # Explicit null marker (review R6-4 on #106): in co-evolution
             # the file is shared across agents, and writing nothing would
@@ -405,17 +408,23 @@ def evolve(
     elif selected in unmeasured:
         # Winner was scored and came back unmeasurable (its report lost
         # records to the preflight): write the explicit null marker (R6-4).
-        _record_evolved_score(candidates_dir, None, unmeasurable=True)
+        _record_evolved_score(candidates_dir, None, unmeasurable=True,
+                              reason="preflight exclusions in the winner's "
+                                     "scored report")
     elif wrapped_score_fn is not None:
         # Memo miss without an unmeasurable verdict: the engine returned
         # content that is not byte-identical to what it scored (compaction
-        # or sanitize after scoring, review R7-2 on #106). That is a key
-        # mismatch, not a failed measurement — leave evolved_score.json
-        # alone rather than overwrite a real score with a null.
+        # or sanitize after scoring, review R7-2 on #106). The pre-transform
+        # score belongs to different content and a stale file would
+        # attribute a previous attempt's score to this winner (R8), so
+        # record a distinguishable no-authoritative-score marker.
         logger.warning(
             "Selected skill not found in the score memo (transformed "
-            "after scoring?); evolved_score.json left unchanged"
+            "after scoring?); recording no-authoritative-score marker"
         )
+        _record_evolved_score(candidates_dir, None, unmeasurable=True,
+                              reason="score memo miss: winner transformed "
+                                     "after scoring")
 
     logger.info("Evolution complete in %.1fs", time.time() - t0)
     return selected

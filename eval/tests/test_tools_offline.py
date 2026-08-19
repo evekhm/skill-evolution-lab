@@ -430,10 +430,20 @@ def test_unmeasurable_winner_records_null_marker(tmp_path):
 
     cand = tmp_path / "candidates"
     cand.mkdir()
-    evolve_mod._record_evolved_score(str(cand), None, unmeasurable=True)
+    evolve_mod._record_evolved_score(str(cand), None, unmeasurable=True,
+                                     reason="preflight exclusions")
     es = _json.loads((tmp_path / "evolved_score.json").read_text())
     assert es["meaningful_rate"] is None
     assert es["unmeasurable"] is True
+    assert es["reason"] == "preflight exclusions"
+    # A memo-miss marker (R8) overwrites a stale real score — a previous
+    # attempt's number must not survive attributed to a new winner.
+    evolve_mod._record_evolved_score(str(cand), 85.4)
+    evolve_mod._record_evolved_score(str(cand), None, unmeasurable=True,
+                                     reason="score memo miss")
+    es = _json.loads((tmp_path / "evolved_score.json").read_text())
+    assert es["meaningful_rate"] is None
+    assert es["reason"] == "score memo miss"
 
     (tmp_path / "v0_quality_report.json").write_text(_json.dumps({
         "summary": {"total_sessions": 20, "meaningful": 15,
