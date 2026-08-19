@@ -390,7 +390,14 @@ mode_relabel() {
     apply_labels_from "$data"
 }
 
-ensure_labels
+# Label definitions are only ensured by the modes that record new
+# state. relabel runs hourly against up to 20 items and nudge posts a
+# comment only — unconditional ensure_labels would burn 5 label POSTs
+# per item per sweep for labels that necessarily exist once a ledger
+# does (PR #114 AT-2).
+case "$MODE" in
+    review|consensus) ensure_labels ;;
+esac
 case "$MODE" in
     review)    mode_review ;;
     consensus) mode_consensus ;;
