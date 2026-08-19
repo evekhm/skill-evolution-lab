@@ -383,6 +383,17 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
         #   would orphan the digest forever, since a clean round gives
         #   Atlas nothing to verdict and the consensus path that
         #   rebuilds it never runs (R4-4).
+    # Resolved IDs that matched no open ledger row are called out
+    # (R15-3), mirroring the consensus path's unmatched warning — the
+    # public verdict line counts .resolved verbatim, so a typo'd ID
+    # must at least be visible in the run log.
+    local unres
+    unres=$(jq -r --slurpfile new "$INPUT" --arg short "$short" '
+        [.findings[] | select(.status == "fixed" and .fixed_in == $short) | .id] as $done
+        | [$new[0].resolved[] | select(. as $i | ($done | index($i)) | not)] | join(", ")' <<<"$data")
+    if [ -n "$unres" ]; then
+        echo "WARNING: resolved IDs matched no open ledger row this round: ${unres}" >&2
+    fi
     upsert_ledger "$data"
     apply_labels_from "$data"
 }
@@ -455,6 +466,8 @@ mode_consensus() {
             (($u | map(select(.id == $f.id)) | first) // null) as $m
             | if $m == null then $f else
                 $f + {atlas: $m.atlas}
+                    + (if $m.atlas == "dispute" and ($f.pending_since // "") == ""
+                       then {pending_since: $seen_at} else {} end)
                     + (if $m.atlas == "agree" and ($f.status == "open" or $f.status == "fixed")
                        then {outcome: "agreed"} else {} end)
                     + (if ($m | has("status")) then {status: $m.status} else {} end)

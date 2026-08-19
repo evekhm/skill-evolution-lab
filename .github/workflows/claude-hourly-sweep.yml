@@ -226,9 +226,13 @@ jobs:
                  EXCEPTION — unreconciled peer verdict: keep the PR
                  even at a matching Reviewed-head when its ledger has
                  a non-suggestion finding at atlas "pending" and a
-                 peer review or peer comment is NEWER than the ledger
-                 comment — the event-driven consensus run for that
-                 verdict was dropped. Put such PRs in "consensus_prs"
+                 peer review or peer comment is NEWER than the
+                 ledger data's "atlas_seen_at" timestamp (treat a
+                 missing atlas_seen_at as never-seen). Compare against
+                 atlas_seen_at, never the ledger comment's createdAt:
+                 the ledger is PATCHed in place, its createdAt never
+                 advances, and that comparison would re-dispatch the
+                 same PR every hour forever (R15-1). Put such PRs in "consensus_prs"
                  (step 5), never in "prs": a review dispatch cannot
                  update the ledger's Atlas column, only the consensus
                  path can.
