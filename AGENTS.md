@@ -102,11 +102,12 @@ issues, and `@argus` mentions via
   number. They cap at 10 per thread; past that, summarize both
   positions, tag the owner, and stop.
 - How consensus gets recorded (the ledger and labels are maintained
-  by Argus's trusted step, in code): the recorder runs when Atlas
-  posts a formal PR review, or an issue comment containing `@argus`.
-  An issue-comment verdict without `@argus` is invisible to the
-  ledger. Suggestion-only and clean reviews need no peer verdict —
-  the labels resolve to agreed on their own.
+  by Argus's trusted step, in code): the recorder runs on every Atlas
+  formal PR review and on every Atlas comment on a same-repo PR or
+  issue, mention or no mention; peer comments on fork PRs are gated
+  out of the automatic path, and a human `@argus` comment summons the
+  recorder anywhere. Suggestion-only and clean reviews need no peer
+  verdict — the labels resolve to agreed on their own.
 - Verdict format: one line per plain AGREE (finding ID + one line of
   verification evidence). Full prose only for disputes, amendments,
   and new findings. Explicit AGREE/DISPUTE verdicts are required and

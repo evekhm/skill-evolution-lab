@@ -488,14 +488,15 @@ disagree, AGENTS.md wins):
   never APPROVE, never REQUEST_CHANGES. Blocking verdicts are gating
   acts reserved for the owner and CI; a bot verdict also goes stale
   and blocks merges after the findings are fixed.
-- RECORDING: verdicts you post as formal PR reviews are ingested by
-  Argus automatically (the workflow subscribes to
-  pull_request_review). Verdicts you post as ISSUE comments must
-  include "@argus" or they are invisible to the ledger.
-  Suggestion-only and clean reviews need no verdict at all — labels
-  resolve on their own. Argus will not reply to a pure agreement:
-  silence after your AGREE verdict means consensus is recorded — do
-  not follow up.
+- RECORDING: verdicts you post as formal PR reviews, and any comment
+  you post on a same-repo PR or issue, are ingested by Argus
+  automatically — the workflow subscribes to pull_request_review and
+  to your comments, mention or no mention. Comments on FORK PRs are
+  gated out of the automatic path; a maintainer's "@argus" drives
+  those. Suggestion-only and clean reviews need no verdict at all —
+  labels resolve on their own. Argus will not reply to a pure
+  agreement: silence after your AGREE verdict means consensus is
+  recorded — do not follow up.
 - Disputes continue until resolved on evidence. Reply when Argus
   disputes your finding or counters your dispute; every reply MUST
   add new evidence. Do not agree in order to converge — dropping a

@@ -79,6 +79,14 @@ on:
       pr_number:
         description: "PR number to review (same-repo PRs only)"
         required: true
+      # "review" re-reviews the PR (job 1). "consensus" runs the
+      # mention/consensus job instead — the sweep uses it to recover a
+      # dropped peer-verdict reconciliation, which a review dispatch
+      # cannot do (mode_review never writes the ledger's Atlas column).
+      mode:
+        description: "review (default) or consensus (reconcile a peer verdict)"
+        required: false
+        default: "review"
 
 jobs:
   # -----------------------------------------------------------------------
@@ -89,7 +97,8 @@ jobs:
     if: >-
       (github.event_name == 'pull_request' &&
        github.event.pull_request.head.repo.full_name == github.repository) ||
-      github.event_name == 'workflow_dispatch'
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.mode != 'consensus')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # One review at a time per PR. Deliberately NOT shared with the
@@ -441,7 +450,9 @@ jobs:
        github.event.pull_request.head.repo.full_name == github.repository &&
        github.event.review.user.login == 'evekhm-atlas-bot' &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
-                github.event.review.author_association))
+                github.event.review.author_association)) ||
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.mode == 'consensus')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Mentions get their own group, NOT shared with auto-review (see
@@ -449,8 +460,16 @@ jobs:
     # question be evicted silently. Two mentions on one thread still
     # queue behind each other. issue.number is empty on review events,
     # hence the pull_request fallback.
+    # Peer-led and dispatched consensus runs serialize per item (they
+    # mutate the ledger); human mentions get a per-run group so a peer
+    # event can never evict a queued human question, which has no
+    # recovery sweep (PR #15 R5-1).
     concurrency:
-      group: argus-mention-${{ github.event.issue.number || github.event.pull_request.number }}
+      group: ${{ (github.event_name == 'pull_request_review' ||
+                  (github.event_name == 'workflow_dispatch') ||
+                  (github.event_name == 'issue_comment' && github.event.comment.user.login == 'evekhm-atlas-bot'))
+                 && format('argus-consensus-{0}', github.event.issue.number || github.event.pull_request.number || inputs.pr_number)
+                 || format('argus-mention-{0}-{1}', github.event.issue.number, github.run_id) }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -510,13 +529,34 @@ jobs:
             echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
           } >> "$GITHUB_ENV"
 
-      # The Atlas-author comment branch of the gate fires without the
-      # "@argus" mention, so it needs the same-repo restriction the
-      # other auto paths have (R5-3): an issue_comment on a fork PR
-      # would otherwise hand this secrets-holding job a thread of
-      # fork-controlled text on the peer's say-so alone. Human-typed
-      # "@argus" comments keep working on fork PRs — the documented
-      # maintainer path for reviewing forks.
+      # Code-level guard for dispatched consensus runs (#15 R3-1 in
+      # the sibling repo): the event branches enforce the fork boundary
+      # in the gate, but a workflow_dispatch with mode=consensus
+      # reaches this job on input alone. Numeric pr_number, same-repo
+      # only, before any agent step runs.
+      - name: Refuse forks and bad input on consensus dispatch
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_INPUT: ${{ inputs.pr_number }}
+        run: |
+          N="$PR_INPUT"
+          case "$N" in (*[!0-9]*|'') echo "::error::bad PR number '$N'"; exit 1;; esac
+          CROSS=$(gh pr view "$N" --repo "${{ github.repository }}" \
+            --json isCrossRepository --jq .isCrossRepository)
+          if [ "$CROSS" != "false" ]; then
+            echo "::error::PR #$N is from a fork — consensus dispatch refused."
+            exit 1
+          fi
+
+      # Peer comments are gated on fork status regardless of mention
+      # text (R5-3, completed in round 13: the peer's documented format
+      # carries "@argus" on disputes and new findings, so a
+      # mention-string exemption left the common case open). An
+      # issue_comment on a fork PR must never hand this secrets-holding
+      # job fork-controlled thread text on the peer's say-so alone.
+      # Human-typed "@argus" comments keep working on fork PRs — the
+      # documented maintainer path for reviewing forks.
       - name: Gate fork PRs out of the peer-comment auto-path
         id: forkgate
         if: github.event_name == 'issue_comment'
@@ -524,11 +564,10 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           IS_PR: ${{ github.event.issue.pull_request != null }}
           IS_ATLAS: ${{ github.event.comment.user.login == 'evekhm-atlas-bot' }}
-          HAS_MENTION: ${{ contains(github.event.comment.body, '@argus') }}
           NUM: ${{ github.event.issue.number }}
         run: |
           SKIP=false
-          if [ "$IS_PR" = "true" ] && [ "$IS_ATLAS" = "true" ] && [ "$HAS_MENTION" = "false" ]; then
+          if [ "$IS_PR" = "true" ] && [ "$IS_ATLAS" = "true" ]; then
             CROSS=$(gh pr view "$NUM" --repo "${{ github.repository }}" \
               --json isCrossRepository --jq .isCrossRepository)
             if [ "$CROSS" != "false" ]; then
@@ -560,8 +599,9 @@ jobs:
           prompt: |
             You are Argus, this repository's automated reviewer. A
             comment containing "@argus" — or a formal PR review by the
-            Atlas peer — was posted on ${{ github.repository }}
-            #${{ github.event.issue.number || github.event.pull_request.number }}
+            Atlas peer, or a dispatched consensus-recovery run — landed
+            on ${{ github.repository }}
+            #${{ github.event.issue.number || github.event.pull_request.number || inputs.pr_number }}
             (id ${{ github.event.comment.id || github.event.review.id }},
             author
             ${{ github.event.comment.user.login || github.event.review.user.login }}).
@@ -666,7 +706,7 @@ jobs:
           if [ -f "$F" ]; then
             bash "$STAGED" consensus \
               "${{ github.repository }}" \
-              "${{ github.event.issue.number || github.event.pull_request.number }}" "$F"
+              "${{ github.event.issue.number || github.event.pull_request.number || inputs.pr_number }}" "$F"
           else
             echo "no consensus file — nothing to record"
           fi
