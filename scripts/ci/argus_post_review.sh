@@ -87,19 +87,26 @@ find_ledger_comment() { # -> "id<TAB>body" or empty
         | head -1
 }
 
-extract_ledger_data() { # stdin: comment body -> data json (or {})
-    # jq with ZERO inputs prints nothing and exits 0, so an || fallback
-    # alone never fires for a marker comment with no data block —
-    # downstream callers then choke on the empty string (R2-2). Test
-    # non-emptiness explicitly.
-    local out
-    out=$(sed -n '/<!-- argus-ledger-data/,/^-->$/p' | sed '1d;$d' \
-        | jq -c '.' 2>/dev/null || true)
-    if [ -n "$out" ]; then
-        echo "$out"
-    else
+extract_ledger_data() { # stdin: comment body -> data json (or {}); rc 1 on corrupt
+    # Two distinct empty-looking cases (R2-2, then AEL#22 R3-3):
+    # - NO data block at all -> the default shape (a fresh ledger).
+    # - a PRESENT but unparseable block -> FAIL. Falling back to the
+    #   default there would let a corrupted (or marker-injected) block
+    #   silently erase recorded findings, and the hourly relabel would
+    #   then flip labels to consensus:agreed off the empty state.
+    #   Failing is loud: review/consensus turn the job red; the sweep's
+    #   per-item guard skips just that item.
+    local region out
+    region=$(sed -n '/<!-- argus-ledger-data/,/^-->$/p' | sed '1d;$d')
+    if [ -z "$region" ]; then
         echo '{"findings":[],"atlas_seen":false}'
+        return 0
     fi
+    if ! out=$(printf '%s\n' "$region" | jq -c '.' 2>/dev/null) || [ -z "$out" ]; then
+        echo "ERROR: ledger data block present but unparseable — refusing to treat it as empty" >&2
+        return 1
+    fi
+    echo "$out"
 }
 
 load_ledger() { # -> ledger data json (default shape when no ledger exists yet)
@@ -396,6 +403,10 @@ mode_consensus() {
         | ($c[0].escalated) as $esc
         | .findings |= map(if (.id as $i | $esc | index($i))
               then .outcome = "escalated" else . end)
+        | (if (($c[0].summary // "") == "")
+             and (([$c[0].updates[]?.atlas] + [$c[0].new_findings[]?.argus_verdict])
+                  | any(. == "dispute"))
+           then del(.consensus_summary) else . end)
         | (if (($c[0].summary // "") != "")
            then .consensus_summary = ($c[0].summary | gsub("-->|<!--"; "→"))
            else . end)' <<<"$data")

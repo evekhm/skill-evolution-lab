@@ -126,7 +126,10 @@ jobs:
           RESP=$(gh api -X GET search/issues \
             -f q="repo:${{ github.repository }} label:\"consensus:pending\" updated:>=${SINCE}" \
             || echo '{}')
-          TOTAL=$(echo "$RESP" | jq -r '.total_count // 0')
+          if [ "$RESP" = "{}" ]; then
+            echo "::warning::self-heal search failed — skipping this cycle"
+          fi
+          TOTAL=$(echo "$RESP" | jq -r '.total_count // 0' 2>/dev/null || echo 0)
           NUMS=$(echo "$RESP" | jq -r '.items[:20][].number' 2>/dev/null || true)
           COUNT=0
           for N in $NUMS; do
