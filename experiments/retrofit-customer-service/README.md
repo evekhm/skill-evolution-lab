@@ -117,15 +117,22 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
    reintroduced one via its poison rule (hc1).
 2. Round 2's poison rule: a failure's de-escalation consolidated as
    procedure ("adjust the price to match the user's expected total"),
-   caught in diff review, confirmed by the held-out exam.
-3. Guardrail refusal of an entire round under an undersized
+   caught in diff review, confirmed by the held-out exam — and it
+   fired on hc1 OUTSIDE its own stated trigger (hc1 mentions no
+   discount). Its seed is already in V1's round-1 patches.
+3. Evolution writes contradictions: V1 shipped an update-on-correction
+   rule alongside a never-update-unverified rule; its one executed
+   write (hc7) is that contradiction resolving the wrong way. See the
+   "Skill lineage analysis" section in SUMMARY.md for the full V0 ->
+   V1 -> V2 rule-by-rule comparison.
+4. Guardrail refusal of an entire round under an undersized
    `--max-chars`: correct refusal, operator-parameter bug.
-4. The instrument finding: a generic usefulness judge with no answer
+5. The instrument finding: a generic usefulness judge with no answer
    key INVERTED the held-out ranking — it credited V0's polite
    parroting and scored V2's correct hc14 refusal as unhelpful for
    refusing a false date. What first looked like judge noise at small
    n was a systematic keyless-judge bias; a full answer key
    (`cs_heldout_answer_key.json`) restored a monotone, transcript-
    consistent ranking. Headline rates must be ground-truth rates.
-5. A stall class (hc4/hc11/hc12: ask for identifiers instead of
+6. A stall class (hc4/hc11/hc12: ask for identifiers instead of
    verifying) untouched by both rounds and invisible in aggregates.
