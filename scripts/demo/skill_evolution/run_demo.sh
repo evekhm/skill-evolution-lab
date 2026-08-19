@@ -898,6 +898,14 @@ for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
     v=$(basename "$f" | grep -oE '^v[0-9]+' || true)
     [ "$v" = "v0" ] && continue
     rate=$(jq -r '.summary.meaningful_rate // -1' "$f" 2>/dev/null)
+    # A report that lost records to the error-shaped preflight has a
+    # shrunken denominator; its rate is not comparable to the others'
+    # (review R3-1 on #106) — leave it out of winner selection.
+    excl=$(jq -r '.summary.excluded_error_shaped.count // 0' "$f" 2>/dev/null)
+    if [ "${excl:-0}" != "0" ]; then
+        echo "  winner selection: skipping $(basename "$f") — ${excl} error-shaped record(s) excluded, rate not comparable"
+        continue
+    fi
     if awk "BEGIN{exit !($rate > $BEST_RATE)}"; then
         BEST_RATE="$rate"; BEST_REPORT="$f"
         # candidate reports carry no version; the deployed winner is
@@ -959,12 +967,15 @@ step_close
     echo "|---|---|---|---|"
     row() {
         local label="$1" f="$2"
-        local gt j m tot
+        local gt j m tot ex
         gt=$(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "n/a"' "$f")
         j=$(jq -r '.summary.meaningful_rate // "?"' "$f")
         m=$(jq -r '.summary.golden_eval_summary.matched // 0' "$f")
         tot=$(jq -r '.summary.total_sessions // "?"' "$f")
-        echo "| $label | ${gt}% | ${j}% | ${m}/${tot} |"
+        # Post-preflight denominator: mark rows that lost records so 17
+        # asked is distinguishable from 20 asked with 3 excluded.
+        ex=$(jq -r '(.summary.excluded_error_shaped.count // 0) as $n | if $n > 0 then " (" + ($n|tostring) + " excluded)" else "" end' "$f")
+        echo "| $label | ${gt}% | ${j}% | ${m}/${tot}${ex} |"
     }
     row "V0 baseline" "$RUN_DIR/v0_quality_report.json"
     for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \

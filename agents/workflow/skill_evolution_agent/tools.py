@@ -905,6 +905,20 @@ def _extract_rate(report_path: str, field: str) -> str:
         return "?"
 
 
+def _excluded_count(report_path: str) -> int:
+    """Error-shaped records the scorer's preflight dropped from this report.
+
+    A non-zero count means the report's rates use a shrunken denominator
+    and cannot be compared against other reports by raw rate.
+    """
+    try:
+        with open(report_path) as f:
+            summary = json.load(f).get("summary") or {}
+        return int((summary.get("excluded_error_shaped") or {}).get("count", 0))
+    except Exception:
+        return 0
+
+
 def _find_evolved_skill(run_dir: str, version: str, agent: str) -> str | None:
     """Find the evolved skill MD file in the run directory."""
     candidates = [
@@ -953,6 +967,11 @@ def _collect_quality_metrics(
             for path in glob_mod.glob(
                 os.path.join(run_dir, "**", pattern), recursive=True,
             ):
+                if _excluded_count(path):
+                    logger.warning(
+                        "Skipping %s for the PR-title rate: preflight "
+                        "excluded records, denominator not comparable", path)
+                    continue
                 try:
                     rate = float(_extract_rate(path, "meaningful_rate"))
                 except ValueError:
@@ -1677,6 +1696,14 @@ def extract_regression_cases(
         for p in glob_mod.glob(
             os.path.join(run_dir, "**", pattern), recursive=True,
         ):
+            # A candidate whose preflight dropped records is scored over a
+            # smaller, error-reshaped question subset; its raw rate cannot
+            # beat reports with full denominators (review R3-1 on #106).
+            if _excluded_count(p):
+                logger.warning(
+                    "Skipping candidate %s: preflight excluded records, "
+                    "rate not comparable", p)
+                continue
             try:
                 rate = float(_extract_rate(p, "meaningful_rate"))
             except ValueError:

@@ -98,15 +98,18 @@ def exclude_error_shaped(
     without complaint, which has produced fake 0% rates before
     (Verification Contract, "error-shaped answers").
 
-    A record is *excluded* when no completed exchange survives the error
-    (no usable agent answer before the first error turn). A multi-turn
-    record that failed part-way but holds completed exchanges is *kept*:
-    a copy is scored with the transcript truncated at the first error
-    turn — trailing unanswered user turns dropped, ``user_turns`` and
-    the final response recomputed from the kept turns, and
-    ``preflight_truncated`` set — so late-turn quota failures neither
-    bias the sample toward short conversations nor read as the agent
-    ignoring the last question.
+    A record is *excluded* when nothing scoreable can be salvaged: the
+    final response is empty or ``ERROR:``-shaped, the ``errors`` flag is
+    set with no error turn in the transcript to cut at (the generator
+    always writes one, so a flag-only record is corrupt), or no completed
+    exchange precedes the first error turn. A multi-turn record that
+    failed part-way but holds completed exchanges is *kept*: a copy is
+    scored with the transcript truncated at the first error turn —
+    trailing unanswered user turns dropped; ``user_turns``, the final
+    response, and the tag-derived ``corrections``/``verifications``
+    counters recomputed from the kept turns; ``preflight_truncated``
+    set — so late-turn quota failures neither bias the sample toward
+    short conversations nor read as the agent ignoring the last question.
 
     Returns ``(scoreable, excluded_ids, truncated_ids)``.
     """
@@ -114,24 +117,22 @@ def exclude_error_shaped(
     for c in conversations:
         final = str(c.get("response") or c.get("final_response") or "")
         turns = [t for t in (c.get("conversation") or []) if isinstance(t, dict)]
-        error_shaped = bool(c.get("errors")) or final.startswith("ERROR:") or any(
-            t.get("role") != "user" and str(t.get("text") or "").startswith("ERROR:")
-            for t in turns
+        first_error = next(
+            (i for i, t in enumerate(turns)
+             if t.get("role") != "user"
+             and str(t.get("text") or "").startswith("ERROR:")),
+            None,
         )
+        error_shaped = (bool(c.get("errors")) or final.startswith("ERROR:")
+                        or first_error is not None)
         if not error_shaped:
             scoreable.append(c)
             continue
         session_id = str(c.get("session_id") or c.get("id") or "?")
-        if not final or final.startswith("ERROR:"):
+        if not final or final.startswith("ERROR:") or first_error is None:
             excluded.append(session_id)
             continue
-        kept_turns = []
-        for t in turns:
-            if t.get("role") != "user" and str(t.get("text") or "").startswith(
-                "ERROR:"
-            ):
-                break
-            kept_turns.append(t)
+        kept_turns = turns[:first_error]
         # The generator appends the user turn before the send that failed,
         # so the cut transcript ends on an unanswered question — drop it,
         # or the judge scores the infra failure as the agent ignoring it.
@@ -141,7 +142,7 @@ def exclude_error_shaped(
             str(t.get("text") or "") for t in kept_turns
             if t.get("role") != "user" and str(t.get("text") or "").strip()
         ]
-        if turns and not agent_texts:
+        if not agent_texts:
             excluded.append(session_id)
             continue
         copy = {**c, "conversation": kept_turns, "errors": 0,
@@ -149,10 +150,18 @@ def exclude_error_shaped(
         if "user_turns" in copy:
             copy["user_turns"] = sum(
                 1 for t in kept_turns if t.get("role") == "user")
-        if agent_texts:
-            for key in ("response", "final_response"):
-                if key in copy:
-                    copy[key] = agent_texts[-1]
+        # The generator increments these per user-turn tag before the send
+        # that failed — recount them over the kept turns or the report
+        # claims a correction the judge never saw.
+        for field, tag in (("corrections", "CORRECTION"),
+                           ("verifications", "VERIFY")):
+            if field in copy:
+                copy[field] = sum(
+                    1 for t in kept_turns
+                    if t.get("role") == "user" and t.get("tag") == tag)
+        for key in ("response", "final_response"):
+            if key in copy:
+                copy[key] = agent_texts[-1]
         scoreable.append(copy)
         truncated.append(session_id)
     return scoreable, excluded, truncated

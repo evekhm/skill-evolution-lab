@@ -175,12 +175,19 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
             {"role": "user", "text": "quoting"},
             {"role": "agent", "text": "The log line says 'ERROR: x' means..."},
         ]},
-        {"session_id": "partial", "errors": 1, "user_turns": 2,
+        # errors flag set but no error turn to cut at — the generator
+        # always writes one, so this record is corrupt; excluded rather
+        # than kept with fabricated conversation/user_turns (R3-5).
+        {"session_id": "flag-only", "response": "fine text", "errors": 1},
+        {"session_id": "partial", "errors": 1, "user_turns": 3,
+         "corrections": 2, "verifications": 1,
          "final_response": "Your balance is 20 days.",
          "conversation": [
              {"role": "user", "text": "balance?"},
+             {"role": "agent", "text": "It is 25 days."},
+             {"role": "user", "text": "no, check again", "tag": "CORRECTION"},
              {"role": "agent", "text": "Your balance is 20 days."},
-             {"role": "user", "text": "and next year?"},
+             {"role": "user", "text": "sure?", "tag": "VERIFY"},
              {"role": "system", "text": "ERROR: 503 quota"},
          ]},
         # ERROR arrived as agent *text* (errors=0) before any completed
@@ -198,20 +205,26 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
     ]
     kept, excluded, truncated = sc.exclude_error_shaped(convs)
     assert [c["session_id"] for c in kept] == ["ok-1", "ok-2", "partial"]
-    assert excluded == ["err-resp", "err-turn", "err-then-recovered"]
+    assert excluded == ["err-resp", "err-turn", "flag-only",
+                        "err-then-recovered"]
     assert truncated == ["partial"]
     partial = kept[-1]
     # Truncated copy ends on the last completed exchange: the error turn
-    # AND the unanswered trailing user turn are gone (R2-1), user_turns
-    # and final_response recomputed from the kept turns; the original
-    # record is untouched.
+    # AND the unanswered trailing user turn are gone (R2-1); user_turns,
+    # final_response, and the tag-derived corrections/verifications
+    # counters recomputed from the kept turns (R3-3); the original record
+    # is untouched.
     assert [t["text"] for t in partial["conversation"]] == [
-        "balance?", "Your balance is 20 days."]
-    assert partial["user_turns"] == 1
+        "balance?", "It is 25 days.", "no, check again",
+        "Your balance is 20 days."]
+    assert partial["user_turns"] == 2
+    assert partial["corrections"] == 1  # the VERIFY turn was cut
+    assert partial["verifications"] == 0
     assert partial["final_response"] == "Your balance is 20 days."
     assert partial["preflight_truncated"] is True and not partial["errors"]
-    assert convs[4]["errors"] == 1 and len(convs[4]["conversation"]) == 4
-    assert convs[4]["user_turns"] == 2
+    original = next(c for c in convs if c["session_id"] == "partial")
+    assert original["errors"] == 1 and len(original["conversation"]) == 6
+    assert original["user_turns"] == 3 and original["corrections"] == 2
     # Idempotent: a second pass finds nothing error-shaped in the output.
     kept2, excluded2, truncated2 = sc.exclude_error_shaped(kept)
     assert (kept2, excluded2, truncated2) == (kept, [], [])
@@ -273,3 +286,28 @@ def test_md_report_carries_exclusion_row(tmp_path):
     md = open(md_path).read()
     assert "| Excluded error-shaped (infra failures, not in denominator) | 2 |" in md
     assert "| Truncated at first error turn (completed exchanges scored) | 1 |" in md
+
+
+def test_excluded_count_guards_candidate_selection(tmp_path):
+    # #106 R3-1 (and its tools.py sister): a report that lost records to
+    # the preflight has a shrunken denominator; selection must be able to
+    # see that and skip it instead of comparing raw rates.
+    import json as _json
+
+    quota_hit = tmp_path / "candidate_1_report.json"
+    quota_hit.write_text(_json.dumps({"summary": {
+        "meaningful_rate": 100.0,
+        "excluded_error_shaped": {"count": 3, "session_ids": ["a", "b", "c"]},
+    }}))
+    clean = tmp_path / "candidate_2_report.json"
+    clean.write_text(_json.dumps({"summary": {
+        "meaningful_rate": 88.0,
+        "excluded_error_shaped": {"count": 0, "session_ids": []},
+    }}))
+    legacy = tmp_path / "old_report.json"
+    legacy.write_text(_json.dumps({"summary": {"meaningful_rate": 90.0}}))
+
+    assert evolution_tools._excluded_count(str(quota_hit)) == 3
+    assert evolution_tools._excluded_count(str(clean)) == 0
+    assert evolution_tools._excluded_count(str(legacy)) == 0  # pre-key report
+    assert evolution_tools._excluded_count(str(tmp_path / "missing.json")) == 0

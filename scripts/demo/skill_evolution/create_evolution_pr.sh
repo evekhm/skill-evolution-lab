@@ -189,6 +189,25 @@ BASELINE_UNHELPFUL=$(extract_rate "$BASELINE_REPORT" "unhelpful_rate")
 
 MEANINGFUL_DELTA=$(fmt_delta "$BASELINE_MEANINGFUL" "$EVOLVED_MEANINGFUL")
 UNHELPFUL_DELTA=$(fmt_delta "$BASELINE_UNHELPFUL" "$EVOLVED_UNHELPFUL")
+
+# Preflight can drop error-shaped records from either report, shrinking its
+# denominator. A delta across two different denominators is not a
+# measurement (review R3-2 on #106) — suppress it and say so in the title
+# and the metrics table.
+extract_excl () { jq -r '.summary.excluded_error_shaped.count // 0' "$1" 2>/dev/null || echo 0; }
+BASELINE_EXCL=$(extract_excl "$BASELINE_REPORT")
+EVOLVED_EXCL=$(extract_excl "$QUALITY_REPORT")
+EXCL_NOTE=""
+TITLE_SUFFIX=""
+if [ "${BASELINE_EXCL:-0}" != "${EVOLVED_EXCL:-0}" ]; then
+    MEANINGFUL_DELTA=""
+    UNHELPFUL_DELTA=""
+    TITLE_SUFFIX=" [denominators differ]"
+    EXCL_NOTE="DENOMINATORS DIFFER: the preflight excluded ${BASELINE_EXCL} baseline vs ${EVOLVED_EXCL} evolved error-shaped record(s), so the two rates cover different question subsets. Deltas suppressed."
+elif [ "${EVOLVED_EXCL:-0}" != "0" ]; then
+    EXCL_NOTE="Note: the preflight excluded ${EVOLVED_EXCL} error-shaped record(s) from each report's denominator."
+fi
+
 M_DELTA_DISP=$(delta_disp "$MEANINGFUL_DELTA")
 U_DELTA_DISP=$(delta_disp "$UNHELPFUL_DELTA")
 
@@ -211,7 +230,7 @@ else
     UPGRADE="${VERSION}"
 fi
 if [ -n "$EVOLVED_MEANINGFUL" ] && [ -n "$BASELINE_MEANINGFUL" ]; then
-    TITLE="Evolve ${AGENT} skill ${UPGRADE}: meaningful ${BASE_M_DISP} -> ${EVO_M_DISP}${MEANINGFUL_DELTA:+ (${MEANINGFUL_DELTA}pp)}"
+    TITLE="Evolve ${AGENT} skill ${UPGRADE}: meaningful ${BASE_M_DISP} -> ${EVO_M_DISP}${MEANINGFUL_DELTA:+ (${MEANINGFUL_DELTA}pp)}${TITLE_SUFFIX}"
 elif [ -n "$BASELINE_MEANINGFUL" ]; then
     TITLE="Evolve ${AGENT} skill ${UPGRADE}: baseline ${BASE_M_DISP} (evolved not yet scored)"
 else
@@ -233,6 +252,7 @@ echo "Baseline report: ${BASELINE_REPORT:-<none>}"
 echo "Evolved report:  ${QUALITY_REPORT:-<none>}"
 echo "Meaningful:      ${BASE_M_DISP} -> ${EVO_M_DISP}${MEANINGFUL_DELTA:+ (${MEANINGFUL_DELTA}pp)}"
 echo "Unhelpful:       ${BASE_U_DISP} -> ${EVO_U_DISP}${UNHELPFUL_DELTA:+ (${UNHELPFUL_DELTA}pp)}"
+[ -n "$EXCL_NOTE" ] && echo "Exclusions:      ${EXCL_NOTE}"
 echo ""
 
 # --- Output-file mode ---
@@ -354,6 +374,12 @@ METRICS_TABLE="| Metric | Baseline (${BASELINE_LABEL}) | Evolved (${VERSION}) | 
 | Meaningful rate | ${BASE_M_DISP} | ${EVO_M_DISP} | ${M_DELTA_DISP} |
 | Unhelpful rate | ${BASE_U_DISP} | ${EVO_U_DISP} | ${U_DELTA_DISP} |
 | Skill size | — | ${EVOLVED_SIZE} chars | |"
+if [ -n "$EXCL_NOTE" ]; then
+    METRICS_TABLE="${METRICS_TABLE}
+| Excluded error-shaped (infra) | ${BASELINE_EXCL} | ${EVOLVED_EXCL} | |
+
+${EXCL_NOTE}"
+fi
 
 PR_BODY=""
 if command -v agy &>/dev/null; then
