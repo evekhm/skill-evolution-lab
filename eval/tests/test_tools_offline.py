@@ -441,5 +441,10 @@ def test_unmeasurable_winner_records_null_marker(tmp_path):
                     "unhelpful_rate": 25.0}}))
     res = evolution_tools.compare_versions(str(tmp_path))
     ev = next(v for v in res["versions"] if v["version"] == "evolved")
-    assert ev["excluded"] == 1
+    # R7-1: the marker renders as unmeasured, never as a measured 0% on
+    # a fabricated session count, and it can never be best_version.
+    assert ev["unmeasurable"] is True
+    assert ev["meaningful_rate"] is None
     assert ev["delta"] is None
+    assert "n/a (unmeasurable)" in res["table"]
+    assert res["best_version"] == "v0"

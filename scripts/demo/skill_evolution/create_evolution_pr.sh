@@ -306,7 +306,7 @@ Output ONLY the issue body markdown."
 | Unhelpful rate | ${BASE_U_DISP} → ${EVO_U_DISP}${UNHELPFUL_DELTA:+ (${UNHELPFUL_DELTA}pp)} |
 | Excluded error-shaped (infra) | ${BASELINE_EXCL:-0} baseline / ${EVOLVED_EXCL:-0} evolved |
 | Skill size | ${EVOLVED_SIZE} chars |
-| Run | \`$(basename "$RUN_DIR")\` |${EXCL_FOOTER}"
+| Run | \`$(basename "$RUN_DIR")\` |"
     fi
 
     if $DRY_RUN; then

@@ -359,11 +359,13 @@ def evolve(
     # never recorded as the authoritative deployed score / next incumbent
     # bar.
     scores: dict[str, float] = {}
+    unmeasured: set[str] = set()
     wrapped_score_fn = None
     if score_fn is not None:
         def wrapped_score_fn(skill_content: str) -> float:
             raw = score_fn(skill_content)
             if raw is None:
+                unmeasured.add(skill_content)
                 logger.warning(
                     "Candidate score unmeasurable (preflight exclusions); "
                     "using 0.0 for selection, not recording it"
@@ -400,10 +402,20 @@ def evolve(
         _record_evolved_score(candidates_dir, incumbent_score)
     elif selected in scores:
         _record_evolved_score(candidates_dir, scores[selected])
-    elif wrapped_score_fn is not None:
-        # Winner was scored but unmeasurable (its report lost records to
-        # the preflight): write the explicit null marker (review R6-4).
+    elif selected in unmeasured:
+        # Winner was scored and came back unmeasurable (its report lost
+        # records to the preflight): write the explicit null marker (R6-4).
         _record_evolved_score(candidates_dir, None, unmeasurable=True)
+    elif wrapped_score_fn is not None:
+        # Memo miss without an unmeasurable verdict: the engine returned
+        # content that is not byte-identical to what it scored (compaction
+        # or sanitize after scoring, review R7-2 on #106). That is a key
+        # mismatch, not a failed measurement — leave evolved_score.json
+        # alone rather than overwrite a real score with a null.
+        logger.warning(
+            "Selected skill not found in the score memo (transformed "
+            "after scoring?); evolved_score.json left unchanged"
+        )
 
     logger.info("Evolution complete in %.1fs", time.time() - t0)
     return selected

@@ -2681,39 +2681,51 @@ def compare_versions(run_dir: str) -> dict:
             with open(evolved_score_path) as f:
                 es = json.load(f)
             if not any(v["version"] == "evolved" for v in versions):
+                # An unmeasurable winner records a null score (R6-4);
+                # publish it as unmeasured — never as 0% on a session
+                # count it never had (review R7-1 on #106).
+                unmeasurable = bool(es.get("unmeasurable"))
                 versions.append({
                     "version": "evolved",
-                    "total_sessions": versions[0]["total_sessions"]
-                    if versions else 0,
+                    "total_sessions": 0 if unmeasurable else (
+                        versions[0]["total_sessions"] if versions else 0),
                     "meaningful": 0,
-                    "meaningful_rate": es.get("meaningful_rate") or 0,
+                    "meaningful_rate": (None if unmeasurable
+                                        else es.get("meaningful_rate", 0)),
                     "unhelpful": 0,
                     "unhelpful_rate": 0,
-                    # An unmeasurable winner records a null score (review
-                    # R6-4); treat it like a shrunken report everywhere.
-                    "excluded": 1 if es.get("unmeasurable") else 0,
+                    "excluded": 0,
+                    "unmeasurable": unmeasurable,
                 })
         except Exception:  # noqa: BLE001
             pass
 
-    # Compute deltas — only between reports with full denominators; a delta
-    # across a preflight-shrunken report is not a measurement (R6-2).
+    # Compute deltas — only between measured reports with full
+    # denominators; a delta across a preflight-shrunken or unmeasurable
+    # report is not a measurement (R6-2, R7-1).
+    def _uncomparable(v):
+        return (v.get("excluded") or v.get("unmeasurable")
+                or v["meaningful_rate"] is None)
+
     for i, v in enumerate(versions):
-        if i == 0 or v.get("excluded") or versions[i - 1].get("excluded"):
+        if i == 0 or _uncomparable(v) or _uncomparable(versions[i - 1]):
             v["delta"] = None
         else:
             prev_rate = versions[i - 1]["meaningful_rate"] or 0
             curr_rate = v["meaningful_rate"] or 0
             v["delta"] = round(curr_rate - prev_rate, 1)
 
-    # Find peak version (excluding v0 baseline); clean denominators first,
-    # shrunken reports only as a marked fallback.
+    # Find peak version (excluding v0 baseline); clean measured
+    # denominators first, shrunken reports only as a marked fallback,
+    # never an unmeasurable row.
     evolved = [v for v in versions if v["version"] != "v0"]
-    clean_evolved = [v for v in evolved if not v.get("excluded")]
+    measured = [v for v in evolved if v["meaningful_rate"] is not None
+                and not v.get("unmeasurable")]
+    clean_evolved = [v for v in measured if not v.get("excluded")]
     if clean_evolved:
         best = max(clean_evolved, key=lambda v: v["meaningful_rate"])
-    elif evolved:
-        best = max(evolved, key=lambda v: v["meaningful_rate"])
+    elif measured:
+        best = max(measured, key=lambda v: v["meaningful_rate"])
         logger.warning(
             "compare_versions: every evolved report has preflight "
             "exclusions; best_version %s is on a shrunken denominator",
@@ -2726,16 +2738,25 @@ def compare_versions(run_dir: str) -> dict:
     sep = "|---------|----------|-----------------|-------|------|"
     rows = [header, sep]
     for v in versions:
-        delta = f"+{v['delta']}pp" if v["delta"] and v["delta"] > 0 else (
-            f"{v['delta']}pp" if v["delta"] else "-"
-        )
+        # A measured 0.0pp must stay distinguishable from a suppressed
+        # delta (R7-3).
+        if v["delta"] is None:
+            delta = "-"
+        elif v["delta"] > 0:
+            delta = f"+{v['delta']}pp"
+        else:
+            delta = f"{v['delta']}pp"
         marker = " <-- " if v["version"] == best["version"] else ""
-        sessions = str(v["total_sessions"])
-        if v.get("excluded"):
-            sessions += f" ({v['excluded']} excluded)"
+        if v.get("unmeasurable"):
+            sessions, rate = "-", "n/a (unmeasurable)"
+        else:
+            sessions = str(v["total_sessions"])
+            if v.get("excluded"):
+                sessions += f" ({v['excluded']} excluded)"
+            rate = f"{v['meaningful_rate']}%"
         rows.append(
             f"| {v['version']:<7} | {sessions:>8} | "
-            f"{v['meaningful_rate']:>13}% | {delta:>5} | {marker:>4} |"
+            f"{rate:>13} | {delta:>5} | {marker:>4} |"
         )
 
     return {
