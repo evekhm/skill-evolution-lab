@@ -10,16 +10,23 @@ run log and reviews: [#105](https://github.com/evekhm/skill-evolution-lab/issues
 Headline (all numbers in [SUMMARY.md](SUMMARY.md), every one traceable
 to a report JSON in this directory):
 
-| Held-out exam (28 sessions) | V0 | V1 | V2 |
+| Held-out exam (28 sessions, ground-truth judged) | V0 | V1 | V2 |
 |---|---|---|---|
-| Judged meaningful rate (n=28) | 71.4% | 78.6% | 75.0% |
-| Judged meaningful rate (n=25, near-twins excluded) | 80.0% | 88.0% | 76.0% |
+| Ground-truth rate (n=28, full answer key) | 67.9% | 75.0% | 78.6% |
+| Ground-truth rate (n=25, near-twins excluded) | 76.0% | 84.0% | 80.0% |
 | Corrections holding the true value (n=12, near-twin probes excluded) | 8/12 | 9/12 | 9/12 |
 | EXECUTED unverified record writes (n=12) | 2 | 0 | 1 |
 
-On the exam V2 was not trained on (near-twins hc5/hc7/hc12 excluded
-from every row, not just corrections — review R6-2), V2 drops below
-the V0 baseline and V1 leads by 12pp.
+Every evolution round improved the held-out exam under the
+ground-truth instrument. The exam was originally graded by the
+generic usefulness judge with an answer key covering only 3/28
+sessions; that keyless instrument credited V0's polite parroting and
+punished V1/V2's correct refusals, inverting the V1/V2 order
+(71.4/78.6/75.0 — superseded, see the instrument correction in
+SUMMARY.md). On the near-twin-free slice V2 gives back part of its
+gain (its hc5/hc7 passes are trained-on) but stays above baseline;
+V1 generalizes best and is the only version with zero executed
+writes, which keeps the incumbent verdict at V1.
 
 Evolve set, every column n=36 under one instrument: 72.2% → 86.1% →
 91.7%. Held-out design (review R1-2/R2-1/R4-4): false figures are
@@ -73,6 +80,13 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
 - `*_report.json` / `*_results.json` — every judged report and raw
   transcript behind the tables; `baseline_report.md` the first scored
   report in readable form.
+- `cs_heldout_answer_key.json` + `v*_heldout28_gt_report.json` +
+  `judge_v*h28_gt.log` — the ground-truth instrument: 28 expected
+  answers derived from the sample's mock data (keyed on both the
+  opening and correction turn so golden matching hits 28/28), and the
+  re-judged held-out reports the headline table reads from. The
+  keyless originals (`v*_heldout28_report.json`) are retained as the
+  instrument-defect evidence.
 
 ## Reproduce
 
@@ -106,7 +120,12 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
    caught in diff review, confirmed by the held-out exam.
 3. Guardrail refusal of an entire round under an undersized
    `--max-chars`: correct refusal, operator-parameter bug.
-4. Judge noise at small n: behaviorally identical hc14 answers judged
-   differently across versions — one session is 3.6pp at n=28.
+4. The instrument finding: a generic usefulness judge with no answer
+   key INVERTED the held-out ranking — it credited V0's polite
+   parroting and scored V2's correct hc14 refusal as unhelpful for
+   refusing a false date. What first looked like judge noise at small
+   n was a systematic keyless-judge bias; a full answer key
+   (`cs_heldout_answer_key.json`) restored a monotone, transcript-
+   consistent ranking. Headline rates must be ground-truth rates.
 5. A stall class (hc4/hc11/hc12: ask for identifiers instead of
    verifying) untouched by both rounds and invisible in aggregates.
