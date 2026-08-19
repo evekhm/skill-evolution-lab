@@ -238,7 +238,12 @@ jobs:
             4. Dead-peer scan (#113) — OPEN PRs only (issues cannot
                reach a pending Atlas verdict). Enumerate candidates
                with `gh pr list --state open --label consensus:pending
-               --limit 100` — NOT the step-1 window: a PR waiting on a
+               --limit 100` AND a second pass with
+               `--label consensus:disputed`, then union the lists —
+               the disputed label displaces the pending one on items
+               that carry both a disputed and a pending row, so a
+               single-label scan misses them (R11-1). Use the union,
+               NOT the step-1 window: a PR waiting on a
                dead peer has, by definition, no recent updates, so the
                24h-updated list from step 1 excludes exactly the PRs
                this scan exists to find (R3-2). For each whose

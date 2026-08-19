@@ -92,7 +92,7 @@ find_ledger_comment() { # -> base64 row or empty; rc 1 on FETCH failure
     fi
     printf '%s' "$raw" | jq -r --arg who "${ARGUS_LOGIN:-}" '.[]
             | select(($who == "") or (.user.login == $who) or (.user.login == $who + "[bot]"))
-            | select(.body | contains("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
+            | select(.body | startswith("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
         | head -1
 }
 
@@ -395,7 +395,7 @@ mode_consensus() {
             (($u | map(select(.id == $f.id)) | first) // null) as $m
             | if $m == null then $f else
                 $f + {atlas: $m.atlas}
-                    + (if $m.atlas == "agree" and $f.status == "open"
+                    + (if $m.atlas == "agree" and ($f.status == "open" or $f.status == "fixed")
                        then {outcome: "agreed"} else {} end)
                     + (if ($m | has("status")) then {status: $m.status} else {} end)
                     + (if ($m | has("outcome")) then {outcome: $m.outcome} else {} end)
@@ -416,6 +416,7 @@ mode_consensus() {
               then .outcome = "escalated" else . end)
         | ([.findings[] | select(.status != "withdrawn"
               and .severity != "suggestion"
+              and (.outcome // "") != "escalated"
               and (.atlas == "pending" or .atlas == "dispute"))]
            | length) as $unsettled
         | (if $unsettled > 0 then del(.consensus_summary) else . end)
