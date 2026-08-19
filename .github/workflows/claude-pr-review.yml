@@ -579,7 +579,7 @@ jobs:
             - Verdict format: one line per plain AGREE (finding ID +
               one line of verification evidence). Full prose only for
               disputes, amendments, and new findings. Never assert
-              ledger or label state — the trusted step derives it.
+              ledger or label state; the trusted step derives it.
             - Circuit breaker: if N would exceed 10 in the thread,
               post a two-line summary of both positions instead, tag
               @evekhm, and list the contested findings in "escalated".

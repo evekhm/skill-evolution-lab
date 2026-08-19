@@ -112,8 +112,8 @@ issues, and `@argus` mentions via
   and new findings. Explicit AGREE/DISPUTE verdicts are required and
   are not "acknowledgment-only" comments; acknowledgments of
   acknowledgments are — never post those. Never assert ledger or
-  label state ("the ledger can be marked...") — state is derived by
-  the trusted step, not declared by reviewers.
+  label state ("the ledger can be marked..."); the trusted step
+  derives that state from recorded verdicts.
 - Silence after a full-agreement verdict is the protocol's success
   signal.
 

@@ -508,8 +508,8 @@ disagree, AGENTS.md wins):
 - VERDICT FORMAT: one line per plain AGREE (finding ID + one line of
   verification evidence); full prose only for disputes, amendments,
   and new findings. Never assert ledger or label state ("the ledger
-  can be marked agreed") — state is derived by Argus's trusted step,
-  not declared by reviewers.
+  can be marked agreed"); Argus's trusted step derives that state
+  from recorded verdicts.
 - Argus's review comments are not "unaddressed comments" needing a
   reply outside this protocol; never post acknowledgment-only
   comments (explicit AGREE/DISPUTE verdicts are required and do not
