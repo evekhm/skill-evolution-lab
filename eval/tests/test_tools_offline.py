@@ -158,12 +158,13 @@ def test_incumbent_refresh_between_sequential_agents(tmp_path):
 def test_error_shaped_preflight_excludes_infrastructure_failures():
     # The generator writes "ERROR: {e}" transcripts and errors=1 records on
     # send failures; a judge scores those as unhelpful, producing fake rates.
+    # Records with no usable agent answer are excluded; partly-successful
+    # multi-turn records are truncated at the error turn and kept (R1-3).
     from eval.scoring import score_conversations as sc
 
     convs = [
         {"session_id": "ok-1", "response": "You have 20 PTO days.",
          "errors": 0},
-        {"session_id": "err-flag", "response": "fine text", "errors": 1},
         {"session_id": "err-resp",
          "response": "ERROR: 503 Service Unavailable", "errors": 0},
         {"session_id": "err-turn", "errors": 0, "conversation": [
@@ -174,7 +175,82 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
             {"role": "user", "text": "quoting"},
             {"role": "agent", "text": "The log line says 'ERROR: x' means..."},
         ]},
+        {"session_id": "partial", "errors": 1,
+         "final_response": "Your balance is 20 days.",
+         "conversation": [
+             {"role": "user", "text": "balance?"},
+             {"role": "agent", "text": "Your balance is 20 days."},
+             {"role": "user", "text": "and next year?"},
+             {"role": "system", "text": "ERROR: 503 quota"},
+         ]},
     ]
-    kept, excluded = sc.exclude_error_shaped(convs)
-    assert [c["session_id"] for c in kept] == ["ok-1", "ok-2"]
-    assert excluded == ["err-flag", "err-resp", "err-turn"]
+    kept, excluded, truncated = sc.exclude_error_shaped(convs)
+    assert [c["session_id"] for c in kept] == ["ok-1", "ok-2", "partial"]
+    assert excluded == ["err-resp", "err-turn"]
+    assert truncated == ["partial"]
+    partial = kept[-1]
+    # Truncated copy: error turn gone, completed exchanges kept, original
+    # record untouched.
+    assert [t["text"] for t in partial["conversation"]] == [
+        "balance?", "Your balance is 20 days.", "and next year?"]
+    assert partial["preflight_truncated"] is True and not partial["errors"]
+    assert convs[-1]["errors"] == 1 and len(convs[-1]["conversation"]) == 4
+    # Idempotent: a second pass finds nothing error-shaped in the output.
+    kept2, excluded2, truncated2 = sc.exclude_error_shaped(kept)
+    assert (kept2, excluded2, truncated2) == (kept, [], [])
+
+
+# --- #106 R1-1: the exclusion record must reach the report artifact ---------
+
+
+class _FakeSDK:
+    PROJECT_ID = "offline-test"
+
+    @staticmethod
+    def generate_quality_report_from_conversations(convs, **kwargs):
+        return {"summary": {"total_sessions": len(convs)}, "sessions": []}
+
+
+def test_exclusion_record_reaches_report_summary(monkeypatch):
+    # A report scored after preflight exclusions must say so in the JSON:
+    # comparing rates over different denominators silently was the bug.
+    from eval.scoring import score_conversations as sc
+
+    monkeypatch.setattr(sc, "_sdk", _FakeSDK)
+    report = sc.generate_quality_report([
+        {"session_id": "ok-1", "response": "fine", "errors": 0},
+        {"session_id": "err-1", "response": "ERROR: 503", "errors": 1},
+    ])
+    assert report["summary"]["total_sessions"] == 1
+    assert report["summary"]["excluded_error_shaped"] == {
+        "count": 1, "session_ids": ["err-1"]}
+    assert "truncated_error_turns" not in report["summary"]
+
+
+def test_all_error_shaped_raises_instead_of_scoring(monkeypatch):
+    from eval.scoring import score_conversations as sc
+    import pytest
+
+    monkeypatch.setattr(sc, "_sdk", _FakeSDK)
+    with pytest.raises(ValueError, match="error-shaped"):
+        sc.generate_quality_report(
+            [{"session_id": "err-1", "response": "ERROR: 503", "errors": 1}]
+        )
+
+
+def test_md_report_carries_exclusion_row(tmp_path):
+    from eval.scoring import score_conversations as sc
+
+    report = {
+        "summary": {
+            "total_sessions": 8, "meaningful": 6, "meaningful_rate": 75.0,
+            "unhelpful": 2, "unhelpful_rate": 25.0,
+            "excluded_error_shaped": {"count": 2, "session_ids": ["a", "b"]},
+            "truncated_error_turns": {"count": 1, "session_ids": ["c"]},
+        },
+        "sessions": [],
+    }
+    md_path = sc.write_md_report(report, str(tmp_path / "report.json"))
+    md = open(md_path).read()
+    assert "| Excluded error-shaped (infra failures, not in denominator) | 2 |" in md
+    assert "| Truncated at first error turn (completed exchanges scored) | 1 |" in md
