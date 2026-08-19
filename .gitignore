@@ -66,3 +66,8 @@ agents/workflow/skill_evolution_agent/enterprise/
 agents/workflow/skill_evolution_agent/eval/
 agents/workflow/skill_evolution_agent/ensure_sdk.py
 agents/workflow/skill_evolution_agent/gcs_utils.py
+
+# Local Atlas (Antigravity) reviewer runtime: agent profile and verdict
+# staging for the sidecar whose workspace is this checkout. Never committed.
+.agents/
+.atlas/
