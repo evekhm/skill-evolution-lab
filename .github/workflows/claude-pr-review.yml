@@ -481,6 +481,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Pinned ref (R18-4, ports the sibling's #13 precondition):
+          # on pull_request_review GITHUB_REF is the PR merge branch,
+          # and this job stages the trusted posting script from its
+          # checkout — it must come from the default branch, never
+          # from PR-authored code.
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
 
       - name: Mint reviewer app token
@@ -719,8 +725,13 @@ jobs:
             # groups, so an empty-payload upsert would race the
             # serialized peer runs for the ledger comment. Skipping it
             # keeps ledger writers inside one concurrency group.
+            # Emptiness matches the script's clock-advance test
+            # exactly (R18-1): a summary-only payload records nothing
+            # while pending rows exist, so treating it as content
+            # left the recovery dispatch armed forever. Verdict
+            # arrays decide; a stray summary rides along or drops.
             if jq -e '((.updates | length) + (.new_findings | length) +
-                       (.escalated | length)) == 0 and ((.summary // "") == "")' \
+                       (.escalated | length)) == 0' \
                 "$F" >/dev/null 2>&1; then
               if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
                 # A recovery dispatch that parsed nothing still

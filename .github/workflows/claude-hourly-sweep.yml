@@ -132,14 +132,14 @@ jobs:
           TOTAL=0
           ALLNUMS=""
           for LBL in "consensus:pending" "consensus:disputed"; do
-            if ! RESP=$(gh api -X GET search/issues \
+            if ! RESP=$(gh api -X GET --paginate --slurp search/issues \
               -f q="repo:${{ github.repository }} label:\"${LBL}\" updated:>=${SINCE}" \
               -f per_page=100 -f sort=updated -f order=asc); then
               echo "::warning::self-heal search for ${LBL} failed — skipping it this cycle"
               continue
             fi
-            TOTAL=$((TOTAL + $(echo "$RESP" | jq -r '.total_count // 0' 2>/dev/null || echo 0)))
-            ALLNUMS="${ALLNUMS} $(echo "$RESP" | jq -r '.items[].number' 2>/dev/null || true)"
+            TOTAL=$((TOTAL + $(echo "$RESP" | jq -r '.[0].total_count // 0' 2>/dev/null || echo 0)))
+            ALLNUMS="${ALLNUMS} $(echo "$RESP" | jq -r '.[].items[].number' 2>/dev/null || true)"
           done
           # Clock-driven cyclic window (R14-1, ending the ordering
           # series R9/R13): a rotating 20-item slice of the stable

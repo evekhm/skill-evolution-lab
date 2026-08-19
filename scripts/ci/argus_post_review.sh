@@ -223,8 +223,13 @@ apply_labels_from() { # $1 data json
     # that refuted it, or "pending") would otherwise pin the item at
     # consensus:disputed forever.
     secbug=$(echo "$data"  | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion")] | length')
-    disputed=$(echo "$data" | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion" and .atlas=="dispute")] | length')
-    pending=$(echo "$data" | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion" and .atlas=="pending")] | length')
+    # Escalated rows belong to the disputed bucket whatever their
+    # atlas value (R18-2): the escalation handed the disagreement to
+    # the owner, and consensus:disputed is the label whose description
+    # covers exactly that. Counting them as pending pinned items at
+    # consensus:pending with no path out.
+    disputed=$(echo "$data" | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion" and (.atlas=="dispute" or (.outcome // "")=="escalated"))] | length')
+    pending=$(echo "$data" | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion" and .atlas=="pending" and (.outcome // "")!="escalated")] | length')
     seen=$(echo "$data"    | jq -r '.atlas_seen')
 
     local wantA wantC
@@ -436,7 +441,7 @@ mode_consensus() {
     fi
     if ! jq -e '
         (.updates | type == "array") and (.new_findings | type == "array") and
-        (.escalated | type == "array") and
+        (.escalated | type == "array" and all(type == "string")) and
         (((.summary // "") | type == "string")) and
         (.updates | all((.id|type=="string") and (.atlas|IN("agree","dispute")) and
             ((has("status") | not) or (.status == "withdrawn")) and
@@ -469,8 +474,15 @@ mode_consensus() {
             (($u | map(select(.id == $f.id)) | first) // null) as $m
             | if $m == null then $f else
                 $f + {atlas: $m.atlas}
-                    + (if $m.atlas == "dispute" and $f.atlas != "dispute"
+                    + (if $m.atlas == "dispute"
                        then {pending_since: $seen_at} else {} end)
+                    # ^ ANY dispute verdict refreshes the stall clock,
+                    #   re-affirmations included: a repeated verdict is
+                    #   still peer activity, and a nudge during a live
+                    #   exchange is a false alarm. The re-affirmation
+                    #   scenario the narrower guard served is itself a
+                    #   protocol violation and stays a tracked
+                    #   suggestion (#116).
                     + (if $m.atlas == "agree" and ($f.status == "open" or $f.status == "fixed")
                        then {outcome: "agreed"} else {} end)
                     + (if ($m | has("status")) then {status: $m.status} else {} end)
