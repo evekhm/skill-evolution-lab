@@ -141,16 +141,23 @@ jobs:
             TOTAL=$((TOTAL + $(echo "$RESP" | jq -r '.total_count // 0' 2>/dev/null || echo 0)))
             ALLNUMS="${ALLNUMS} $(echo "$RESP" | jq -r '.items[].number' 2>/dev/null || true)"
           done
-          # Two-ended worklist (R9-1/R9-2, then R13-3): the search
-          # returns least-recently-updated first over the whole window
-          # (per_page=100, server-side sort), and the cap takes TEN
-          # from each end — the stale tail that has waited longest AND
-          # the freshest entries, so a just-stuck item is reachable in
-          # the same cycle it stuck. Processing bumps updatedAt, which
-          # rotates handled items away from the stale end.
-          ORDERED=$(printf '%s\n' $ALLNUMS | awk 'NF && !seen[$0]++')
-          NUMS=$({ printf '%s\n' "$ORDERED" | head -10; \
-                   printf '%s\n' "$ORDERED" | tail -10; } | awk 'NF && !seen[$0]++')
+          # Clock-driven cyclic window (R14-1, ending the ordering
+          # series R9/R13): a rotating 20-item slice of the stable
+          # number-sorted list, offset by the hour. Every item is
+          # covered within ceil(N/20) hours regardless of position,
+          # and the rotation depends on nothing the processing might
+          # or might not touch — the write-on-drift change silenced
+          # the updatedAt bumps earlier rotations relied on.
+          ORDERED=$(printf '%s\n' $ALLNUMS | awk 'NF && !seen[$0]++' | sort -un)
+          N_ALL=$(printf '%s\n' "$ORDERED" | sed '/^$/d' | wc -l)
+          if [ "$N_ALL" -le 20 ]; then
+            NUMS="$ORDERED"
+          else
+            PAGES=$(( (N_ALL + 19) / 20 ))
+            OFFSET=$(( ( $(date -u +%s) / 3600 ) % PAGES * 20 ))
+            NUMS=$({ printf '%s\n' "$ORDERED"; printf '%s\n' "$ORDERED"; } \
+              | sed '/^$/d' | tail -n +$((OFFSET + 1)) | head -20)
+          fi
           COUNT=0
           for N in $NUMS; do
             case "$N" in (*[!0-9]*|'') continue;; esac
@@ -319,6 +326,9 @@ jobs:
               --repo "${{ github.repository }}" --ref main \
               -f pr_number="$N"
           done
+          if ! jq -e '(.consensus_prs // []) | type == "array" and length <= 5 and all(type == "number")' "$F" >/dev/null; then
+            echo "::error::consensus_prs failed validation"; exit 1
+          fi
           for N in $(jq -r '(.consensus_prs // [])[]' "$F"); do
             case "$N" in (*[!0-9]*|'') continue;; esac
             echo "dispatching consensus recovery for PR #$N"

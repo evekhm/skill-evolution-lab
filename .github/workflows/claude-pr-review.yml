@@ -704,9 +704,20 @@ jobs:
             exit 1
           fi
           if [ -f "$F" ]; then
-            bash "$STAGED" consensus \
-              "${{ github.repository }}" \
-              "${{ github.event.issue.number || github.event.pull_request.number || inputs.pr_number }}" "$F"
+            # An empty payload records nothing and must write nothing
+            # (R14-2): human mention runs now use per-run concurrency
+            # groups, so an empty-payload upsert would race the
+            # serialized peer runs for the ledger comment. Skipping it
+            # keeps ledger writers inside one concurrency group.
+            if jq -e '((.updates | length) + (.new_findings | length) +
+                       (.escalated | length)) == 0 and ((.summary // "") == "")' \
+                "$F" >/dev/null 2>&1; then
+              echo "empty consensus payload — nothing to record, ledger untouched"
+            else
+              bash "$STAGED" consensus \
+                "${{ github.repository }}" \
+                "${{ github.event.issue.number || github.event.pull_request.number || inputs.pr_number }}" "$F"
+            fi
           else
             echo "no consensus file — nothing to record"
           fi

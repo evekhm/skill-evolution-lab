@@ -469,7 +469,7 @@ mode_consensus() {
              fixed_in: null, outcome: null}
             + (if .source then {source} else {} end)
             + (if .argus_verdict == "dispute"
-               then {atlas: "dispute"}              # the open disagreement
+               then {atlas: "dispute", pending_since: $seen_at}
                else {atlas: "agree", outcome: "agreed"} end)]
         | ($c[0].escalated) as $esc
         | .findings |= map(if (.id as $i | $esc | index($i))
