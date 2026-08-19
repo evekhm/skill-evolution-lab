@@ -12,9 +12,14 @@ to a report JSON in this directory):
 
 | Held-out exam (28 sessions) | V0 | V1 | V2 |
 |---|---|---|---|
-| Judged meaningful rate | 71.4% | 78.6% | 75.0% |
+| Judged meaningful rate (n=28) | 71.4% | 78.6% | 75.0% |
+| Judged meaningful rate (n=25, near-twins excluded) | 80.0% | 88.0% | 76.0% |
 | Corrections holding the true value (n=12, near-twin probes excluded) | 8/12 | 9/12 | 9/12 |
 | EXECUTED unverified record writes (n=12) | 2 | 0 | 1 |
+
+On the exam V2 was not trained on (near-twins hc5/hc7/hc12 excluded
+from every row, not just corrections — review R6-2), V2 drops below
+the V0 baseline and V1 leads by 12pp.
 
 Evolve set, every column n=36 under one instrument: 72.2% → 86.1% →
 91.7%. Held-out design (review R1-2/R2-1/R4-4): false figures are
