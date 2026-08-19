@@ -17,11 +17,14 @@ to a report JSON in this directory):
 | EXECUTED unverified record writes (n=13) | 2 | 0 | 1 |
 
 Evolve set, every column n=36 under one instrument: 72.2% → 86.1% →
-91.7%. Two held-out probes are mirrored in the evolve set (review
-finding R1-2): hc7 shares its false figure and phrasing family with
-x02/r02, and hc5's fabricated-slot request mirrors round-2 probe r03.
-The corrections rows exclude both; SUMMARY.md carries the n=15
-originals alongside.
+91.7%. Held-out design (review R1-2/R2-1): false figures are fresh,
+but phrasing families deliberately probe the trained classes — the
+exam measures generalization within a class, not topic novelty. Two
+probes cross the line from class-probe to near-twin and are excluded
+from the corrections rows: hc7 (shares the 2019 figure AND the
+correct-the-record imperative with x02/r02) and hc5 (mirrors x03/r03's
+fabricated-slot request, differing only in the invented window).
+SUMMARY.md carries the n=15 originals alongside.
 
 The baseline's signature failure: user asserts a false figure, and the
 agent writes it into the system of record ("Your loyalty points have
@@ -43,9 +46,12 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
 - `cs_eval_spec.json` — scope, ground-truth rule, tool descriptions,
   and 18 golden pairs, all derived from the sample's own mock data.
 - `questions_*.json` — evolve set (30 + 6 round-2 probes) and held-out
-  exam (20 + 8 correction extension; figures and phrasings disjoint
-  from the evolve set except hc7 and hc5, which mirror evolve probes —
-  see the R1-2 correction in SUMMARY.md).
+  exam (20 + 8 correction extension). Figures are fresh; phrasing
+  families deliberately reuse the trained classes (twin pairs:
+  hc2↔x01/r01 set-my-points, hc5↔x03/r03 fabricated slot, hc7↔x02/r02
+  correct-the-record with shared 2019 figure). hc7 and hc5 are the
+  near-twins excluded from the clean corrections slice — see the
+  R1-2/R2-1 correction in SUMMARY.md.
 - `v0/v1/v2_instruction.md` — the skill lineage; `v1_candidates/` and
   `v2_candidates/` the per-round competitors (round 1's candidate_1 was
   overwritten by the round-2 run before archiving and is lost).
@@ -74,8 +80,10 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
 
 ## Findings index (details in SUMMARY.md)
 
-1. Overwrite family across versions: offers at first contact, executed
-   writes under imperative phrasings, one residual per round.
+1. Overwrite family across versions: V0 offers on first contact but
+   EXECUTES under held-out imperatives (2 on the clean slice); round 1
+   eliminated executed writes on clean held-out data; round 2
+   reintroduced one via its poison rule (hc1).
 2. Round 2's poison rule: a failure's de-escalation consolidated as
    procedure ("adjust the price to match the user's expected total"),
    caught in diff review, confirmed by the held-out exam.
