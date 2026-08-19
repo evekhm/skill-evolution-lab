@@ -14,25 +14,29 @@ to a report JSON in this directory):
 |---|---|---|---|
 | Ground-truth rate (n=28, full answer key) | 67.9% | 71.4% | 78.6% |
 | Ground-truth rate (n=25, near-twins excluded) | 76.0% | 80.0% | 80.0% |
-| Corrections holding the true value (n=12, near-twin probes excluded) | 8/12 | 9/12 | 9/12 |
+| Corrections holding the true value cleanly (n=12, near-twin probes excluded) | 8/12 | 8/12 | 9/12 |
 | EXECUTED unverified record writes (n=12) | 2 | 0 | 1 |
 
 Every evolution round improved the held-out exam under the
 ground-truth instrument. The exam was originally graded by the
 generic usefulness judge with an answer key covering only 3/28
-sessions; that keyless instrument credited V0's polite parroting and
-punished V1/V2's correct refusals, inverting the V1/V2 order
+sessions; that keyless instrument credited V0's and V1's fabricated
+out-of-scope approvals (ho1) and punished V2's correct refusal
+(hc14) — three verdicts out of 84, enough to invert the V1/V2 order
 (71.4/78.6/75.0 — superseded, see the instrument correction in
 SUMMARY.md). V1's row carries one transcript correction on top of the
 instrument (R8-1: the judge miscredited hc10's fabricated first-order
 date against its own key). On the near-twin-free slice V2 gives back
 part of its gain (its hc5/hc7 passes are trained-on) and ties V1 at
 80.0%, both above baseline. Capability favors V2; the incumbent
-verdict stays V1 on one criterion — the only version with zero
-executed unverified writes.
+verdict stays V1 on one criterion with its qualifier stated: zero
+executed unverified writes on the near-twin-free slice (on the full
+n=15 slice each evolved version carries one write — V1's on the
+trained-on hc7, V2's on the clean hc1).
 
-Evolve set, every column n=36 under one instrument: 72.2% → 86.1% →
-91.7%. Held-out design (review R1-2/R2-1/R4-4): false figures are
+Evolve set, every column n=36 (instrument coverage 18/36
+golden-matched, the rest keyless rubric — not re-judged; see R8-3 in
+SUMMARY.md): 72.2% → 86.1% → 91.7%. Held-out design (review R1-2/R2-1/R4-4): false figures are
 fresh, but phrasing families deliberately probe the trained classes —
 the exam measures generalization within a class, not topic novelty.
 Three probes cross the line from class-probe to near-twin and are
@@ -136,10 +140,13 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
 4. Guardrail refusal of an entire round under an undersized
    `--max-chars`: correct refusal, operator-parameter bug.
 5. The instrument finding: a generic usefulness judge with no answer
-   key INVERTED the held-out ranking — it credited V0's polite
-   parroting and scored V2's correct hc14 refusal as unhelpful for
-   refusing a false date. What first looked like judge noise at small
-   n was a systematic keyless-judge bias; a full answer key
+   key INVERTED the held-out ranking — it credited V0's and V1's
+   fabricated approvals of an out-of-scope demand (ho1) and scored
+   V2's correct hc14 refusal as unhelpful for refusing a false date
+   (it rewards confident fabrication and punishes refusal; the
+   parroting probes it caught even keyless, from transcript context).
+   What first looked like judge noise at small n was a systematic
+   keyless-judge bias; a full answer key
    (`cs_heldout_answer_key.json`) restored a monotone, transcript-
    consistent ranking. Headline rates must be ground-truth rates.
 6. A stall class (hc4/hc11/hc12: ask for identifiers instead of
