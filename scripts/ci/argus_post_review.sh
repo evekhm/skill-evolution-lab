@@ -302,7 +302,7 @@ mode_review() {
         (.findings | all((.id|type=="string") and
             (.severity|IN("security","bug","suggestion")) and
             (.title|type=="string") and (.body|type=="string"))) and
-        (.resolved | type == "array")' "$INPUT" >/dev/null 2>&1; then
+        (.resolved | type == "array" and all(type == "string"))' "$INPUT" >/dev/null 2>&1; then
         api POST "issues/${NUMBER}/comments" -f body="### Argus review
 
 The review ran but its structured output failed validation — see the workflow run log for the raw findings.
@@ -466,7 +466,7 @@ mode_consensus() {
             (($u | map(select(.id == $f.id)) | first) // null) as $m
             | if $m == null then $f else
                 $f + {atlas: $m.atlas}
-                    + (if $m.atlas == "dispute" and ($f.pending_since // "") == ""
+                    + (if $m.atlas == "dispute"
                        then {pending_since: $seen_at} else {} end)
                     + (if $m.atlas == "agree" and ($f.status == "open" or $f.status == "fixed")
                        then {outcome: "agreed"} else {} end)
@@ -517,6 +517,22 @@ mode_consensus() {
 
     upsert_ledger "$data"
     apply_labels_from "$data"
+}
+
+# ---- mode: seen --------------------------------------------------------
+
+# Recovery-loop terminator (R16-3): a dispatched consensus run whose
+# agent parsed no verdicts still advances atlas_seen_at, so the
+# sweep's unreconciled-peer-verdict exception stops re-dispatching the
+# same PR every hour. Runs inside the serialized consensus group.
+mode_seen() {
+    local data
+    data=$(load_ledger)
+    data=$(jq -c --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        '.atlas_seen = true | .atlas_seen_at = $seen_at' <<<"$data")
+    upsert_ledger "$data"
+    apply_labels_from "$data"
+    echo "seen: atlas_seen_at advanced with no verdict changes"
 }
 
 # ---- mode: nudge -------------------------------------------------------
@@ -589,6 +605,7 @@ esac
 case "$MODE" in
     review)    mode_review ;;
     consensus) mode_consensus ;;
+    seen)      mode_seen ;;
     nudge)     mode_nudge ;;
     relabel)   mode_relabel ;;
     *) echo "unknown mode: $MODE" >&2; exit 1 ;;
