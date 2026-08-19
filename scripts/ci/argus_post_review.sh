@@ -85,15 +85,27 @@ find_ledger_comment() { # -> base64 row or empty; rc 1 on FETCH failure
     # POST a second ledger comment and fork the recorded state. Full
     # capture also keeps head -1 from breaking gh's pagination pipe
     # (the R3-1 SIGPIPE class).
-    local raw
+    local raw hit
     if ! raw=$(gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" 2>/dev/null); then
         echo "ERROR: comment fetch failed — cannot determine ledger state" >&2
         return 1
     fi
-    printf '%s' "$raw" | jq -r --arg who "${ARGUS_LOGIN:-}" '.[]
+    hit=$(printf '%s' "$raw" | jq -r --arg who "${ARGUS_LOGIN:-}" '.[]
             | select(($who == "") or (.user.login == $who) or (.user.login == $who + "[bot]"))
             | select(.body | startswith("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
-        | head -1
+        | head -1)
+    # Misconfiguration guard (R5-2): a ledger that exists under a
+    # DIFFERENT author than the filter expects means ARGUS_LOGIN is
+    # wrong (or the app was renamed). Treating that as "no ledger"
+    # would post a duplicate ledger comment and fork recorded state.
+    if [ -z "$hit" ] && [ -n "${ARGUS_LOGIN:-}" ]; then
+        if printf '%s' "$raw" | jq -e '.[]
+              | select(.body | startswith("<!-- argus-ledger -->"))' >/dev/null 2>&1; then
+            echo "ERROR: a ledger comment exists but none matches ARGUS_LOGIN='${ARGUS_LOGIN}' — refusing to create a duplicate; check the variable" >&2
+            return 1
+        fi
+    fi
+    printf '%s' "$hit"
 }
 
 extract_ledger_data() { # stdin: comment body -> data json (or {}); rc 1 on corrupt

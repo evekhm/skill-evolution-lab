@@ -133,17 +133,21 @@ jobs:
           ALLNUMS=""
           for LBL in "consensus:pending" "consensus:disputed"; do
             if ! RESP=$(gh api -X GET search/issues \
-              -f q="repo:${{ github.repository }} label:\"${LBL}\" updated:>=${SINCE}"); then
+              -f q="repo:${{ github.repository }} label:\"${LBL}\" updated:>=${SINCE}" \
+              -f per_page=100 -f sort=updated -f order=asc); then
               echo "::warning::self-heal search for ${LBL} failed — skipping it this cycle"
               continue
             fi
             TOTAL=$((TOTAL + $(echo "$RESP" | jq -r '.total_count // 0' 2>/dev/null || echo 0)))
             ALLNUMS="${ALLNUMS} $(echo "$RESP" | jq -r '.items[].number' 2>/dev/null || true)"
           done
-          # Newest first (R9-1): items that can never converge (real
-          # unresolved rows on old merged PRs) carry the lowest
-          # numbers and would otherwise monopolize the cap every hour.
-          NUMS=$(printf '%s\n' $ALLNUMS | sort -unr | head -20)
+          # Least-recently-updated first, order preserved from the
+          # search (R9-1/R9-2): per_page=100 sorts the full window
+          # server-side instead of page one only, and processing an
+          # item bumps its updatedAt, which rotates it to the back of
+          # the next cycle — every capped item gets a turn, and no
+          # fixed ordering can starve either end of the queue.
+          NUMS=$(printf '%s\n' $ALLNUMS | awk 'NF && !seen[$0]++' | head -20)
           COUNT=0
           for N in $NUMS; do
             case "$N" in (*[!0-9]*|'') continue;; esac

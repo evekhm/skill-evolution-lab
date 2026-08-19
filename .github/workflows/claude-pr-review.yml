@@ -510,11 +510,40 @@ jobs:
             echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
           } >> "$GITHUB_ENV"
 
+      # The Atlas-author comment branch of the gate fires without the
+      # "@argus" mention, so it needs the same-repo restriction the
+      # other auto paths have (R5-3): an issue_comment on a fork PR
+      # would otherwise hand this secrets-holding job a thread of
+      # fork-controlled text on the peer's say-so alone. Human-typed
+      # "@argus" comments keep working on fork PRs — the documented
+      # maintainer path for reviewing forks.
+      - name: Gate fork PRs out of the peer-comment auto-path
+        id: forkgate
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          IS_PR: ${{ github.event.issue.pull_request != null }}
+          IS_ATLAS: ${{ github.event.comment.user.login == 'evekhm-atlas-bot' }}
+          HAS_MENTION: ${{ contains(github.event.comment.body, '@argus') }}
+          NUM: ${{ github.event.issue.number }}
+        run: |
+          SKIP=false
+          if [ "$IS_PR" = "true" ] && [ "$IS_ATLAS" = "true" ] && [ "$HAS_MENTION" = "false" ]; then
+            CROSS=$(gh pr view "$NUM" --repo "${{ github.repository }}" \
+              --json isCrossRepository --jq .isCrossRepository)
+            if [ "$CROSS" != "false" ]; then
+              echo "peer auto-comment on a fork PR — skipping (R5-3)"
+              SKIP=true
+            fi
+          fi
+          echo "skip=$SKIP" >> "$GITHUB_OUTPUT"
+
       # Same hash discipline as the auto-review job (R1-1/R2-1): the
       # agent can write anywhere, so the recorded step output is the
       # only thing it cannot forge.
       - name: Stage trusted posting script
         id: stage
+        if: steps.forkgate.outputs.skip != 'true'
         run: |
           cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
           echo "hash=$(sha256sum "$RUNNER_TEMP/argus_post_review.sh" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
@@ -523,6 +552,7 @@ jobs:
       # "### Argus" comment — no "Claude finished ..." header — and
       # peer-review consensus gets recorded by the trusted step below.
       - name: Answer the mention
+        if: steps.forkgate.outputs.skip != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           github_token: ${{ steps.app-token.outputs.token }}
@@ -623,6 +653,7 @@ jobs:
           ANTHROPIC_SMALL_FAST_MODEL: claude-opus-5
 
       - name: Record consensus (trusted step)
+        if: steps.forkgate.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
