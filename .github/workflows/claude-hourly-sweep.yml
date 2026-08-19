@@ -140,7 +140,10 @@ jobs:
             TOTAL=$((TOTAL + $(echo "$RESP" | jq -r '.total_count // 0' 2>/dev/null || echo 0)))
             ALLNUMS="${ALLNUMS} $(echo "$RESP" | jq -r '.items[].number' 2>/dev/null || true)"
           done
-          NUMS=$(printf '%s\n' $ALLNUMS | sort -un | head -20)
+          # Newest first (R9-1): items that can never converge (real
+          # unresolved rows on old merged PRs) carry the lowest
+          # numbers and would otherwise monopolize the cap every hour.
+          NUMS=$(printf '%s\n' $ALLNUMS | sort -unr | head -20)
           COUNT=0
           for N in $NUMS; do
             case "$N" in (*[!0-9]*|'') continue;; esac
