@@ -120,9 +120,12 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           SINCE=$(date -u -d '30 days ago' +%Y-%m-%d)
+          # || true: search/issues is the endpoint most prone to
+          # secondary rate limits; a label cosmetic must never take
+          # down the sweep that finds unanswered PRs (R1-4).
           NUMS=$(gh api -X GET search/issues \
             -f q="repo:${{ github.repository }} label:\"consensus:pending\" updated:>=${SINCE}" \
-            --jq '.items[:20][].number')
+            --jq '.items[:20][].number' || true)
           COUNT=0
           for N in $NUMS; do
             case "$N" in (*[!0-9]*|'') continue;; esac

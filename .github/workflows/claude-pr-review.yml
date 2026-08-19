@@ -416,6 +416,9 @@ jobs:
     #    editing this literal AND the CASE 2 prompt below. Argus's own
     #    reviews cannot re-trigger this: the app posts as a Bot-type
     #    user with the app slug login, which fails both conditions.
+    #    The same-repo gate mirrors auto-review's (R1-2): Atlas's
+    #    association is COLLABORATOR on fork PRs too, and this job
+    #    holds the app token and WIF OIDC — fork heads stay out.
     if: >-
       (github.event_name == 'issue_comment' &&
        github.event.comment.user.type != 'Bot' &&
@@ -423,6 +426,7 @@ jobs:
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
                 github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
        github.event.review.user.login == 'evekhm-atlas-bot' &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
                 github.event.review.author_association))

@@ -155,7 +155,11 @@ set_label_pair() { # $1 add $2... remove
 apply_labels_from() { # $1 data json
     local data="$1" open secbug disputed pending seen
     open=$(echo "$data"    | jq '[.findings[] | select(.status=="open")] | length')
-    secbug=$(echo "$data"  | jq '[.findings[] | select(.status=="open" and .severity!="suggestion")] | length')
+    # ANY status, not just open (R1-1): a fixed security/bug row still
+    # needs the peer's verdict — "fixed by Argus's word alone" must not
+    # shortcut to consensus:agreed. Only items that never had a
+    # security/bug finding at all skip the Atlas requirement.
+    secbug=$(echo "$data"  | jq '[.findings[] | select(.severity!="suggestion")] | length')
     disputed=$(echo "$data" | jq '[.findings[] | select(.status=="open" and .severity!="suggestion" and .atlas=="dispute")] | length')
     pending=$(echo "$data" | jq '[.findings[] | select(.status=="open" and .severity!="suggestion" and .atlas=="pending")] | length')
     seen=$(echo "$data"    | jq -r '.atlas_seen')
@@ -168,11 +172,12 @@ apply_labels_from() { # $1 data json
     if [ "$disputed" -gt 0 ]; then
         set_label_pair "consensus:disputed" "consensus:pending" "consensus:agreed"
     elif [ "$secbug" -eq 0 ]; then
-        # Nothing in consensus scope (clean or suggestion-only): agreed
-        # WITHOUT requiring atlas_seen. Atlas legitimately posts no
-        # @argus-tagged verdict here, so atlas_seen never flips and the
-        # old gate deadlocked such items at consensus:pending forever
-        # (#109; PR #104 merged in that state).
+        # Never had anything in consensus scope (clean or
+        # suggestion-only): agreed WITHOUT requiring atlas_seen. Atlas
+        # legitimately posts no @argus-tagged verdict here, so
+        # atlas_seen never flips and the old gate deadlocked such items
+        # at consensus:pending forever (#109; PR #104 merged in that
+        # state).
         set_label_pair "consensus:agreed" "consensus:pending" "consensus:disputed"
     elif [ "$pending" -gt 0 ] || [ "$seen" != "true" ]; then
         set_label_pair "consensus:pending" "consensus:agreed" "consensus:disputed"
@@ -362,6 +367,13 @@ mode_nudge() {
     case "$sha" in (*[!0-9a-f]*|'') echo "ERROR: bad sha '${sha}'" >&2; exit 1;; esac
     if [ "${#sha}" -lt 7 ] || [ "${#sha}" -gt 40 ]; then
         echo "ERROR: sha length out of range" >&2; exit 1
+    fi
+    # Dedupe in code, not in the sweep agent's judgement (R1-3): one
+    # nudge per head oid, ever, regardless of what the agent nominates.
+    if gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" \
+        --jq '.[].body' | grep -qF "Consensus-nudge: ${sha}"; then
+        echo "nudge: marker for ${sha:0:7} already present — skipping"
+        return 0
     fi
     api POST "issues/${NUMBER}/comments" -f body="### Argus
 
