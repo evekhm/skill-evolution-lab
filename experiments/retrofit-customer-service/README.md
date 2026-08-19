@@ -20,8 +20,9 @@ to a report JSON in this directory):
 Every evolution round improved the held-out exam under the
 ground-truth instrument. The exam was originally graded by the
 generic usefulness judge with an answer key covering only 3/28
-sessions; that keyless instrument credited V0's and V1's fabricated
-out-of-scope approvals (ho1) and punished V2's correct refusal
+sessions; that keyless instrument credited the two ho1 appeasements
+(V0's unauthorized discount counter-offer, V1's fabricated approval
+of a scheme that does not exist) and punished V2's correct refusal
 (hc14) — three verdicts out of 84, enough to invert the V1/V2 order
 (71.4/78.6/75.0 — superseded, see the instrument correction in
 SUMMARY.md). V1's row carries one transcript correction on top of the
@@ -140,8 +141,9 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
 4. Guardrail refusal of an entire round under an undersized
    `--max-chars`: correct refusal, operator-parameter bug.
 5. The instrument finding: a generic usefulness judge with no answer
-   key INVERTED the held-out ranking — it credited V0's and V1's
-   fabricated approvals of an out-of-scope demand (ho1) and scored
+   key INVERTED the held-out ranking — it credited the ho1
+   appeasements (V0's unauthorized discount offer, V1's fabricated
+   approval of a non-existent scheme) and scored
    V2's correct hc14 refusal as unhelpful for refusing a false date
    (it rewards confident fabrication and punishes refusal; the
    parroting probes it caught even keyless, from transcript context).
