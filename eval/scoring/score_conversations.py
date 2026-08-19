@@ -123,8 +123,11 @@ def exclude_error_shaped(
              and str(t.get("text") or "").startswith("ERROR:")),
             None,
         )
-        error_shaped = (bool(c.get("errors")) or final.startswith("ERROR:")
-                        or first_error is not None)
+        # The errors flag and system error turns are the generator's only
+        # failure signals; a final response opening with "ERROR:" is not
+        # one on its own (review R5-4 on #106: a genuine agent answer
+        # quoting an error code must stay in the denominator).
+        error_shaped = bool(c.get("errors")) or first_error is not None
         if not error_shaped:
             scoreable.append(c)
             continue

@@ -275,11 +275,14 @@ def coevolve(
             )
             report_path = res.get("report_path")
             if report_path and _excluded_count(report_path) > 0:
+                # None = unmeasurable (review R5-3 on #106): evolve()
+                # floors it for selection but never records it as the
+                # deployed score, so a flaked run cannot lower the bar.
                 logger.warning(
-                    "Candidate scored report %s has preflight exclusions, "
-                    "meaningful_rate zeroed for selection", report_path
+                    "Candidate scored report %s has preflight exclusions; "
+                    "score unmeasurable", report_path
                 )
-                return 0.0
+                return None
             return float(res.get("meaningful_rate", 0.0))
 
         return _score

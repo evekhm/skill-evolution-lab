@@ -203,11 +203,14 @@ def run_evolution(
                 )
                 report_path = res.get("report_path")
                 if report_path and _excluded_count(report_path) > 0:
+                    # None = unmeasurable (review R5-3 on #106): evolve()
+                    # floors it for selection but never records it as the
+                    # deployed score, so a flaked run cannot lower the bar.
                     logger.warning(
-                        "Candidate scored report %s has preflight exclusions, "
-                        "meaningful_rate zeroed for selection", report_path
+                        "Candidate scored report %s has preflight "
+                        "exclusions; score unmeasurable", report_path
                     )
-                    return 0.0
+                    return None
                 return float(res.get("meaningful_rate", 0.0))
 
         evolved_content = evolve(
@@ -857,10 +860,27 @@ def _generate_pr_body_with_agy(
             timeout=120,
         )
         if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
+            body = result.stdout.strip()
+            # The exclusion disclosure must be mechanical, not a prompt
+            # hint the model may drop (review R5-1 on #106).
+            return body + _exclusion_footer(baseline_excl, evolved_excl)
     except Exception as e:
         logger.warning("agy PR body generation failed: %s", e)
     return None
+
+
+def _exclusion_footer(baseline_excl: int, evolved_excl: int) -> str:
+    """Deterministic denominators note appended to LLM-written bodies."""
+    if not baseline_excl and not evolved_excl:
+        return ""
+    return (
+        f"\n\n| Excluded error-shaped (infra) | {baseline_excl} baseline "
+        f"| {evolved_excl} evolved |\n|---|---|---|\n\n"
+        f"**DENOMINATORS DIFFER**: the preflight excluded {baseline_excl} "
+        f"baseline vs {evolved_excl} evolved error-shaped record(s), so "
+        f"the two rates cover different question subsets. Rate deltas in "
+        f"this body are not comparable measurements."
+    )
 
 
 def _default_pr_body(
@@ -996,22 +1016,35 @@ def _collect_quality_metrics(
         # {version}_quality_report.json — fall back to the best candidate
         # report so PR titles carry the real evolved rate instead of "?%".
         best_rate = -1.0
+        best_any_rate, best_any = -1.0, None
         for pattern in ("candidate_*_report.json",
                         "_score_candidate_*_report.json"):
             for path in glob_mod.glob(
                 os.path.join(run_dir, "**", pattern), recursive=True,
             ):
+                try:
+                    rate = float(_extract_rate(path, "meaningful_rate"))
+                except ValueError:
+                    continue
+                if rate > best_any_rate:
+                    best_any_rate, best_any = rate, path
                 if _excluded_count(path):
                     logger.warning(
                         "Skipping %s for the PR-title rate: preflight "
                         "excluded records, denominator not comparable", path)
                     continue
-                try:
-                    rate = float(_extract_rate(path, "meaningful_rate"))
-                except ValueError:
-                    continue
                 if rate > best_rate:
                     best_rate, evolved_report = rate, path
+        if evolved_report is None and best_any is not None:
+            # Every candidate report lost records (review R5-2 on #106):
+            # use the best shrunken one so its non-zero exclusion count
+            # reaches the metrics dict and the publishers' denominators-
+            # differ machinery fires, instead of reporting 0 exclusions
+            # against a "?%" rate.
+            logger.warning(
+                "All candidate reports have preflight exclusions; using %s "
+                "with its exclusion count surfaced", best_any)
+            evolved_report = best_any
 
     baseline_report = None
     baseline_label = "initial"
@@ -1371,8 +1404,12 @@ def create_evolution_issue(
         f"1. **Metadata** — a table with: agent, version, meaningful rate "
         f"(baseline → evolved), unhelpful rate, skill size, run directory, "
         f"labels\n"
-        f"2. **Quality Impact** — summarize what improved and by how much, "
-        f"including dimension-level changes (tool_usage, specificity, "
+        f"2. **Quality Impact** — summarize what improved"
+        + (", and by how much"
+           if not (baseline_excl > 0 or evolved_excl > 0)
+           else " WITHOUT computing rate deltas (the exclusion note above "
+                "applies: the denominators differ)")
+        + f", including dimension-level changes (tool_usage, specificity, "
         f"first_time_right) if available\n"
         f"3. **What Changed in the Skill** — describe the key changes "
         f"in the evolved skill compared to the baseline (new sections, "
@@ -1399,7 +1436,11 @@ def create_evolution_issue(
                 timeout=120,
             )
             if result.returncode == 0 and result.stdout.strip():
-                issue_body = result.stdout.strip()
+                # Exclusion disclosure is mechanical, not a prompt hint
+                # the model may drop (review R5-1 on #106).
+                issue_body = (result.stdout.strip()
+                              + _exclusion_footer(baseline_excl,
+                                                  evolved_excl))
         except Exception as e:
             logger.warning("agy issue generation failed: %s", e)
 
@@ -1757,6 +1798,7 @@ def extract_regression_cases(
     # (candidate_N_report.json) and coevolve internal scoring
     # (_score_candidate_N_report.json).
     patterns = ["candidate_*_report.json", "_score_candidate_*_report.json"]
+    skipped_excl = 0
     for pattern in patterns:
         for p in glob_mod.glob(
             os.path.join(run_dir, "**", pattern), recursive=True,
@@ -1765,6 +1807,7 @@ def extract_regression_cases(
             # smaller, error-reshaped question subset; its raw rate cannot
             # beat reports with full denominators (review R3-1 on #106).
             if _excluded_count(p):
+                skipped_excl += 1
                 logger.warning(
                     "Skipping candidate %s: preflight excluded records, "
                     "rate not comparable", p)
@@ -1776,6 +1819,14 @@ def extract_regression_cases(
             if rate > best_rate:
                 best_rate, best_report = rate, p
     if not best_report:
+        # Say what actually happened (review R5-2 on #106): reports that
+        # exist but were skipped for exclusions are not "no reports".
+        if skipped_excl:
+            return {"status": "skipped",
+                    "reason": (
+                        f"{skipped_excl} candidate report(s) in {run_dir} "
+                        "skipped: preflight exclusions, rates not comparable"
+                    )}
         return {"status": "skipped",
                 "reason": f"No candidate reports in {run_dir}"}
     with open(best_report) as f:

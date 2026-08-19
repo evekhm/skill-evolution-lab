@@ -165,8 +165,15 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
     convs = [
         {"session_id": "ok-1", "response": "You have 20 PTO days.",
          "errors": 0},
+        # Generator shape: the flag is always set alongside the ERROR
+        # response (main.py:573-575).
         {"session_id": "err-resp",
-         "response": "ERROR: 503 Service Unavailable", "errors": 0},
+         "response": "ERROR: 503 Service Unavailable", "errors": 1},
+        # A genuine agent ANSWER that opens with "ERROR:" (quoting a code
+        # back to the user) has no flag and no error turn — it stays in
+        # the denominator (R5-4).
+        {"session_id": "ok-3-error-quote", "errors": 0,
+         "response": "ERROR: 503 in the gateway log means the upstream timed out."},
         {"session_id": "err-turn", "errors": 0, "conversation": [
             {"role": "user", "text": "hi"},
             {"role": "system", "text": "ERROR: timeout"},
@@ -204,7 +211,8 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
          ]},
     ]
     kept, excluded, truncated = sc.exclude_error_shaped(convs)
-    assert [c["session_id"] for c in kept] == ["ok-1", "ok-2", "partial"]
+    assert [c["session_id"] for c in kept] == [
+        "ok-1", "ok-3-error-quote", "ok-2", "partial"]
     assert excluded == ["err-resp", "err-turn", "flag-only",
                         "err-then-recovered"]
     assert truncated == ["partial"]

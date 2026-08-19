@@ -344,11 +344,23 @@ def evolve(
 
     # Memoize candidate scores so the selected skill's score can be recorded
     # without re-scoring (compare_versions reads evolved_score.json).
+    # score_fn may return None = unmeasurable (its report lost records to
+    # the error-shaped preflight, review R5-3 on #106): floored to 0.0 for
+    # selection so a flaked candidate cannot win, and NOT memoized so it is
+    # never recorded as the authoritative deployed score / next incumbent
+    # bar.
     scores: dict[str, float] = {}
     wrapped_score_fn = None
     if score_fn is not None:
         def wrapped_score_fn(skill_content: str) -> float:
-            score = float(score_fn(skill_content))
+            raw = score_fn(skill_content)
+            if raw is None:
+                logger.warning(
+                    "Candidate score unmeasurable (preflight exclusions); "
+                    "using 0.0 for selection, not recording it"
+                )
+                return 0.0
+            score = float(raw)
             scores[skill_content] = score
             return score
 
