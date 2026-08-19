@@ -75,9 +75,9 @@ jobs:
       # an empty service_account as direct WIF instead of an error —
       # the run would go green here and die at the first Vertex call.
       - name: Fail fast if reviewer variables are unset
-        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == ''
+        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == '' || vars.ARGUS_LOGIN == ''
         run: |
-          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT and/or CLAUDE_VERTEX_PROJECT_ID is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT, CLAUDE_VERTEX_PROJECT_ID and/or ARGUS_LOGIN is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
           exit 1
 
       - name: Authenticate to Google Cloud

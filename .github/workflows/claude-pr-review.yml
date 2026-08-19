@@ -54,9 +54,13 @@ name: Argus Review
 # restrict ledger-comment matching to Argus-authored comments (R3-3 —
 # without it, any commenter could pre-plant a forged ledger). This is
 # the app slug; REST renders the author as "<slug>[bot]" and the
-# script matches both forms. Keep in sync with the sweep's ARGUS_LOGIN.
+# script matches both forms. Sourced from the repo variable, same as
+# the sweep — ONE source of truth (R13-2/R20-3: the hardcoded literal
+# here diverged from vars.ARGUS_LOGIN by construction, and the script
+# now fails closed on an empty value, so both workflows must read the
+# same variable and the fail-fast steps below verify it is set).
 env:
-  ARGUS_LOGIN: evekhm-odyssey-argus
+  ARGUS_LOGIN: ${{ vars.ARGUS_LOGIN }}
 
 on:
   pull_request:
@@ -175,9 +179,9 @@ jobs:
       # an empty service_account as direct WIF instead of an error —
       # the run would go green here and die at the first Vertex call.
       - name: Fail fast if reviewer variables are unset
-        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == ''
+        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == '' || vars.ARGUS_LOGIN == ''
         run: |
-          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT and/or CLAUDE_VERTEX_PROJECT_ID is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT, CLAUDE_VERTEX_PROJECT_ID and/or ARGUS_LOGIN is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
           exit 1
 
       - name: Authenticate to Google Cloud
@@ -342,9 +346,9 @@ jobs:
       # an empty service_account as direct WIF instead of an error —
       # the run would go green here and die at the first Vertex call.
       - name: Fail fast if reviewer variables are unset
-        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == ''
+        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == '' || vars.ARGUS_LOGIN == ''
         run: |
-          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT and/or CLAUDE_VERTEX_PROJECT_ID is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT, CLAUDE_VERTEX_PROJECT_ID and/or ARGUS_LOGIN is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
           exit 1
 
       - name: Authenticate to Google Cloud
@@ -507,9 +511,9 @@ jobs:
       # an empty service_account as direct WIF instead of an error —
       # the run would go green here and die at the first Vertex call.
       - name: Fail fast if reviewer variables are unset
-        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == ''
+        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == '' || vars.ARGUS_LOGIN == ''
         run: |
-          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT and/or CLAUDE_VERTEX_PROJECT_ID is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT, CLAUDE_VERTEX_PROJECT_ID and/or ARGUS_LOGIN is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
           exit 1
 
       - name: Authenticate to Google Cloud

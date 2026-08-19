@@ -92,11 +92,16 @@ find_ledger_comment() { # -> base64 row or empty; rc 1 on FETCH failure
         echo "ERROR: comment fetch failed — cannot determine ledger state" >&2
         return 1
     fi
+    # Fail closed (R13-2): the author filter is load-bearing — with it
+    # empty, any commenter on a public repo could plant a forged ledger
+    # that the hourly relabel pass then applies unattended. An unset
+    # ARGUS_LOGIN is a misconfiguration, never a wildcard.
     if [ -z "${ARGUS_LOGIN:-}" ]; then
-        echo "WARNING: ARGUS_LOGIN is empty — the ledger author filter is disabled (R13-2)" >&2
+        echo "ERROR: ARGUS_LOGIN is empty — refusing to match ledger comments by any author (R13-2)" >&2
+        return 1
     fi
-    hit=$(printf '%s' "$raw" | jq -r --arg who "${ARGUS_LOGIN:-}" '.[]
-            | select(($who == "") or (.user.login == $who) or (.user.login == $who + "[bot]"))
+    hit=$(printf '%s' "$raw" | jq -r --arg who "${ARGUS_LOGIN}" '.[]
+            | select((.user.login == $who) or (.user.login == $who + "[bot]"))
             | select(.body | startswith("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
         | head -1)
     # Misconfiguration guard (R5-2), scoped to unforgeable identities
@@ -105,7 +110,7 @@ find_ledger_comment() { # -> base64 row or empty; rc 1 on FETCH failure
     # ARGUS_LOGIN is wrong and continuing would fork the ledger — hard
     # stop. A marker comment from a regular user is a plant; ignore it
     # with a warning instead of letting it halt every ledger write.
-    if [ -z "$hit" ] && [ -n "${ARGUS_LOGIN:-}" ]; then
+    if [ -z "$hit" ]; then
         local stray
         stray=$(printf '%s' "$raw" | jq -r '[.[]
               | select(.body | startswith("<!-- argus-ledger -->"))
@@ -155,6 +160,36 @@ load_ledger() { # -> ledger data json (default shape when no ledger exists yet)
     fi
 }
 
+# The ledger update is a read-modify-write over one comment with no
+# server-side compare-and-swap, and three jobs perform it from three
+# concurrency groups (R4-2, R14-2, R15-2) — last write wins silently,
+# and a lost write erases peer verdicts the stateless peer will never
+# re-post. GitHub offers no If-Match on comment PATCH, so the class
+# fix is optimistic concurrency in the client: snapshot the comment
+# body hash at load, re-check it immediately before the PATCH, and on
+# mismatch return the writers to a fresh load-merge-write attempt.
+# The residual window shrinks from the whole agent/merge runtime to
+# the sub-second gap between the recheck and the PATCH, and a
+# persistent conflict fails LOUDLY instead of silently dropping state.
+LEDGER_SNAP_HASH=""
+LEDGER_EXISTS=0
+LEDGER_DATA=""
+
+snapshot_ledger() { # sets LEDGER_DATA / LEDGER_SNAP_HASH / LEDGER_EXISTS
+    local row body
+    row=$(find_ledger_comment) || return 1
+    if [ -n "$row" ]; then
+        body=$(echo "$row" | base64 -d | jq -r '.[1]')
+        LEDGER_SNAP_HASH=$(printf '%s' "$body" | sha256sum | cut -d' ' -f1)
+        LEDGER_EXISTS=1
+        LEDGER_DATA=$(printf '%s' "$body" | extract_ledger_data) || return 1
+    else
+        LEDGER_SNAP_HASH=""
+        LEDGER_EXISTS=0
+        LEDGER_DATA='{"findings":[],"atlas_seen":false}'
+    fi
+}
+
 render_ledger() { # $1 data json -> markdown body
     local data="$1"
     {
@@ -185,16 +220,26 @@ render_ledger() { # $1 data json -> markdown body
     }
 }
 
-upsert_ledger() { # $1 data json
+upsert_ledger() { # $1 data json; rc 9 = concurrent write since snapshot_ledger
     local data="$1" body row
     body=$(render_ledger "$data")
     row=$(find_ledger_comment)
     if [ -n "$row" ]; then
-        local id
+        local id cur cur_hash
         id=$(echo "$row" | base64 -d | jq -r '.[0]')
+        cur=$(echo "$row" | base64 -d | jq -r '.[1]')
+        cur_hash=$(printf '%s' "$cur" | sha256sum | cut -d' ' -f1)
+        if [ "$cur_hash" != "$LEDGER_SNAP_HASH" ]; then
+            echo "ledger: comment ${id} changed since snapshot — concurrent writer (R15-2)" >&2
+            return 9
+        fi
         api PATCH "issues/comments/${id}" -f body="$body" >/dev/null
         echo "ledger: updated comment ${id}"
     else
+        if [ "$LEDGER_EXISTS" = "1" ]; then
+            echo "ledger: snapshot had a comment that is now gone — concurrent writer (R15-2)" >&2
+            return 9
+        fi
         api POST "issues/${NUMBER}/comments" -f body="$body" >/dev/null
         echo "ledger: created"
     fi
@@ -339,7 +384,7 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
     # the findings. Failing here leaves nothing posted; the sweep
     # retries the whole review.
     local data short now
-    data=$(load_ledger)
+    snapshot_ledger
     short="${HEAD_SHA:0:7}"
     now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -368,7 +413,18 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
     # New security/bug rows get pending_since (UTC) — the dead-peer nudge
     # clock (#113 AT-1 exchange): Reviewed-head marker age resets on every
     # push, so "how long has Atlas owed a verdict" must live on the row.
-    data=$(jq -c --slurpfile new "$INPUT" --arg short "$short" --arg now "$now" '
+    # Load-merge-write runs under optimistic retry (R4-2/R15-2): on a
+    # detected concurrent write the merge re-runs against the fresh
+    # ledger, so a consensus run's verdicts landing mid-review survive
+    # instead of being overwritten from this run's stale snapshot.
+    local attempt rc=0
+    for attempt in 1 2 3; do
+        if [ "$attempt" -gt 1 ]; then
+            sleep "$attempt"
+            snapshot_ledger
+        fi
+        data="$LEDGER_DATA"
+        data=$(jq -c --slurpfile new "$INPUT" --arg short "$short" --arg now "$now" '
         .findings as $old
         | ($old | map(.id)) as $ids
         | .findings += [$new[0].findings[] | select(.id as $i | $ids | index($i) | not) |
@@ -401,7 +457,16 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
     if [ -n "$unres" ]; then
         echo "WARNING: resolved IDs matched no open ledger row this round: ${unres}" >&2
     fi
-    upsert_ledger "$data"
+    rc=0
+    upsert_ledger "$data" || rc=$?
+    if [ "$rc" -eq 0 ]; then break; fi
+    if [ "$rc" -ne 9 ]; then exit "$rc"; fi
+    echo "ledger: re-merging against the fresh ledger (attempt ${attempt}/3)" >&2
+    done
+    if [ "$rc" -ne 0 ]; then
+        echo "ERROR: ledger conflict persisted after 3 attempts — failing loudly rather than dropping state (R15-2)" >&2
+        exit 1
+    fi
     apply_labels_from "$data"
 }
 
@@ -457,8 +522,15 @@ mode_consensus() {
         exit 1
     fi
 
-    local data
-    data=$(load_ledger)
+    # Load-merge-write under optimistic retry (R4-2/R14-2/R15-2): a
+    # review or another recorder finishing mid-run is detected by
+    # upsert_ledger and this merge re-runs against the fresh ledger,
+    # so peer verdicts merge with concurrent rows instead of racing.
+    local data attempt rc=0
+    for attempt in 1 2 3; do
+    if [ "$attempt" -gt 1 ]; then sleep "$attempt"; fi
+    snapshot_ledger
+    data="$LEDGER_DATA"
 
     # atlas_seen and its timestamp advance only when the payload
     # carries verdicts (PR #15 R4-1): a human CASE-1 run writes an
@@ -530,7 +602,16 @@ mode_consensus() {
         #   delete a stale digest and block a new one, whatever the
         #   incoming payload claims.
 
-    upsert_ledger "$data"
+    rc=0
+    upsert_ledger "$data" || rc=$?
+    if [ "$rc" -eq 0 ]; then break; fi
+    if [ "$rc" -ne 9 ]; then exit "$rc"; fi
+    echo "ledger: re-merging against the fresh ledger (attempt ${attempt}/3)" >&2
+    done
+    if [ "$rc" -ne 0 ]; then
+        echo "ERROR: ledger conflict persisted after 3 attempts — failing loudly rather than dropping verdicts (R15-2)" >&2
+        exit 1
+    fi
     apply_labels_from "$data"
 }
 
@@ -541,16 +622,26 @@ mode_consensus() {
 # sweep's unreconciled-peer-verdict exception stops re-dispatching the
 # same PR every hour. Runs inside the serialized consensus group.
 mode_seen() {
-    local row data
-    row=$(find_ledger_comment)
-    if [ -z "$row" ]; then
-        echo "seen: no ledger on #${NUMBER} — nothing to mark"
-        return 0
+    local data attempt rc=0
+    for attempt in 1 2 3; do
+        if [ "$attempt" -gt 1 ]; then sleep "$attempt"; fi
+        snapshot_ledger
+        if [ "$LEDGER_EXISTS" != "1" ]; then
+            echo "seen: no ledger on #${NUMBER} — nothing to mark"
+            return 0
+        fi
+        data=$(jq -c --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '.atlas_seen = true | .atlas_seen_at = $seen_at' <<<"$LEDGER_DATA")
+        rc=0
+        upsert_ledger "$data" || rc=$?
+        if [ "$rc" -eq 0 ]; then break; fi
+        if [ "$rc" -ne 9 ]; then exit "$rc"; fi
+        echo "ledger: re-marking against the fresh ledger (attempt ${attempt}/3)" >&2
+    done
+    if [ "$rc" -ne 0 ]; then
+        echo "ERROR: ledger conflict persisted after 3 attempts (R15-2)" >&2
+        exit 1
     fi
-    data=$(echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data)
-    data=$(jq -c --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        '.atlas_seen = true | .atlas_seen_at = $seen_at' <<<"$data")
-    upsert_ledger "$data"
     apply_labels_from "$data"
     echo "seen: atlas_seen_at advanced with no verdict changes"
 }
