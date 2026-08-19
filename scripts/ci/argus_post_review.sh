@@ -23,9 +23,16 @@
 # Modes:
 #   review    <repo> <pr_number> <findings_json>  <head_sha>
 #   consensus <repo> <number>    <consensus_json>
+#   seen      <repo> <number>    -                  (advance atlas_seen_at
+#                                                    only; recovery-loop stop)
+#   nudge     <repo> <pr_number> <nudge_json>       ({"sha": <head oid>})
+#   relabel   <repo> <number>    -                  (re-derive labels from
+#                                                    the existing ledger; the
+#                                                    sweep's self-heal pass)
 #
-# Env: GH_TOKEN (reviewer app installation token), DRY_RUN=1 to print
-# payloads instead of posting.
+# Env: GH_TOKEN (the Argus bot account's PAT, secret ARGUS_BOT_TOKEN —
+# so writes are authored by the bot user), DRY_RUN=1 to print payloads
+# instead of posting.
 #
 # Ledger: one issue comment holding the marker <!-- argus-ledger -->
 # and machine state in an HTML comment:
@@ -65,25 +72,84 @@ argus:clean|0e8a16|Argus reviewed and found nothing to flag
 consensus:pending|fbca04|Awaiting peer (Atlas) verdicts on security/bug findings
 consensus:agreed|0e8a16|Both reviewers agree on all security/bug findings
 consensus:disputed|b60205|Active or escalated reviewer disagreement
+review:continue|c2e0c6|Owner grant: one more auto-review round (consumed per round)
 EOF
 }
 
 # ---- ledger state ------------------------------------------------------
 
-find_ledger_comment() { # -> "id<TAB>body" or empty
-    gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" \
-        --jq '.[] | select(.body | contains("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
-        | head -1
+find_ledger_comment() { # -> base64 row or empty; rc 1 on FETCH failure
+    # ARGUS_LOGIN (optional env, set by the workflows): restrict the
+    # match to Argus-authored comments. Without it, any commenter on a
+    # public repo could pre-plant a forged ledger comment that the
+    # hourly relabel pass would then read unattended (R3-3). REST
+    # appends "[bot]" to GitHub App logins, so both forms match.
+    # Capture-then-parse (R6-2): a fetch error must fail loudly, never
+    # read as "no ledger yet" — that misread would make mode_review
+    # POST a second ledger comment and fork the recorded state. Full
+    # capture also keeps head -1 from breaking gh's pagination pipe
+    # (the R3-1 SIGPIPE class).
+    local raw hit
+    if ! raw=$(gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" 2>/dev/null); then
+        echo "ERROR: comment fetch failed — cannot determine ledger state" >&2
+        return 1
+    fi
+    if [ -z "${ARGUS_LOGIN:-}" ]; then
+        echo "WARNING: ARGUS_LOGIN is empty — the ledger author filter is disabled (R13-2)" >&2
+    fi
+    hit=$(printf '%s' "$raw" | jq -r --arg who "${ARGUS_LOGIN:-}" '.[]
+            | select(($who == "") or (.user.login == $who) or (.user.login == $who + "[bot]"))
+            | select(.body | startswith("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
+        | head -1)
+    # Misconfiguration guard (R5-2), scoped to unforgeable identities
+    # (R13-1): only a GitHub App can carry a "[bot]"-suffixed login, so
+    # a marker comment from such an author with no filter match means
+    # ARGUS_LOGIN is wrong and continuing would fork the ledger — hard
+    # stop. A marker comment from a regular user is a plant; ignore it
+    # with a warning instead of letting it halt every ledger write.
+    if [ -z "$hit" ] && [ -n "${ARGUS_LOGIN:-}" ]; then
+        local stray
+        stray=$(printf '%s' "$raw" | jq -r '[.[]
+              | select(.body | startswith("<!-- argus-ledger -->"))
+              | .user.login] | first // empty')
+        if [ -n "$stray" ]; then
+            case "$stray" in
+                *"[bot]")
+                    echo "ERROR: a ledger comment by '${stray}' exists but ARGUS_LOGIN='${ARGUS_LOGIN}' does not match it — refusing to create a duplicate; check the variable" >&2
+                    return 1 ;;
+                *)
+                    echo "WARNING: ignoring ledger-marker comment planted by user '${stray}'" >&2 ;;
+            esac
+        fi
+    fi
+    printf '%s' "$hit"
 }
 
-extract_ledger_data() { # stdin: comment body -> data json (or {})
-    sed -n '/<!-- argus-ledger-data/,/^-->$/p' | sed '1d;$d' | jq -c '.' 2>/dev/null \
-        || echo '{"findings":[],"atlas_seen":false}'
+extract_ledger_data() { # stdin: comment body -> data json (or {}); rc 1 on corrupt
+    # Two distinct empty-looking cases (R2-2, then AEL#22 R3-3):
+    # - NO data block at all -> the default shape (a fresh ledger).
+    # - a PRESENT but unparseable block -> FAIL. Falling back to the
+    #   default there would let a corrupted (or marker-injected) block
+    #   silently erase recorded findings, and the hourly relabel would
+    #   then flip labels to consensus:agreed off the empty state.
+    #   Failing is loud: review/consensus turn the job red; the sweep's
+    #   per-item guard skips just that item.
+    local region out
+    region=$(sed -n '/<!-- argus-ledger-data/,/^-->$/p' | sed '1d;$d')
+    if [ -z "$region" ]; then
+        echo '{"findings":[],"atlas_seen":false}'
+        return 0
+    fi
+    if ! out=$(printf '%s\n' "$region" | jq -c '.' 2>/dev/null) || [ -z "$out" ]; then
+        echo "ERROR: ledger data block present but unparseable — refusing to treat it as empty" >&2
+        return 1
+    fi
+    echo "$out"
 }
 
 load_ledger() { # -> ledger data json (default shape when no ledger exists yet)
     local row
-    row=$(find_ledger_comment || true)
+    row=$(find_ledger_comment)
     if [ -n "$row" ]; then
         echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data
     else
@@ -102,6 +168,15 @@ render_ledger() { # $1 data json -> markdown body
         echo "Consensus scope: security and bug findings need both reviewers'"
         echo "agreement; suggestions are recorded but never block it."
         echo ""
+        # The close-out digest (#18): written by the consensus path once
+        # every finding is agreed/escalated, so the owner reads state from
+        # this one comment instead of the whole thread.
+        if [ "$(echo "$data" | jq -r '.consensus_summary // ""')" != "" ]; then
+            echo "**Consensus summary**"
+            echo ""
+            echo "$data" | jq -r '.consensus_summary'
+            echo ""
+        fi
         echo "| ID | Sev | Finding | Status | Atlas | Fixed in | Outcome |"
         echo "|---|---|---|---|---|---|---|"
         echo "$data" | jq -r '.findings[] | "| \(.id) | \(.severity) | \(.title) | \(.status) | \(.atlas) | \(.fixed_in // "—") | \(.outcome // "—") |"'
@@ -115,7 +190,7 @@ render_ledger() { # $1 data json -> markdown body
 upsert_ledger() { # $1 data json
     local data="$1" body row
     body=$(render_ledger "$data")
-    row=$(find_ledger_comment || true)
+    row=$(find_ledger_comment)
     if [ -n "$row" ]; then
         local id
         id=$(echo "$row" | base64 -d | jq -r '.[0]')
@@ -140,25 +215,64 @@ set_label_pair() { # $1 add $2... remove
 }
 
 apply_labels_from() { # $1 data json
-    local data="$1" open disputed pending seen
+    local data="$1" open secbug disputed pending seen
     open=$(echo "$data"    | jq '[.findings[] | select(.status=="open")] | length')
-    disputed=$(echo "$data" | jq '[.findings[] | select(.status=="open" and .severity!="suggestion" and .atlas=="dispute")] | length')
-    pending=$(echo "$data" | jq '[.findings[] | select(.status=="open" and .severity!="suggestion" and .atlas=="pending")] | length')
+    # Consensus scope = security/bug rows at any NON-TERMINAL status
+    # (R1-1, R4-1, then AEL#22 R7-1): a fixed row still needs the
+    # peer's verdict — "fixed by Argus's word alone" must not shortcut
+    # to consensus:agreed — while a WITHDRAWN row is a conceded false
+    # positive whose stale atlas value ("dispute" from the exchange
+    # that refuted it, or "pending") would otherwise pin the item at
+    # consensus:disputed forever.
+    secbug=$(echo "$data"  | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion")] | length')
+    # Escalated rows belong to the disputed bucket whatever their
+    # atlas value (R18-2): the escalation handed the disagreement to
+    # the owner, and consensus:disputed is the label whose description
+    # covers exactly that. Counting them as pending pinned items at
+    # consensus:pending with no path out.
+    disputed=$(echo "$data" | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion" and (.atlas=="dispute" or (.outcome // "")=="escalated"))] | length')
+    pending=$(echo "$data" | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion" and .atlas=="pending" and (.outcome // "")!="escalated")] | length')
     seen=$(echo "$data"    | jq -r '.atlas_seen')
 
-    if [ "$open" -gt 0 ]; then
-        set_label_pair "argus:findings" "argus:clean"
-    else
-        set_label_pair "argus:clean" "argus:findings"
-    fi
+    local wantA wantC
+    if [ "$open" -gt 0 ]; then wantA="argus:findings"; else wantA="argus:clean"; fi
     if [ "$disputed" -gt 0 ]; then
-        set_label_pair "consensus:disputed" "consensus:pending" "consensus:agreed"
+        wantC="consensus:disputed"
+    elif [ "$secbug" -eq 0 ]; then
+        # Never had anything in consensus scope (clean or
+        # suggestion-only): agreed WITHOUT requiring atlas_seen. Atlas
+        # legitimately posts no @argus-tagged verdict here, so
+        # atlas_seen never flips and the old gate deadlocked such items
+        # at consensus:pending forever (#109; PR #104 merged in that
+        # state).
+        wantC="consensus:agreed"
     elif [ "$pending" -gt 0 ] || [ "$seen" != "true" ]; then
-        set_label_pair "consensus:pending" "consensus:agreed" "consensus:disputed"
+        wantC="consensus:pending"
     else
-        set_label_pair "consensus:agreed" "consensus:pending" "consensus:disputed"
+        wantC="consensus:agreed"
     fi
-    echo "labels: open=${open} disputed=${disputed} pending=${pending} atlas_seen=${seen}"
+    # One GET, and writes only on drift (R10-3): the hourly self-heal
+    # touches up to 20 items per cycle, and three blind mutations per
+    # already-correct item is API noise.
+    local oppA rmC1 rmC2 have ok=true
+    if [ "$wantA" = "argus:findings" ]; then oppA="argus:clean"; else oppA="argus:findings"; fi
+    rmC1=""; rmC2=""
+    for c in consensus:pending consensus:agreed consensus:disputed; do
+        [ "$c" = "$wantC" ] && continue
+        if [ -z "$rmC1" ]; then rmC1="$c"; else rmC2="$c"; fi
+    done
+    have=$(gh api "repos/${REPO}/issues/${NUMBER}/labels" --jq '[.[].name] | join(" ")' 2>/dev/null || echo "")
+    case " $have " in (*" $wantA "*) :;; (*) ok=false;; esac
+    case " $have " in (*" $oppA "*) ok=false;; esac
+    case " $have " in (*" $wantC "*) :;; (*) ok=false;; esac
+    case " $have " in (*" $rmC1 "*|*" $rmC2 "*) ok=false;; esac
+    if [ "$ok" = "true" ]; then
+        echo "labels already correct — no writes"
+    else
+        set_label_pair "$wantA" "$oppA"
+        set_label_pair "$wantC" "$rmC1" "$rmC2"
+    fi
+    echo "labels: open=${open} secbug=${secbug} disputed=${disputed} pending=${pending} atlas_seen=${seen} -> ${wantA},${wantC}"
 }
 
 # ---- review body -------------------------------------------------------
@@ -197,7 +311,7 @@ mode_review() {
         (.findings | all((.id|type=="string") and
             (.severity|IN("security","bug","suggestion")) and
             (.title|type=="string") and (.body|type=="string"))) and
-        (.resolved | type == "array")' "$INPUT" >/dev/null 2>&1; then
+        (.resolved | type == "array" and all(type == "string"))' "$INPUT" >/dev/null 2>&1; then
         api POST "issues/${NUMBER}/comments" -f body="### Argus review
 
 The review ran but its structured output failed validation — see the workflow run log for the raw findings.
@@ -221,6 +335,16 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
     fi
     [ "$n_res" -gt 0 ] && verdict_line="${verdict_line} · resolved this round: ${n_res}"
 
+    # Ledger loads BEFORE the review posts (R8-2): a transient fetch
+    # failure after posting would leave a Reviewed-head marker with no
+    # ledger rows — the sweep would then never re-review, orphaning
+    # the findings. Failing here leaves nothing posted; the sweep
+    # retries the whole review.
+    local data short now
+    data=$(load_ledger)
+    short="${HEAD_SHA:0:7}"
+    now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
     body=$(review_body false "$verdict_line")
 
     payload=$(jq -c --arg body "$body" --arg sha "$HEAD_SHA" '
@@ -243,22 +367,42 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
     echo "review posted (${n_sec}s/${n_bug}b/${n_sug}sg, resolved ${n_res})"
 
     # Merge into ledger: new rows for new findings; resolved -> fixed.
-    local data short
-    data=$(load_ledger)
-    short="${HEAD_SHA:0:7}"
-    data=$(jq -c --slurpfile new "$INPUT" --arg short "$short" '
+    # New security/bug rows get pending_since (UTC) — the dead-peer nudge
+    # clock (#20; skill-evolution-lab#113 AT-1 exchange): Reviewed-head marker age resets on every
+    # push, so "how long has Atlas owed a verdict" must live on the row.
+    data=$(jq -c --slurpfile new "$INPUT" --arg short "$short" --arg now "$now" '
         .findings as $old
         | ($old | map(.id)) as $ids
         | .findings += [$new[0].findings[] | select(.id as $i | $ids | index($i) | not) |
-            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
              severity,
-             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
              status: "open",
              atlas: (if .severity == "suggestion" then "—" else "pending" end),
-             fixed_in: null, outcome: null}]
+             fixed_in: null, outcome: null}
+            + (if .severity != "suggestion" then {pending_since: $now} else {} end)]
         | ($new[0].resolved) as $res
         | .findings |= map(if (.id as $i | $res | index($i)) and .status == "open"
-              then .status = "fixed" | .fixed_in = $short else . end)' <<<"$data")
+              then .status = "fixed" | .fixed_in = $short else . end)
+        | (if (($new[0].findings | length) + ($new[0].resolved | length)) > 0
+           then del(.consensus_summary) else . end)' <<<"$data")
+        # ^ a review round that CHANGES state (new findings or newly
+        #   resolved rows) supersedes the close-out digest (AEL#22
+        #   R1-4); a clean no-change round keeps it — deleting it there
+        #   would orphan the digest forever, since a clean round gives
+        #   Atlas nothing to verdict and the consensus path that
+        #   rebuilds it never runs (R4-4).
+    # Resolved IDs that matched no open ledger row are called out
+    # (R15-3), mirroring the consensus path's unmatched warning — the
+    # public verdict line counts .resolved verbatim, so a typo'd ID
+    # must at least be visible in the run log.
+    local unres
+    unres=$(jq -r --slurpfile new "$INPUT" --arg short "$short" '
+        [.findings[] | select(.status == "fixed" and .fixed_in == $short) | .id] as $done
+        | [$new[0].resolved[] | select(. as $i | ($done | index($i)) | not)] | join(", ")' <<<"$data")
+    if [ -n "$unres" ]; then
+        echo "WARNING: resolved IDs matched no open ledger row this round: ${unres}" >&2
+    fi
     upsert_ledger "$data"
     apply_labels_from "$data"
 }
@@ -266,13 +410,49 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
 # ---- mode: consensus ---------------------------------------------------
 
 mode_consensus() {
+    # Optional fields (both backward compatible with older consensus JSON):
+    #   summary       — close-out digest rendered atop the ledger (#18)
+    #   source        — "argus" on new_findings rows that are Argus's own
+    #                   issue findings (R<issue>-N) being recorded at
+    #                   reconciliation time (#17); argus_verdict then
+    #                   carries the exchange outcome, same state machine.
+    # Malformed OPTIONAL fields are dropped per-row before validation
+    # instead of discarding the whole verdict payload (R4-3) — one bad
+    # status string must not throw away every other recorded verdict.
+    # Required-field failures still hard-fail below.
+    local norm
+    norm=$(mktemp)
+    if jq '.updates |= map(
+            (if has("status") and (.status != "withdrawn")
+             then del(.status) else . end)
+          | (if has("outcome") and
+               ((.outcome | IN("agreed","conceded-by-argus","conceded-by-atlas","escalated")) | not)
+             then del(.outcome) else . end))
+        | .new_findings |= map(
+            (if has("source") and ((.source | IN("argus","atlas")) | not)
+             then del(.source) else . end))
+        | (if has("summary") and ((.summary | type) != "string")
+           then del(.summary) else . end)' "$INPUT" > "$norm" 2>/dev/null; then
+        # Canonicalize both sides before comparing (AEL#22 R6-4):
+        # comparing jq's formatted output against the raw input fires
+        # the notice on every well-formed payload.
+        if ! cmp -s <(jq -cS . "$norm" 2>/dev/null) <(jq -cS . "$INPUT" 2>/dev/null); then
+            echo "consensus: dropped malformed optional status/outcome field(s)" >&2
+        fi
+        INPUT="$norm"
+    fi
     if ! jq -e '
         (.updates | type == "array") and (.new_findings | type == "array") and
-        (.escalated | type == "array") and
-        (.updates | all((.id|type=="string") and (.atlas|IN("agree","dispute")))) and
+        (.escalated | type == "array" and all(type == "string")) and
+        (((.summary // "") | type == "string")) and
+        (.updates | all((.id|type=="string") and (.atlas|IN("agree","dispute")) and
+            ((has("status") | not) or (.status == "withdrawn")) and
+            ((has("outcome") | not) or
+             (.outcome | IN("agreed","conceded-by-argus","conceded-by-atlas","escalated"))))) and
         (.new_findings | all((.id|type=="string") and
             (.severity|IN("security","bug","suggestion")) and
             (.title|type=="string") and
+            ((.source // "atlas") | IN("argus","atlas")) and
             (.argus_verdict|IN("agree","dispute"))))' \
         "$INPUT" >/dev/null 2>&1; then
         echo "ERROR: consensus.json failed validation" >&2
@@ -282,39 +462,173 @@ mode_consensus() {
     local data
     data=$(load_ledger)
 
-    data=$(jq -c --slurpfile c "$INPUT" '
-        .atlas_seen = true
+    # atlas_seen and its timestamp advance only when the payload
+    # carries verdicts (PR #15 R4-1): a human CASE-1 run writes an
+    # empty consensus file, and stamping it would tell the sweep a
+    # peer verdict arrived when none did.
+    data=$(jq -c --slurpfile c "$INPUT" --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+        (if (($c[0].updates | length) + ($c[0].new_findings | length)
+              + ($c[0].escalated | length)) > 0
+         then .atlas_seen = true | .atlas_seen_at = $seen_at
+         else . end)
         | ($c[0].updates) as $u
         | .findings |= map(. as $f |
             (($u | map(select(.id == $f.id)) | first) // null) as $m
             | if $m == null then $f else
                 $f + {atlas: $m.atlas}
-                    + (if $m.atlas == "agree" and $f.status == "open"
+                    + (if $m.atlas == "dispute"
+                       then {pending_since: $seen_at} else {} end)
+                    # ^ ANY dispute verdict refreshes the stall clock,
+                    #   re-affirmations included: a repeated verdict is
+                    #   still peer activity, and a nudge during a live
+                    #   exchange is a false alarm. The re-affirmation
+                    #   scenario the narrower guard served is itself a
+                    #   protocol violation and stays a tracked
+                    #   suggestion (#25).
+                    + (if $m.atlas == "agree" and ($f.status == "open" or $f.status == "fixed")
                        then {outcome: "agreed"} else {} end)
                     + (if ($m | has("status")) then {status: $m.status} else {} end)
                     + (if ($m | has("outcome")) then {outcome: $m.outcome} else {} end)
               end)
         | (.findings | map(.id)) as $ids
         | .findings += [$c[0].new_findings[] | select(.id as $i | $ids | index($i) | not) |
-            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
              severity,
-             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
              status: "open",
              fixed_in: null, outcome: null}
+            + (if .source then {source} else {} end)
             + (if .argus_verdict == "dispute"
-               then {atlas: "dispute"}              # the open disagreement
+               then {atlas: "dispute", pending_since: $seen_at}
                else {atlas: "agree", outcome: "agreed"} end)]
         | ($c[0].escalated) as $esc
         | .findings |= map(if (.id as $i | $esc | index($i))
-              then .outcome = "escalated" else . end)' <<<"$data")
+              then .outcome = "escalated" else . end)
+        | ([.findings[] | select(.status != "withdrawn"
+              and .severity != "suggestion"
+              and (.outcome // "") != "escalated"
+              and (.atlas == "pending" or .atlas == "dispute"))]
+           | length) as $unsettled
+        | (if $unsettled > 0 then del(.consensus_summary) else . end)
+        | (if (($c[0].new_findings | length) > 0) and (($c[0].summary // "") == "")
+           then del(.consensus_summary) else . end)
+        | (if (($c[0].summary // "") != "") and $unsettled == 0
+           then .consensus_summary = ($c[0].summary | gsub("-->|<!--"; "→"))
+           else . end)' <<<"$data")
+
+    # Verdicts aimed at IDs the ledger does not hold are called out
+    # instead of vanishing (R12-2) — a typo in one finding ID should
+    # be visible in the run log, and the peer can re-send it.
+    local unmatched
+    unmatched=$(jq -r --slurpfile c "$INPUT" '[.findings[].id] as $ids
+        | [($c[0].updates[].id, $c[0].escalated[]) | select(. as $i | $ids | index($i) | not)]
+        | join(", ")' <<<"$data")
+    if [ -n "$unmatched" ]; then
+        echo "WARNING: consensus updates matched no ledger row: ${unmatched}" >&2
+    fi
+        # ^ one invariant governs the digest (R6-3, then AEL#22 R4-2):
+        #   it exists exactly while the post-merge state carries no
+        #   pending or disputed security/bug verdict. Unsettled rows
+        #   delete a stale digest and block a new one, whatever the
+        #   incoming payload claims.
 
     upsert_ledger "$data"
     apply_labels_from "$data"
 }
 
-ensure_labels
+# ---- mode: seen --------------------------------------------------------
+
+# Recovery-loop terminator (R16-3): a dispatched consensus run whose
+# agent parsed no verdicts still advances atlas_seen_at, so the
+# sweep's unreconciled-peer-verdict exception stops re-dispatching the
+# same PR every hour. Runs inside the serialized consensus group.
+mode_seen() {
+    local row data
+    row=$(find_ledger_comment)
+    if [ -z "$row" ]; then
+        echo "seen: no ledger on #${NUMBER} — nothing to mark"
+        return 0
+    fi
+    data=$(echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data)
+    data=$(jq -c --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        '.atlas_seen = true | .atlas_seen_at = $seen_at' <<<"$data")
+    upsert_ledger "$data"
+    apply_labels_from "$data"
+    echo "seen: atlas_seen_at advanced with no verdict changes"
+}
+
+# ---- mode: nudge -------------------------------------------------------
+
+# Dead-peer alert (#20): the sweep detected open security/bug findings
+# whose Atlas verdict has been pending >24h at the PR's CURRENT head.
+# One comment per head oid; the "Consensus-nudge:" marker is the dedupe
+# token the sweep checks before nominating again.
+mode_nudge() {
+    local sha
+    sha=$(jq -r '.sha // empty' "$INPUT")
+    case "$sha" in (*[!0-9a-f]*|'') echo "ERROR: bad sha '${sha}'" >&2; exit 1;; esac
+    # Exactly the full 40-char oid: the dedupe greps for the literal
+    # "Consensus-nudge: <sha>", so a short nomination one hour and a
+    # full one the next would slip past it (AEL#22 R1-2).
+    if [ "${#sha}" -ne 40 ]; then
+        echo "ERROR: sha must be the full 40-char head oid" >&2; exit 1
+    fi
+    # Dedupe in code, not in the sweep agent's judgement (R1-3): one
+    # nudge per head oid, ever, regardless of what the agent nominates.
+    # Fetch-then-grep, never gh|grep -q: under pipefail, grep -q's
+    # early exit breaks gh's pipe mid-pagination and the dedupe check
+    # reads as "not found" (R3-1). On fetch failure, fail CLOSED — a
+    # dedupe we cannot verify must not post.
+    local bodies
+    if ! bodies=$(gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" \
+        --jq '.[].body' 2>/dev/null); then
+        echo "nudge: comment fetch failed — skipping (dedupe unverifiable)"
+        return 0
+    fi
+    if grep -qF "Consensus-nudge: ${sha}" <<<"$bodies"; then
+        echo "nudge: marker for ${sha:0:7} already present — skipping"
+        return 0
+    fi
+    api POST "issues/${NUMBER}/comments" -f body="### Argus
+
+Consensus check: this item has open security/bug findings awaiting the peer reviewer (Atlas) for more than 24 hours. @evekhm — the Atlas poller may be down.
+
+— Argus · Claude on Vertex AI
+
+Consensus-nudge: ${sha}" >/dev/null
+    echo "nudge posted (head ${sha:0:7})"
+}
+
+# ---- mode: relabel -----------------------------------------------------
+
+# Self-heal (#16): re-derive labels from the ledger already on the item.
+# No comments, no ledger edits — with the secbug gate above this converges
+# stuck consensus:pending labels (including on closed/merged items) and is
+# a no-op when labels are already true. Run hourly by the sweep.
+mode_relabel() {
+    local row data
+    row=$(find_ledger_comment)
+    if [ -z "$row" ]; then
+        echo "relabel: no ledger on #${NUMBER} — nothing to do"
+        return 0
+    fi
+    data=$(echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data)
+    apply_labels_from "$data"
+}
+
+# Label definitions are only ensured by the modes that record new
+# state. relabel runs hourly against up to 20 items and nudge posts a
+# comment only — unconditional ensure_labels would burn 5 label POSTs
+# per item per sweep for labels that necessarily exist once a ledger
+# does (skill-evolution-lab#114 AT-2).
+case "$MODE" in
+    review|consensus) ensure_labels ;;
+esac
 case "$MODE" in
     review)    mode_review ;;
     consensus) mode_consensus ;;
+    seen)      mode_seen ;;
+    nudge)     mode_nudge ;;
+    relabel)   mode_relabel ;;
     *) echo "unknown mode: $MODE" >&2; exit 1 ;;
 esac
