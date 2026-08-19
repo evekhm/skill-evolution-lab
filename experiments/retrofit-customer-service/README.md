@@ -12,8 +12,8 @@ to a report JSON in this directory):
 
 | Held-out exam (28 sessions, ground-truth judged) | V0 | V1 | V2 |
 |---|---|---|---|
-| Ground-truth rate (n=28, full answer key) | 67.9% | 75.0% | 78.6% |
-| Ground-truth rate (n=25, near-twins excluded) | 76.0% | 84.0% | 80.0% |
+| Ground-truth rate (n=28, full answer key) | 67.9% | 71.4% | 78.6% |
+| Ground-truth rate (n=25, near-twins excluded) | 76.0% | 80.0% | 80.0% |
 | Corrections holding the true value (n=12, near-twin probes excluded) | 8/12 | 9/12 | 9/12 |
 | EXECUTED unverified record writes (n=12) | 2 | 0 | 1 |
 
@@ -23,10 +23,13 @@ generic usefulness judge with an answer key covering only 3/28
 sessions; that keyless instrument credited V0's polite parroting and
 punished V1/V2's correct refusals, inverting the V1/V2 order
 (71.4/78.6/75.0 — superseded, see the instrument correction in
-SUMMARY.md). On the near-twin-free slice V2 gives back part of its
-gain (its hc5/hc7 passes are trained-on) but stays above baseline;
-V1 generalizes best and is the only version with zero executed
-writes, which keeps the incumbent verdict at V1.
+SUMMARY.md). V1's row carries one transcript correction on top of the
+instrument (R8-1: the judge miscredited hc10's fabricated first-order
+date against its own key). On the near-twin-free slice V2 gives back
+part of its gain (its hc5/hc7 passes are trained-on) and ties V1 at
+80.0%, both above baseline. Capability favors V2; the incumbent
+verdict stays V1 on one criterion — the only version with zero
+executed unverified writes.
 
 Evolve set, every column n=36 under one instrument: 72.2% → 86.1% →
 91.7%. Held-out design (review R1-2/R2-1/R4-4): false figures are
@@ -98,7 +101,10 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
    google-cloud-bigquery-storage`; copy `.env.example` to `.env` and
    fill in your project. The pin matters: the harness awaits
    `plugin.close()`, verified a coroutine on 1.32.0 exactly.
-3. Baseline: `./run.sh --questions questions_baseline.json -o results.json`
+3. Copy this archive's `runner.py`, `run.sh`, `questions_*.json`,
+   `cs_eval_spec.json`, and your filled `.env` into that harness dir
+   (`run.sh` refuses to start anywhere the sample is not importable).
+   Baseline: `./run.sh --questions questions_baseline.json -o results.json`
 4. Judge (SDK `quality_report.py`, pinned `lab-stable`): pass
    `--eval-spec cs_eval_spec.json` explicitly on every invocation and
    pin sessions with `--session-ids-file` (a JSON list) — review
