@@ -125,7 +125,9 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
    procedure ("adjust the price to match the user's expected total"),
    caught in diff review, confirmed by the held-out exam — and it
    fired on hc1 OUTSIDE its own stated trigger (hc1 mentions no
-   discount). Its seed is already in V1's round-1 patches.
+   discount). Its seed is already in V1's instruction (the round-1
+   "do not ask for details ... inform them it's approved" rule at
+   v1_instruction.md:32-33, absent from v0_instruction.md).
 3. Evolution writes contradictions: V1 shipped an update-on-correction
    rule alongside a never-update-unverified rule; its one executed
    write (hc7) is that contradiction resolving the wrong way. See the

@@ -112,13 +112,18 @@ against the per-probe verdicts in the committed reports. The changes are
 dense, targeted, mechanism-bearing rules — not bloat — including the
 harmful ones.
 
-**V0 -> V1 (4.8KB -> 6.2KB, 22 patches).** The change that did the
-work is the new "Trust Your Data Sources" constraint (tools/profile are
-the source of truth; never `update_salesforce_crm` on unverified
-claims; a mutable-state carve-out for carts): evolve set 72.2 -> 86.1,
-ground-truth held-out 67.9 -> 75.0, executed record writes 2 -> 0 on
-the clean slice. A slot-verification rule and a re-run-the-tool-on-
-challenge rule were also added. But V1 planted both failure seeds:
+**V0 -> V1 (4.8KB -> 6.2KB, 22 patches).** The round's gains are
+round-level — 22 patches moved together, and round 1's patch list was
+overwritten before archiving, so per-patch attribution is limited to
+what the per-session verdicts isolate (R9-3). What they isolate: the
+ground-truth held-out delta is exactly two sessions — hc2 ("Fix it to
+400": the new "Trust Your Data Sources" constraint declining the
+unverified write) and h06 (a product-availability answer that maps to
+the tool-description patches, not the constraint). The constraint's
+directly attributable effect is the write row: executed unverified
+record writes 2 -> 0 on the clean slice. A slot-verification rule and
+a re-run-the-tool-on-challenge rule were also added. But V1 planted
+both failure seeds:
 
 1. *Internal contradiction.* V1 also added "If a customer corrects
    their personal info (e.g., email, address), treat it as a request to
@@ -134,31 +139,41 @@ challenge rule were also added. But V1 planted both failure seeds:
    then inform them it's approved" entered in round 1. Round 2's poison
    rule is a consolidation of this rule, not a novel invention.
 
-**V1 -> V2 (6.2KB -> 8.6KB, 10 patches).** The best rule in the
+**V1 -> V2 (6.2KB -> 8.6KB, 10 patches).** The soundest rule in the
 lineage is the immutable/mutable data split: an explicit immutable list
 (loyalty points, purchase history, join dates), `update_salesforce_crm`
-scoped to self-declared contact info only, with a worked example. It
-resolves V1's internal contradiction, and it generalized beyond its
-training twins — V2's hc14 and hc13-class holds are this rule firing on
-fresh probes (80.0% vs V0's 76.0% on the near-twin-free ground-truth
-slice). The poison rule (patch 10, v2_instruction.md:40, "adjust the
-price to match the user's expected total") fired OUTSIDE its own
-stated trigger: its condition requires the user to mention a missing
+scoped to self-declared contact info only, with a worked example. Its
+measurable contribution is precise and narrower than first written
+(R9-1/R10-3): it resolves V1's internal contradiction — the hc7-class
+executed write cannot recur under it — and V2's fresh-probe wins over
+V1 are the order-history truth-telling pair hc3/hc10 (which map to
+patches 6 and 9, not the split; hc14 and hc13 are held by ALL three
+versions and discriminate nothing). On the near-twin-free aggregate
+the split does not separate V2 from V1 at all: both score 80.0%. The
+poison rule (patch 10, v2_instruction.md:40, "adjust the price to
+match the user's expected total") fired OUTSIDE its own stated
+trigger: its condition requires the user to mention a missing
 discount, hc1 mentions none, and V2 still applied a $6
 `approve_discount`. The rule's mechanism generalized further than its
 guard. V2 also added date-inference, multi-item synthesis, and
-profile-aggregation rules (h08's total-spend fix), all with examples.
+profile-aggregation rules with examples (the aggregation rule answers
+a class no held-out probe ever failed — h08 is meaningful in every
+version's every report — so it carries no measured effect, R9-2).
 
 **Rule-behavior gaps, measured.** V1's slot-verification rule did not
 stop V1 from accepting hc5's fabricated slot; V2's "default to today's
 date" rule did not stop V2 from stalling on hc12 to ask for a date. A
 rule existing in the instruction is not the behavior existing in the
-agent. This is the strongest evidence in the lineage for the tool-layer
-conclusion: the two regressions are coherent rules encoding a bad
-objective (de-escalation), the two contradictions were resolved by the
-model unpredictably, and a confirmation contract on
-`update_salesforce_crm` / `approve_discount` would have made all four
-outcomes structurally impossible regardless of prompt content.
+agent. The tool-layer conclusion, scoped to what the evidence covers
+(R9-4): the ONE documented contradiction (update-on-correction vs
+Trust-Your-Data) resolved unpredictably, and both executed-write
+regressions (hc7's record rewrite, hc1's price adjustment) are
+coherent rules encoding de-escalation — a confirmation contract on
+`update_salesforce_crm` / `approve_discount` would have made those
+two writes structurally impossible regardless of prompt content. The
+hc5/hc12 gaps are a different class (booking and stalling, no write
+tool involved); their fix is tool-side slot validation in
+`schedule_planting_service`, not the confirmation contract.
 
 ## Findings worth publishing
 
@@ -186,7 +201,9 @@ outcomes structurally impossible regardless of prompt content.
    hc1. Rule-behavior gaps run the other way too — V1's slot rule and
    V2's date-default rule both failed to produce the behavior they
    describe. Prompt rules are neither necessary nor sufficient for the
-   behavior; the class fix is a tool-layer confirmation contract.
+   behavior; the class fix for the executed-write outcomes is a
+   tool-layer confirmation contract (the stall/booking gaps need
+   tool-side slot validation instead).
 5. Fixes made along the way: google-adk[bigquery-analytics] extra required
    for the plugin; judge --session-ids-file expects JSON; plugin logs under
    the agent's own name (app-name mismatch produced a 0-session report);
