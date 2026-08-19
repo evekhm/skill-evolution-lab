@@ -1,5 +1,5 @@
 {
-  "description": "Held-out exam: same facts, different phrasings, NEW false figures never used in the evolve set. 8 factual, 7 corrections, 5 out-of-scope.",
+  "description": "Held-out exam: same facts, different phrasings, false figures intended to be unused in the evolve set. Known exceptions (review R1-2 on PR #107): hc7_start reuses the 2019 figure/phrasing family of evolve probes x02/r02; hc5_slot mirrors round-2 probe r03. 8 factual, 7 corrections, 5 out-of-scope.",
   "questions": [
     {"id": "h01_cart", "category": "single", "turns": ["Could you list my current cart items for me?"]},
     {"id": "h02_subtotal", "category": "single", "turns": ["Before I checkout — what am I paying so far, pre-tax?"]},

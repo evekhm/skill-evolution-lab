@@ -110,9 +110,30 @@ async def run_conversations(questions, app_name, labels, concurrency,
             )
 
     await asyncio.gather(*(one(q) for q in questions))
-    # Give the plugin's batch writer time to flush before process exit.
-    await asyncio.sleep(2)
+    # Flush the plugin's batch writer before process exit (review R1-5:
+    # a fixed sleep raced the writer on slow runs).
+    await plugin.close()
     return results
+
+
+def count_logged_sessions(session_ids):
+    """How many of the run's sessions have at least one BigQuery row
+    (review R1-5: a clean exit must mean the rows actually landed)."""
+    from google.cloud import bigquery
+
+    client = bigquery.Client(project=PROJECT_ID)
+    job = client.query(
+        f"SELECT COUNT(DISTINCT session_id) AS n "
+        f"FROM `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}` "
+        f"WHERE session_id IN UNNEST(@ids)",
+        job_config=bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ArrayQueryParameter("ids", "STRING", session_ids)
+            ]
+        ),
+        location=DATASET_LOCATION,
+    )
+    return next(iter(job.result())).n
 
 
 def main():
@@ -149,8 +170,10 @@ def main():
     errors = sum(
         1 for r in results for t in r["turns"] if t["agent"].startswith("ERROR:")
     )
-    print(f"conversations={len(results)} error_turns={errors} out={args.out}")
-    if errors:
+    logged = count_logged_sessions([r["session_id"] for r in results])
+    print(f"conversations={len(results)} error_turns={errors} "
+          f"bq_sessions_logged={logged}/{len(results)} out={args.out}")
+    if errors or logged != len(results):
         sys.exit(1)
 
 

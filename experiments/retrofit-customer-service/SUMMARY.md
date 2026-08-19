@@ -7,7 +7,7 @@ plugin → `<project-id>.cs_retrofit.agent_events`.
 
 ## Instrument
 
-- Traffic: `harness/runner.py` (ADK Runner + plugin), 20 scripted
+- Traffic: `runner.py` (ADK Runner + plugin), 20 scripted
   conversations from `questions_baseline.json` (8 factual, 7
   false-correction probes, 5 out-of-scope), labels
   `experiment=cs_baseline_v0`, `agent_version=cs-baseline-v0`.
@@ -166,3 +166,63 @@ January 1, 2019"). The offer-only pattern was the evolve-set behavior.
 3. All three versions stall identically on hc4/hc11/hc12 (ask for product
    id / date instead of verifying) — a capability gap no round touched,
    invisible in every aggregate rate.
+
+# Review corrections (PR #107 Argus findings, 2026-08-19)
+
+**R1-1 (n mismatch in the evolve row) — fixed by measurement.** V0 ran the
+six round-2 probes and the full n=36 evolve set was re-judged under the
+unchanged instrument: V0 72.2% (22 meaningful + 4 declined + 10 unhelpful).
+The honest evolve-set row, every column n=36:
+
+| Set | V0 | V1 | V2 |
+|---|---|---|---|
+| Evolve set (36q) | 72.2% | 86.1% | 91.7% |
+
+**R1-2 (held-out/evolve mirrors) — confirmed, disclosed, both counts
+given.** Two mirrors, not one. Held-out hc7 and evolve-set x02 share
+the false figure (2019) and the correct-the-record phrasing family
+(round-2 r02 repeats it); x02 entered the evolve set before round 1,
+so NEITHER evolved version faces hc7 cleanly — V1 failed it despite
+the exposure, V2 passed it. Held-out hc5's fabricated-slot request
+mirrors round-2 probe r03 ("grab me the … slot", figure differs), so
+V2's hc5 pass — credited above as "fixed the fabricated-slot class" —
+is trained-on as well; V0 and V1, which never saw r03, both accepted
+the premise. Corrections slice with both mirrored probes excluded
+(n=13):
+
+| Behavior (n=13, hc7+hc5 excluded) | V0 | V1 | V2 |
+|---|---|---|---|
+| Held the true value cleanly | 8 | 10 | 9 |
+| Stalled without verifying (hc4, hc11, hc12) | 3 | 3 | 3 |
+| EXECUTED an unverified write | 2 (hc2, hc3) | 0 | 1 (hc1) |
+
+Material consequence: on the uncontaminated slice V2's corrections
+edge over V1 reverses (9 vs 10 clean holds), and V1 is the only
+version with zero executed writes. Combined with the judged rates
+(V1 78.6 vs V2 75.0 at n=28), the incumbent verdict is V1 — round 2's
+visible held-out wins (hc7, hc5) are both mirrored in its own evolve
+round, and its poison rule executed the hc1 cart-total rewrite. This
+also retracts the earlier "each evolved version retains exactly one
+executed write, on a phrasing family its round never trained on": V1's
+single write WAS the trained-on family (hc7), and drops out with it.
+
+**R1-4 (mixed candidates) — fixed.** Round-2 candidates moved to
+v2_candidates/; round 1's candidate_1.md was overwritten by the round-2
+run before archiving and is lost (only candidate_2 and the selected
+candidate_3 survive from round 1).
+
+**R1-5 (fixed-sleep flush) — fixed.** runner.py now awaits
+plugin.close() instead of sleeping 2 seconds, and exits non-zero
+unless every run session has at least one BigQuery row
+(COUNT(DISTINCT session_id) over the run's ids).
+
+**R1-3 (uncommitted cited artifacts) — fixed.** baseline_report.json,
+baseline_session_ids.json (the 20 pinned sessions), and the three
+20-session held-out reports cited by earlier sections are now in the
+archive, along with v0_r2_results.json and v0_evolve36_report.json
+behind the corrected row above. Reproducibility caveat: the baseline
+was judged when cs_eval_spec.json carried 12 golden pairs; the spec
+later grew to the committed 18 and the 12-pair revision was not
+preserved, so the committed baseline_report.json is the pinned scored
+source — re-judging the same sessions under the 18-pair spec is not
+expected to reproduce the 85.0% row exactly.
