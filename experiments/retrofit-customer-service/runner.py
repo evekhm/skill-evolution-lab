@@ -149,6 +149,22 @@ def main():
     parser.add_argument("--agent-version", default="cs-baseline-v0")
     args = parser.parse_args()
 
+    # An evolved-skill run that keeps the V0 defaults would log to BigQuery
+    # under baseline provenance (review R3-2 on PR #107) — refuse to start.
+    if args.instruction_file:
+        stale = [
+            f"--{name.replace('_', '-')}"
+            for name in ("agent_version", "label", "app_name")
+            if getattr(args, name) == parser.get_default(name)
+        ]
+        if stale:
+            sys.exit(
+                "--instruction-file overrides the skill, but "
+                + ", ".join(stale)
+                + " still carry the V0 baseline default(s); pass explicit "
+                "values so the run's BigQuery rows carry the right version."
+            )
+
     with open(args.questions) as f:
         questions = json.load(f)["questions"]
     if args.limit:

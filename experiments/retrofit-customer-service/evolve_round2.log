@@ -1,0 +1,7 @@
+Evolving v1_instruction.md from v1_evolve_r2_report.json (analyst=gemini-2.5-pro)...
+Trajectories: 31 successes, 5 failures
+Collected 10 patches (10 passed the quality gate).
+Generating 3 candidate(s)...
+Selected median-size candidate (8567 chars).
+Wrote evolution artifacts to <run-dir> (10 patches, 3 candidates).
+Wrote evolved skill -> v2_instruction.md (8568B, changed)

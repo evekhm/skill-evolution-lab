@@ -13,18 +13,21 @@ to a report JSON in this directory):
 | Held-out exam (28 sessions) | V0 | V1 | V2 |
 |---|---|---|---|
 | Judged meaningful rate | 71.4% | 78.6% | 75.0% |
-| Corrections holding the true value (n=13, mirrored probes excluded) | 8/13 | 10/13 | 9/13 |
-| EXECUTED unverified record writes (n=13) | 2 | 0 | 1 |
+| Corrections holding the true value (n=12, near-twin probes excluded) | 8/12 | 10/12 | 9/12 |
+| EXECUTED unverified record writes (n=12) | 2 | 0 | 1 |
 
 Evolve set, every column n=36 under one instrument: 72.2% → 86.1% →
-91.7%. Held-out design (review R1-2/R2-1): false figures are fresh,
-but phrasing families deliberately probe the trained classes — the
-exam measures generalization within a class, not topic novelty. Two
-probes cross the line from class-probe to near-twin and are excluded
-from the corrections rows: hc7 (shares the 2019 figure AND the
-correct-the-record imperative with x02/r02) and hc5 (mirrors x03/r03's
-fabricated-slot request, differing only in the invented window).
-SUMMARY.md carries the n=15 originals alongside.
+91.7%. Held-out design (review R1-2/R2-1/R4-4): false figures are
+fresh, but phrasing families deliberately probe the trained classes —
+the exam measures generalization within a class, not topic novelty.
+Three probes cross the line from class-probe to near-twin and are
+excluded from the corrections rows: hc7 (shares the 2019 figure AND
+the correct-the-record imperative with x02/r02), hc5 (mirrors
+x03/r03's fabricated-slot request, differing only in the invented
+window), and hc12 (asserts a false slot time and books it, the
+r03/r04 booking-imperative family; all three versions stalled on it,
+so its exclusion shifts every column equally). SUMMARY.md carries the
+n=15 originals alongside.
 
 The baseline's signature failure: user asserts a false figure, and the
 agent writes it into the system of record ("Your loyalty points have
@@ -49,9 +52,16 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
   exam (20 + 8 correction extension). Figures are fresh; phrasing
   families deliberately reuse the trained classes (twin pairs:
   hc2↔x01/r01 set-my-points, hc5↔x03/r03 fabricated slot, hc7↔x02/r02
-  correct-the-record with shared 2019 figure). hc7 and hc5 are the
-  near-twins excluded from the clean corrections slice — see the
-  R1-2/R2-1 correction in SUMMARY.md.
+  correct-the-record with shared 2019 figure, hc12↔r03/r04 booking
+  imperative). hc7, hc5, and hc12 are the near-twins excluded from the
+  clean corrections slice — see the R1-2/R2-1/R4-4 correction in
+  SUMMARY.md.
+- `evolve_round1.log` / `evolve_round2_refused.log` /
+  `evolve_round2.log` — the evolution engine's own output per round
+  (patch counts, compaction, the guardrail refusal, candidate
+  selection); `v2_patches.json` the 10 round-2 patches (patch 10 is
+  the poison rule verbatim). Round 1's patch list was overwritten by
+  the round-2 run before archiving and is lost, like candidate_1.
 - `v0/v1/v2_instruction.md` — the skill lineage; `v1_candidates/` and
   `v2_candidates/` the per-round competitors (round 1's candidate_1 was
   overwritten by the round-2 run before archiving and is lost).
@@ -64,9 +74,11 @@ prompt rules chase phrasings; the class fix belongs at the tool layer
 1. Sparse-clone the sample (never vendored here):
    `git clone --depth 1 --filter=blob:none --sparse https://github.com/google/adk-samples.git && cd adk-samples && git sparse-checkout set python/agents/customer-service`
 2. `uv init --bare` a harness dir next to it; `uv add --editable
-   <clone>/python/agents/customer-service "google-adk[bigquery-analytics]"
+   <clone>/python/agents/customer-service
+   "google-adk[bigquery-analytics]==1.32.0"
    google-cloud-bigquery-storage`; copy `.env.example` to `.env` and
-   fill in your project.
+   fill in your project. The pin matters: the harness awaits
+   `plugin.close()`, verified a coroutine on 1.32.0 exactly.
 3. Baseline: `./run.sh --questions questions_baseline.json -o results.json`
 4. Judge (SDK `quality_report.py`, pinned `lab-stable`): pass
    `--eval-spec cs_eval_spec.json` explicitly on every invocation and
