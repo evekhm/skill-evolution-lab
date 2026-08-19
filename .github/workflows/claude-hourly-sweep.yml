@@ -220,10 +220,15 @@ jobs:
                  R<issue-number>-1, R<issue-number>-2, ... — the peer
                  reconciliation and the findings ledger key on them.
             4. Dead-peer scan (#113) — OPEN PRs only (issues cannot
-               reach a pending Atlas verdict): for each open PR whose
+               reach a pending Atlas verdict). Enumerate candidates
+               with `gh pr list --state open --label consensus:pending
+               --limit 100` — NOT the step-1 window: a PR waiting on a
+               dead peer has, by definition, no recent updates, so the
+               24h-updated list from step 1 excludes exactly the PRs
+               this scan exists to find (R3-2). For each whose
                "Argus findings ledger" comment's embedded JSON has a
-               finding with status "open", severity NOT "suggestion",
-               and atlas "pending", nominate a nudge when ALL hold:
+               finding with severity NOT "suggestion" and atlas
+               "pending" (any status), nominate a nudge when ALL hold:
                - that finding's pending_since is older than 24 hours
                  (rows written before pending_since existed: use the
                  timestamp of the OLDEST Argus review/comment

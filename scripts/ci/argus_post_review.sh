@@ -75,8 +75,15 @@ EOF
 # ---- ledger state ------------------------------------------------------
 
 find_ledger_comment() { # -> "id<TAB>body" or empty
+    # ARGUS_LOGIN (optional env, set by the workflows): restrict the
+    # match to Argus-authored comments. Without it, any commenter on a
+    # public repo could pre-plant a forged ledger comment that the
+    # hourly relabel pass would then read unattended (R3-3). REST
+    # appends "[bot]" to GitHub App logins, so both forms match.
     gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" \
-        --jq '.[] | select(.body | contains("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
+        | jq -r --arg who "${ARGUS_LOGIN:-}" '.[]
+            | select(($who == "") or (.user.login == $who) or (.user.login == $who + "[bot]"))
+            | select(.body | contains("<!-- argus-ledger -->")) | [.id, .body] | @base64' \
         | head -1
 }
 
@@ -170,8 +177,12 @@ apply_labels_from() { # $1 data json
     # shortcut to consensus:agreed. Only items that never had a
     # security/bug finding at all skip the Atlas requirement.
     secbug=$(echo "$data"  | jq '[.findings[] | select(.severity!="suggestion")] | length')
-    disputed=$(echo "$data" | jq '[.findings[] | select(.status=="open" and .severity!="suggestion" and .atlas=="dispute")] | length')
-    pending=$(echo "$data" | jq '[.findings[] | select(.status=="open" and .severity!="suggestion" and .atlas=="pending")] | length')
+    # Like secbug, disputed and pending count ANY status (R4-1, and the
+    # remainder of R1-1): Argus marking a row "fixed" ends fix-tracking,
+    # not the peer's say — a fixed row whose Atlas verdict is dispute or
+    # pending must still block consensus:agreed.
+    disputed=$(echo "$data" | jq '[.findings[] | select(.severity!="suggestion" and .atlas=="dispute")] | length')
+    pending=$(echo "$data" | jq '[.findings[] | select(.severity!="suggestion" and .atlas=="pending")] | length')
     seen=$(echo "$data"    | jq -r '.atlas_seen')
 
     if [ "$open" -gt 0 ]; then
@@ -300,10 +311,14 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
         | ($new[0].resolved) as $res
         | .findings |= map(if (.id as $i | $res | index($i)) and .status == "open"
               then .status = "fixed" | .fixed_in = $short else . end)
-        | del(.consensus_summary)' <<<"$data")
-        # ^ a fresh review round supersedes any recorded close-out
-        #   digest (AEL#22 R1-4); the consensus path re-adds it when
-        #   full agreement is reached again.
+        | (if (($new[0].findings | length) + ($new[0].resolved | length)) > 0
+           then del(.consensus_summary) else . end)' <<<"$data")
+        # ^ a review round that CHANGES state (new findings or newly
+        #   resolved rows) supersedes the close-out digest (AEL#22
+        #   R1-4); a clean no-change round keeps it — deleting it there
+        #   would orphan the digest forever, since a clean round gives
+        #   Atlas nothing to verdict and the consensus path that
+        #   rebuilds it never runs (R4-4).
     upsert_ledger "$data"
     apply_labels_from "$data"
 }
@@ -317,6 +332,23 @@ mode_consensus() {
     #                   issue findings (R<issue>-N) being recorded at
     #                   reconciliation time (#110); argus_verdict then
     #                   carries the exchange outcome, same state machine.
+    # Malformed OPTIONAL fields are dropped per-row before validation
+    # instead of discarding the whole verdict payload (R4-3) — one bad
+    # status string must not throw away every other recorded verdict.
+    # Required-field failures still hard-fail below.
+    local norm
+    norm=$(mktemp)
+    if jq '.updates |= map(
+            (if has("status") and (.status != "withdrawn")
+             then del(.status) else . end)
+          | (if has("outcome") and
+               ((.outcome | IN("agreed","conceded-by-argus","conceded-by-atlas","escalated")) | not)
+             then del(.outcome) else . end))' "$INPUT" > "$norm" 2>/dev/null; then
+        if ! cmp -s "$norm" "$INPUT"; then
+            echo "consensus: dropped malformed optional status/outcome field(s)" >&2
+        fi
+        INPUT="$norm"
+    fi
     if ! jq -e '
         (.updates | type == "array") and (.new_findings | type == "array") and
         (.escalated | type == "array") and
@@ -390,8 +422,17 @@ mode_nudge() {
     fi
     # Dedupe in code, not in the sweep agent's judgement (R1-3): one
     # nudge per head oid, ever, regardless of what the agent nominates.
-    if gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" \
-        --jq '.[].body' | grep -qF "Consensus-nudge: ${sha}"; then
+    # Fetch-then-grep, never gh|grep -q: under pipefail, grep -q's
+    # early exit breaks gh's pipe mid-pagination and the dedupe check
+    # reads as "not found" (R3-1). On fetch failure, fail CLOSED — a
+    # dedupe we cannot verify must not post.
+    local bodies
+    if ! bodies=$(gh api --paginate "repos/${REPO}/issues/${NUMBER}/comments" \
+        --jq '.[].body' 2>/dev/null); then
+        echo "nudge: comment fetch failed — skipping (dedupe unverifiable)"
+        return 0
+    fi
+    if grep -qF "Consensus-nudge: ${sha}" <<<"$bodies"; then
         echo "nudge: marker for ${sha:0:7} already present — skipping"
         return 0
     fi

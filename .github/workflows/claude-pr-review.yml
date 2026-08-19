@@ -50,6 +50,14 @@
 
 name: Argus Review
 
+# Available to every step; the trusted posting script uses it to
+# restrict ledger-comment matching to Argus-authored comments (R3-3 —
+# without it, any commenter could pre-plant a forged ledger). This is
+# the app slug; REST renders the author as "<slug>[bot]" and the
+# script matches both forms. Keep in sync with the sweep's ARGUS_LOGIN.
+env:
+  ARGUS_LOGIN: evekhm-odyssey-argus
+
 on:
   pull_request:
     types: [opened, synchronize]
