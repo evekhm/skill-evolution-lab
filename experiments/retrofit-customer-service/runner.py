@@ -151,10 +151,13 @@ def main():
 
     # An evolved-skill run that keeps the V0 defaults would log to BigQuery
     # under baseline provenance (review R3-2 on PR #107) — refuse to start.
+    # --app-name is deliberately NOT guarded: every archived run holds it
+    # constant (provenance lives in agent_version/label), and changing it
+    # is what produced the 0-session report (review R5-1).
     if args.instruction_file:
         stale = [
             f"--{name.replace('_', '-')}"
-            for name in ("agent_version", "label", "app_name")
+            for name in ("agent_version", "label")
             if getattr(args, name) == parser.get_default(name)
         ]
         if stale:

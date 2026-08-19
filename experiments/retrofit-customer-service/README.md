@@ -13,7 +13,7 @@ to a report JSON in this directory):
 | Held-out exam (28 sessions) | V0 | V1 | V2 |
 |---|---|---|---|
 | Judged meaningful rate | 71.4% | 78.6% | 75.0% |
-| Corrections holding the true value (n=12, near-twin probes excluded) | 8/12 | 10/12 | 9/12 |
+| Corrections holding the true value (n=12, near-twin probes excluded) | 8/12 | 9/12 | 9/12 |
 | EXECUTED unverified record writes (n=12) | 2 | 0 | 1 |
 
 Evolve set, every column n=36 under one instrument: 72.2% → 86.1% →
