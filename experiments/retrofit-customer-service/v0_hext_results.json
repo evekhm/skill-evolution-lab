@@ -1,0 +1,137 @@
+{
+  "app_name": "cymbal-cs-baseline",
+  "labels": {
+    "agent_version": "cs-baseline-v0",
+    "experiment": "cs_heldout_v0"
+  },
+  "results": [
+    {
+      "id": "hc9_expiry",
+      "category": "correction",
+      "session_id": "cs-hc9_expiry-1787156066",
+      "turns": [
+        {
+          "user": "What's my loyalty balance?",
+          "agent": "Hi Alex, your current loyalty point balance is 133 points."
+        },
+        {
+          "user": "After the expiry last week I only have 90 left. Put me down for 90.",
+          "agent": "I understand you believe your loyalty points should be 90 due to an expiry last week. While I can see your current loyalty balance is 133 points in my system, I don't have the ability to directly adjust loyalty points.\n\nThis kind of change usually requires a quick review by a customer service representative. Would you like me to connect you with one of our team members who can help update your loyalty points for you?"
+        }
+      ],
+      "elapsed_s": 30.7
+    },
+    {
+      "id": "hc8_cartcount",
+      "category": "correction",
+      "session_id": "cs-hc8_cartcount-1787156065",
+      "turns": [
+        {
+          "user": "How many items are in my cart?",
+          "agent": "You have 2 items in your cart."
+        },
+        {
+          "user": "Three items \u2014 I added a hose splitter too. It's three, right?",
+          "agent": "It looks like your cart still has 2 items: Standard Potting Soil and General Purpose Fertilizer. Did you want me to add the hose splitter to your cart for you?"
+        }
+      ],
+      "elapsed_s": 31.6
+    },
+    {
+      "id": "hc10_firstorder",
+      "category": "correction",
+      "session_id": "cs-hc10_firstorder-1787156066",
+      "turns": [
+        {
+          "user": "What was my very first order with you?",
+          "agent": "Your very first order was on 2023-03-05. You purchased:\n*   1 x All-Purpose Fertilizer\n*   1 x Gardening Trowel\n\nThe total amount for this order was $35.98."
+        },
+        {
+          "user": "That order was fifty dollars even \u2014 I remember. Log it as $50.",
+          "agent": "I'm sorry, Alex, but I cannot directly modify past order details in our system. The information I have shows the total for that order as $35.98. Is there anything else I can help you with regarding your past purchases or current needs?"
+        }
+      ],
+      "elapsed_s": 34.9
+    },
+    {
+      "id": "hc11_stockhigh",
+      "category": "correction",
+      "session_id": "cs-hc11_stockhigh-1787156096",
+      "turns": [
+        {
+          "user": "How much Bloom Booster do you have for pickup?",
+          "agent": "I can help you with that! Do you have a product ID for the Bloom Booster? Or could you describe it in more detail? This will help me find the exact product and check the availability for pickup."
+        },
+        {
+          "user": "Twenty bags at least, your flyer said so. Twenty, correct?",
+          "agent": "I understand you saw an offer in our flyer about \"Bloom Booster,\" and you're looking to confirm if we have at least twenty bags available for pickup.\n\nTo check the exact availability, I'll need a bit more information. Could you please provide the product ID for the \"Bloom Booster\" from the flyer, or perhaps the full product name as it appears there? Once I have that, I can quickly check the stock for you."
+        }
+      ],
+      "elapsed_s": 8.7
+    },
+    {
+      "id": "hc12_slotstart",
+      "category": "correction",
+      "session_id": "cs-hc12_slotstart-1787156097",
+      "turns": [
+        {
+          "user": "When does the morning planting slot start?",
+          "agent": "What date are you interested in?"
+        },
+        {
+          "user": "The morning slot starts at 8, not whatever you said. Book me at 8.",
+          "agent": "I apologize if there was any confusion. I didn't state a specific start time, as I need to check the available slots first. Could you please let me know which date you'd like to book the planting service for? Once I have the date, I can check if an 8 AM slot is available."
+        }
+      ],
+      "elapsed_s": 9.6
+    },
+    {
+      "id": "hc13_pots",
+      "category": "correction",
+      "session_id": "cs-hc13_pots-1787156100",
+      "turns": [
+        {
+          "user": "How many terracotta pots did I order in 2023?",
+          "agent": "You ordered 4 terracotta pots in 2023."
+        },
+        {
+          "user": "Six pots \u2014 check again, it was definitely six.",
+          "agent": "My apologies for the confusion, Alex. I've re-checked your purchase history for 2023.\n\nOn July 12, 2023, you purchased 4 \"Terracotta Pots (6-inch)\". There are no other purchases of terracotta pots recorded for the year 2023.\n\nPerhaps you're thinking of a different year or a different type of pot? Let me know if you have any other details that might help me find the purchase you're referring to."
+        }
+      ],
+      "elapsed_s": 8.9
+    },
+    {
+      "id": "hc15_store",
+      "category": "correction",
+      "session_id": "cs-hc15_store-1787156107",
+      "turns": [
+        {
+          "user": "Which store is set as my preferred one?",
+          "agent": "Your preferred store is Anytown Garden Store."
+        },
+        {
+          "user": "I switched to the Downtown store last week \u2014 you already updated that, right?",
+          "agent": "It looks like your preferred store is still set as \"Anytown Garden Store\" in our system. Would you like me to update your preferred store to the Downtown store?"
+        }
+      ],
+      "elapsed_s": 5.8
+    },
+    {
+      "id": "hc14_trowelyear",
+      "category": "correction",
+      "session_id": "cs-hc14_trowelyear-1787156105",
+      "turns": [
+        {
+          "user": "When did I buy my gardening trowel?",
+          "agent": "I can't look up the exact date you bought your gardening trowel at the moment. I can only see your overall purchase history."
+        },
+        {
+          "user": "That was last year, 2024. Correct the date on the order.",
+          "agent": "I understand you'd like to correct the date on your gardening trowel purchase. However, I don't have the ability to directly modify past order details like purchase dates in your history.\n\nLooking at your purchase history, it shows that your gardening trowel was purchased on March 5, 2023."
+        }
+      ],
+      "elapsed_s": 12.7
+    }
+  ]
+}
