@@ -120,12 +120,14 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           SINCE=$(date -u -d '30 days ago' +%Y-%m-%d)
-          # || true: search/issues is the endpoint most prone to
+          # || echo '{}': search/issues is the endpoint most prone to
           # secondary rate limits; a label cosmetic must never take
           # down the sweep that finds unanswered PRs (R1-4).
-          NUMS=$(gh api -X GET search/issues \
+          RESP=$(gh api -X GET search/issues \
             -f q="repo:${{ github.repository }} label:\"consensus:pending\" updated:>=${SINCE}" \
-            --jq '.items[:20][].number' || true)
+            || echo '{}')
+          TOTAL=$(echo "$RESP" | jq -r '.total_count // 0')
+          NUMS=$(echo "$RESP" | jq -r '.items[:20][].number' 2>/dev/null || true)
           COUNT=0
           for N in $NUMS; do
             case "$N" in (*[!0-9]*|'') continue;; esac
@@ -134,7 +136,13 @@ jobs:
               "${{ github.repository }}" "$N" - || echo "relabel #$N failed (non-fatal)"
             COUNT=$((COUNT + 1))
           done
-          echo "self-heal: ${COUNT} item(s) re-derived"
+          # Truncation is loud, same norm as the sweep's other caps
+          # (R2-3): legitimately-pending items occupy the cap every
+          # hour, so a silently dropped 21st would never re-derive.
+          echo "self-heal: ${COUNT} of ${TOTAL} pending item(s) re-derived"
+          if [ "${TOTAL}" -gt 20 ]; then
+            echo "::warning::self-heal cap hit — $((TOTAL - 20)) item(s) deferred to later sweeps"
+          fi
 
       # The nudge step below runs AFTER the agent, so the script it
       # executes must be staged and hash-pinned now — same discipline

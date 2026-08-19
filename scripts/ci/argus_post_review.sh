@@ -81,8 +81,18 @@ find_ledger_comment() { # -> "id<TAB>body" or empty
 }
 
 extract_ledger_data() { # stdin: comment body -> data json (or {})
-    sed -n '/<!-- argus-ledger-data/,/^-->$/p' | sed '1d;$d' | jq -c '.' 2>/dev/null \
-        || echo '{"findings":[],"atlas_seen":false}'
+    # jq with ZERO inputs prints nothing and exits 0, so an || fallback
+    # alone never fires for a marker comment with no data block —
+    # downstream callers then choke on the empty string (R2-2). Test
+    # non-emptiness explicitly.
+    local out
+    out=$(sed -n '/<!-- argus-ledger-data/,/^-->$/p' | sed '1d;$d' \
+        | jq -c '.' 2>/dev/null || true)
+    if [ -n "$out" ]; then
+        echo "$out"
+    else
+        echo '{"findings":[],"atlas_seen":false}'
+    fi
 }
 
 load_ledger() { # -> ledger data json (default shape when no ledger exists yet)

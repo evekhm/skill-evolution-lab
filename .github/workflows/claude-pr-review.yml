@@ -408,8 +408,11 @@ jobs:
     # hardcoding the app name. Human reviewers and the Atlas peer
     # (a User-type account) still trigger the mention path.
     # Two trigger shapes reach this job:
-    #  - issue_comment containing "@argus" (humans and Atlas's issue
-    #    verdicts);
+    #  - issue_comment containing "@argus", OR any comment by the Atlas
+    #    peer account: Atlas's runtime posts PR verdicts as plain
+    #    comments (not formal reviews) and legitimately omits "@argus"
+    #    on full agreement, so gating its comments on the mention
+    #    string left verdicts unrecorded (R2-1);
     #  - pull_request_review submitted by the Atlas peer account. Its
     #    login is hardcoded here because the env context is not
     #    available in job-level if: — renaming the peer bot means
@@ -422,7 +425,8 @@ jobs:
     if: >-
       (github.event_name == 'issue_comment' &&
        github.event.comment.user.type != 'Bot' &&
-       contains(github.event.comment.body, '@argus') &&
+       (contains(github.event.comment.body, '@argus') ||
+        github.event.comment.user.login == 'evekhm-atlas-bot') &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
                 github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review' &&
