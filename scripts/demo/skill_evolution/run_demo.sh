@@ -865,16 +865,19 @@ if [ -n "$TESTSET" ]; then
     # usefulness judge -- the judge mislabels verbose, tool-grounded answers
     # (see the skill lab). Falls back silently if the field is absent.
     gt () { jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "n/a"' "$1" 2>/dev/null; }
-    echo "  V0 (test): $RUN_DIR/v0_test_report.json   ground-truth $(gt "$RUN_DIR/v0_test_report.json")%"
-    echo "  V1 (test): $RUN_DIR/v1_test_report.json   ground-truth $(gt "$RUN_DIR/v1_test_report.json")%"
+    # Preflight can exclude error-shaped records, shrinking a report's
+    # denominator; any side-by-side rate must carry the exclusion count.
+    exn () { jq -r '(.summary.excluded_error_shaped.count // 0) as $n | if $n > 0 then " [" + ($n|tostring) + " excluded]" else "" end' "$1" 2>/dev/null; }
+    echo "  V0 (test): $RUN_DIR/v0_test_report.json   ground-truth $(gt "$RUN_DIR/v0_test_report.json")%$(exn "$RUN_DIR/v0_test_report.json")"
+    echo "  V1 (test): $RUN_DIR/v1_test_report.json   ground-truth $(gt "$RUN_DIR/v1_test_report.json")%$(exn "$RUN_DIR/v1_test_report.json")"
     echo "  V1 skills snapshotted: $RUN_DIR/v1_*_skill.md (V0 now restored)"
     if [ -n "$OOD_EXAM" ]; then
         # OOS success = clean decline; corrections success = held the
         # tool-verified value (meaningful). Both rendered from each
         # report's own summary counts.
         ok_rate () { jq -r '((.summary.meaningful + (.summary.declined // 0)) / .summary.total_sessions * 100 | round | tostring) + "%"' "$1" 2>/dev/null || echo "n/a"; }
-        echo "  OOD out-of-scope  V0: $(ok_rate "$RUN_DIR/v0_oos_test_report.json")  V1: $(ok_rate "$RUN_DIR/v1_oos_test_report.json")  (correct-behavior rate: declined or meaningful)"
-        echo "  OOD corrections   V0: $(gt "$RUN_DIR/v0_corr_test_report.json")%  V1: $(gt "$RUN_DIR/v1_corr_test_report.json")%  (ground-truth rate)"
+        echo "  OOD out-of-scope  V0: $(ok_rate "$RUN_DIR/v0_oos_test_report.json")$(exn "$RUN_DIR/v0_oos_test_report.json")  V1: $(ok_rate "$RUN_DIR/v1_oos_test_report.json")$(exn "$RUN_DIR/v1_oos_test_report.json")  (correct-behavior rate: declined or meaningful)"
+        echo "  OOD corrections   V0: $(gt "$RUN_DIR/v0_corr_test_report.json")%$(exn "$RUN_DIR/v0_corr_test_report.json")  V1: $(gt "$RUN_DIR/v1_corr_test_report.json")%$(exn "$RUN_DIR/v1_corr_test_report.json")  (ground-truth rate)"
     fi
 
     # Triage: how many skill-fixable failures evolution auto-healed, plus the
@@ -889,12 +892,32 @@ fi
 # Preview the version with the BEST measured rate (the agent can evolve
 # past its own peak: a later round may score worse than an earlier one).
 BEST_V=""; BEST_RATE=-1; BEST_REPORT=""
+BEST_ANY_V=""; BEST_ANY_RATE=-1; BEST_ANY_REPORT=""
 for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
          "$RUN_DIR"/candidate_*_report.json; do
     [ -f "$f" ] || continue
     v=$(basename "$f" | grep -oE '^v[0-9]+' || true)
     [ "$v" = "v0" ] && continue
     rate=$(jq -r '.summary.meaningful_rate // -1' "$f" 2>/dev/null)
+    excl=$(jq -r '.summary.excluded_error_shaped.count // 0' "$f" 2>/dev/null)
+
+    # Track any candidate regardless of exclusions (fallback)
+    if awk "BEGIN{exit !($rate > $BEST_ANY_RATE)}"; then
+        BEST_ANY_RATE="$rate"; BEST_ANY_REPORT="$f"
+        if [ -z "$v" ]; then
+            BEST_ANY_V=$(ls "$RUN_DIR" | grep -oE '^v[0-9]+' | grep -v '^v0$' | sort -V | tail -1)
+        else
+            BEST_ANY_V="$v"
+        fi
+    fi
+
+    # A report that lost records to the error-shaped preflight has a
+    # shrunken denominator; its rate is not comparable to the others'
+    # (review R3-1 on #106) — leave it out of clean winner selection.
+    if [ "${excl:-0}" != "0" ]; then
+        echo "  winner selection: skipping clean selection for $(basename "$f") — ${excl} error-shaped record(s) excluded, rate not comparable"
+        continue
+    fi
     if awk "BEGIN{exit !($rate > $BEST_RATE)}"; then
         BEST_RATE="$rate"; BEST_REPORT="$f"
         # candidate reports carry no version; the deployed winner is
@@ -906,6 +929,15 @@ for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
         fi
     fi
 done
+
+# Fallback to the best report with exclusions if no clean report is available
+if [ -z "$BEST_V" ] && [ -n "$BEST_ANY_V" ]; then
+    BEST_V="$BEST_ANY_V"
+    BEST_RATE="$BEST_ANY_RATE"
+    BEST_REPORT="$BEST_ANY_REPORT"
+    excl=$(jq -r '.summary.excluded_error_shaped.count // 0' "$BEST_REPORT" 2>/dev/null)
+    echo "  winner selection fallback: selecting $(basename "$BEST_REPORT") ($BEST_RATE%) despite ${excl} excluded record(s) because no clean candidates exist"
+fi
 if [ -n "$BEST_V" ]; then
     step 4 "Review the PR" "the learning as a reviewable artifact: metrics, diff, regression cases"
     if [ "$GITHUB_PUBLISH" = true ]; then
@@ -956,12 +988,15 @@ step_close
     echo "|---|---|---|---|"
     row() {
         local label="$1" f="$2"
-        local gt j m tot
+        local gt j m tot ex
         gt=$(jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "n/a"' "$f")
         j=$(jq -r '.summary.meaningful_rate // "?"' "$f")
         m=$(jq -r '.summary.golden_eval_summary.matched // 0' "$f")
         tot=$(jq -r '.summary.total_sessions // "?"' "$f")
-        echo "| $label | ${gt}% | ${j}% | ${m}/${tot} |"
+        # Post-preflight denominator: mark rows that lost records so 17
+        # asked is distinguishable from 20 asked with 3 excluded.
+        ex=$(jq -r '(.summary.excluded_error_shaped.count // 0) as $n | if $n > 0 then " (" + ($n|tostring) + " excluded)" else "" end' "$f")
+        echo "| $label | ${gt}% | ${j}% | ${m}/${tot}${ex} |"
     }
     row "V0 baseline" "$RUN_DIR/v0_quality_report.json"
     for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
@@ -981,9 +1016,14 @@ step_close
         echo ""
         echo "## HELD-OUT RESULT — measured on unseen questions"
         echo ""
+        ex0=$(jq -r '.summary.excluded_error_shaped.count // 0' "$RUN_DIR/v0_test_report.json" 2>/dev/null || echo 0)
+        ex1=$(jq -r '.summary.excluded_error_shaped.count // 0' "$RUN_DIR/v1_test_report.json" 2>/dev/null || echo 0)
         echo "| | V0 | Winner | Gain |"
         echo "|---|---|---|---|"
         echo "| Ground-truth rate | ${gt0}% | ${gt1}% | ${d}pp |"
+        if [ "${ex0:-0}" != "0" ] || [ "${ex1:-0}" != "0" ]; then
+            echo "| Excluded error-shaped (denominators differ) | ${ex0} | ${ex1} | |"
+        fi
         echo ""
         echo "NOTE: the test set holds the same facts as the evolve set in"
         echo "different phrasings — it measures phrasing robustness. For"
@@ -992,20 +1032,28 @@ step_close
     if [ -f "$RUN_DIR/v0_oos_test_report.json" ] && [ -f "$RUN_DIR/v1_oos_test_report.json" ]; then
         okr () { jq -r '((.summary.meaningful + (.summary.declined // 0)) / .summary.total_sessions * 100 | round | tostring) + "%"' "$1" 2>/dev/null || echo "?"; }
         gtr () { jq -r '(.summary.golden_eval_summary.matched_meaningful_rate // "?" | tostring) + "%"' "$1" 2>/dev/null || echo "?"; }
+        # Cells flag preflight exclusions: rates over shrunken denominators
+        # must not read like same-sample comparisons.
+        exm () { jq -r '(.summary.excluded_error_shaped.count // 0) as $n | if $n > 0 then " (" + ($n|tostring) + " excluded)" else "" end' "$1" 2>/dev/null; }
         echo ""
         echo "## OOD EXAM — topic-disjoint held-out sets (--ood-exam)"
         echo ""
         echo "| Set | Metric | V0 | Winner |"
         echo "|---|---|---|---|"
-        echo "| out-of-scope (unseen topics) | correct-behavior rate (declined or meaningful) | $(okr "$RUN_DIR/v0_oos_test_report.json") | $(okr "$RUN_DIR/v1_oos_test_report.json") |"
-        echo "| corrections (unseen topics, anti-parroting) | ground-truth rate | $(gtr "$RUN_DIR/v0_corr_test_report.json") | $(gtr "$RUN_DIR/v1_corr_test_report.json") |"
+        echo "| out-of-scope (unseen topics) | correct-behavior rate (declined or meaningful) | $(okr "$RUN_DIR/v0_oos_test_report.json")$(exm "$RUN_DIR/v0_oos_test_report.json") | $(okr "$RUN_DIR/v1_oos_test_report.json")$(exm "$RUN_DIR/v1_oos_test_report.json") |"
+        echo "| corrections (unseen topics, anti-parroting) | ground-truth rate | $(gtr "$RUN_DIR/v0_corr_test_report.json")$(exm "$RUN_DIR/v0_corr_test_report.json") | $(gtr "$RUN_DIR/v1_corr_test_report.json")$(exm "$RUN_DIR/v1_corr_test_report.json") |"
     fi
-    [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
+    # Mark a winner whose report lost records to the preflight — its rate
+    # sits on a shrunken denominator (review R4-2 on #106).
+    _wexcl=$(jq -r '.summary.excluded_error_shaped.count // 0' "$BEST_REPORT" 2>/dev/null)
+    _wnote=""
+    [ "${_wexcl:-0}" != "0" ] && _wnote=" [${_wexcl} excluded — denominator not comparable]"
+    [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%${_wnote})** -> pr_preview.md"
     _thr=$(awk "BEGIN{printf \"%.0f\", ${QUALITY_THRESHOLD:-0.95}*100}")
     if [ -n "$BEST_V" ] && awk "BEGIN{exit !($BEST_RATE >= $_thr)}"; then
-        echo "Quality gate: winner ${BEST_RATE}% MEETS the ${_thr}% threshold"
+        echo "Quality gate: winner ${BEST_RATE}%${_wnote} MEETS the ${_thr}% threshold"
     elif [ -n "$BEST_V" ]; then
-        echo "Quality gate: winner ${BEST_RATE}% below the ${_thr}% threshold — another cycle is warranted"
+        echo "Quality gate: winner ${BEST_RATE}%${_wnote} below the ${_thr}% threshold — another cycle is warranted"
     fi
     echo ""
     echo "## Files worth reading"

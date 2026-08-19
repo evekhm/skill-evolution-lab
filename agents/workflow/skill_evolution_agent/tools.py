@@ -184,6 +184,12 @@ def run_evolution(
                     _incumbent = (
                         json.load(_rf).get("summary", {}).get("meaningful_rate")
                     )
+                if _excluded_count(quality_report_path) > 0:
+                    logger.warning(
+                        "Incumbent quality report %s has preflight exclusions; "
+                        "disabling incumbent_score guard for evolution", quality_report_path
+                    )
+                    _incumbent = None
             except Exception:  # noqa: BLE001
                 _incumbent = None
 
@@ -195,6 +201,16 @@ def run_evolution(
                     run_dir=_rd, candidate_path=tmp, skill_dir=_sd,
                     questions_file=_questions_file(),
                 )
+                report_path = res.get("report_path")
+                if report_path and _excluded_count(report_path) > 0:
+                    # None = unmeasurable (review R5-3 on #106): evolve()
+                    # floors it for selection but never records it as the
+                    # deployed score, so a flaked run cannot lower the bar.
+                    logger.warning(
+                        "Candidate scored report %s has preflight "
+                        "exclusions; score unmeasurable", report_path
+                    )
+                    return None
                 return float(res.get("meaningful_rate", 0.0))
 
         evolved_content = evolve(
@@ -810,6 +826,16 @@ def _generate_pr_body_with_agy(
     if not agy_bin:
         return None
 
+    baseline_excl = metrics.get("baseline_excl", 0)
+    evolved_excl = metrics.get("evolved_excl", 0)
+    excl_info = ""
+    if baseline_excl > 0 or evolved_excl > 0:
+        excl_info = (
+            f"Preflight Exclusions: excluded {baseline_excl} baseline and "
+            f"{evolved_excl} evolved error-shaped record(s).\n"
+            f"DENOMINATORS DIFFER: Do not report simple percentage change deltas.\n"
+        )
+
     prompt = (
         f"Write a pull request description for the following change.\n"
         f"Agent: {agent}, version: {version}\n"
@@ -817,6 +843,7 @@ def _generate_pr_body_with_agy(
         f"-> {metrics['evolved_meaningful']}%, "
         f"unhelpful rate {metrics['baseline_unhelpful']}% "
         f"-> {metrics['evolved_unhelpful']}%\n"
+        f"{excl_info}"
         f"Skill size: {evolved_size} chars, "
         f"run: {os.path.basename(run_dir)}\n\n"
         f"Diff:\n{diff_text[:3000]}\n\n"
@@ -833,10 +860,27 @@ def _generate_pr_body_with_agy(
             timeout=120,
         )
         if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
+            body = result.stdout.strip()
+            # The exclusion disclosure must be mechanical, not a prompt
+            # hint the model may drop (review R5-1 on #106).
+            return body + _exclusion_footer(baseline_excl, evolved_excl)
     except Exception as e:
         logger.warning("agy PR body generation failed: %s", e)
     return None
+
+
+def _exclusion_footer(baseline_excl: int, evolved_excl: int) -> str:
+    """Deterministic denominators note appended to LLM-written bodies."""
+    if not baseline_excl and not evolved_excl:
+        return ""
+    return (
+        f"\n\n| Excluded error-shaped (infra) | {baseline_excl} baseline "
+        f"| {evolved_excl} evolved |\n|---|---|---|\n\n"
+        f"**DENOMINATORS DIFFER**: the preflight excluded {baseline_excl} "
+        f"baseline vs {evolved_excl} evolved error-shaped record(s), so "
+        f"the two rates cover different question subsets. Rate deltas in "
+        f"this body are not comparable measurements."
+    )
 
 
 def _default_pr_body(
@@ -846,6 +890,9 @@ def _default_pr_body(
 ) -> str:
     """Fallback PR body when agy is not available."""
     m = metrics
+    baseline_excl = m.get("baseline_excl", 0)
+    evolved_excl = m.get("evolved_excl", 0)
+
     body = (
         f"## Skill Evolution: {agent} {version}\n\n"
         f"### Quality Before Evolution\n\n"
@@ -861,8 +908,15 @@ def _default_pr_body(
         f"| {m['evolved_meaningful']}% |\n"
         f"| Unhelpful rate | {m['baseline_unhelpful']}% "
         f"| {m['evolved_unhelpful']}% |\n"
+        f"| Excluded error-shaped (infra) | {baseline_excl} | {evolved_excl} |\n"
         f"| Skill size | | {evolved_size} chars |\n\n"
     )
+    if baseline_excl > 0 or evolved_excl > 0:
+        body += (
+            f"**DENOMINATORS DIFFER**: the preflight excluded {baseline_excl} "
+            f"baseline vs {evolved_excl} evolved error-shaped record(s), so the "
+            f"two rates cover different question subsets. Deltas suppressed.\n\n"
+        )
     selector_path = os.path.join(run_dir, "trace_selector.json")
     if os.path.isfile(selector_path):
         try:
@@ -903,6 +957,20 @@ def _extract_rate(report_path: str, field: str) -> str:
         return f"{round(val, 1)}"
     except Exception:
         return "?"
+
+
+def _excluded_count(report_path: str) -> int:
+    """Error-shaped records the scorer's preflight dropped from this report.
+
+    A non-zero count means the report's rates use a shrunken denominator
+    and cannot be compared against other reports by raw rate.
+    """
+    try:
+        with open(report_path) as f:
+            summary = json.load(f).get("summary") or {}
+        return int((summary.get("excluded_error_shaped") or {}).get("count", 0))
+    except Exception:
+        return 0
 
 
 def _find_evolved_skill(run_dir: str, version: str, agent: str) -> str | None:
@@ -948,6 +1016,7 @@ def _collect_quality_metrics(
         # {version}_quality_report.json — fall back to the best candidate
         # report so PR titles carry the real evolved rate instead of "?%".
         best_rate = -1.0
+        best_any_rate, best_any = -1.0, None
         for pattern in ("candidate_*_report.json",
                         "_score_candidate_*_report.json"):
             for path in glob_mod.glob(
@@ -957,8 +1026,25 @@ def _collect_quality_metrics(
                     rate = float(_extract_rate(path, "meaningful_rate"))
                 except ValueError:
                     continue
+                if rate > best_any_rate:
+                    best_any_rate, best_any = rate, path
+                if _excluded_count(path):
+                    logger.warning(
+                        "Skipping %s for the PR-title rate: preflight "
+                        "excluded records, denominator not comparable", path)
+                    continue
                 if rate > best_rate:
                     best_rate, evolved_report = rate, path
+        if evolved_report is None and best_any is not None:
+            # Every candidate report lost records (review R5-2 on #106):
+            # use the best shrunken one so its non-zero exclusion count
+            # reaches the metrics dict and the publishers' denominators-
+            # differ machinery fires, instead of reporting 0 exclusions
+            # against a "?%" rate.
+            logger.warning(
+                "All candidate reports have preflight exclusions; using %s "
+                "with its exclusion count surfaced", best_any)
+            evolved_report = best_any
 
     baseline_report = None
     baseline_label = "initial"
@@ -971,12 +1057,17 @@ def _collect_quality_metrics(
             baseline_report
         ).split("_quality_report")[0]
 
+    baseline_excl = _excluded_count(baseline_report) if baseline_report else 0
+    evolved_excl = _excluded_count(evolved_report) if evolved_report else 0
+
     return {
         "evolved_meaningful": _extract_rate(evolved_report, "meaningful_rate"),
         "evolved_unhelpful": _extract_rate(evolved_report, "unhelpful_rate"),
         "baseline_meaningful": _extract_rate(baseline_report, "meaningful_rate"),
         "baseline_unhelpful": _extract_rate(baseline_report, "unhelpful_rate"),
         "baseline_label": baseline_label,
+        "baseline_excl": baseline_excl,
+        "evolved_excl": evolved_excl,
     }
 
 
@@ -1278,10 +1369,27 @@ def create_evolution_issue(
 
     meaningful = metrics["evolved_meaningful"]
     baseline = metrics["baseline_meaningful"]
-    title = (
-        f"[Evolution] {agent} skill {version} — "
-        f"meaningful {baseline}% → {meaningful}%"
-    )
+    baseline_excl = metrics.get("baseline_excl", 0)
+    evolved_excl = metrics.get("evolved_excl", 0)
+
+    if baseline_excl > 0 or evolved_excl > 0:
+        title = (
+            f"[Evolution] {agent} skill {version} — "
+            f"meaningful {baseline}% → {meaningful}% [denominators differ]"
+        )
+    else:
+        title = (
+            f"[Evolution] {agent} skill {version} — "
+            f"meaningful {baseline}% → {meaningful}%"
+        )
+
+    excl_info = ""
+    if baseline_excl > 0 or evolved_excl > 0:
+        excl_info = (
+            f"Preflight Exclusions: excluded {baseline_excl} baseline and "
+            f"{evolved_excl} evolved error-shaped record(s).\n"
+            f"DENOMINATORS DIFFER: Do not report simple percentage change deltas.\n\n"
+        )
 
     agy_prompt = (
         f"Write a GitHub issue body for the following skill evolution run.\n\n"
@@ -1290,13 +1398,18 @@ def create_evolution_issue(
         f"Version: {version}\n"
         f"Run directory: {os.path.basename(run_dir)}\n"
         f"Evolved skill size: {evolved_size} chars\n\n"
+        f"{excl_info}"
         f"Context from the run:\n\n{run_context}\n\n"
         f"Write the issue body in markdown with these sections:\n"
         f"1. **Metadata** — a table with: agent, version, meaningful rate "
         f"(baseline → evolved), unhelpful rate, skill size, run directory, "
         f"labels\n"
-        f"2. **Quality Impact** — summarize what improved and by how much, "
-        f"including dimension-level changes (tool_usage, specificity, "
+        f"2. **Quality Impact** — summarize what improved"
+        + (", and by how much"
+           if not (baseline_excl > 0 or evolved_excl > 0)
+           else " WITHOUT computing rate deltas (the exclusion note above "
+                "applies: the denominators differ)")
+        + f", including dimension-level changes (tool_usage, specificity, "
         f"first_time_right) if available\n"
         f"3. **What Changed in the Skill** — describe the key changes "
         f"in the evolved skill compared to the baseline (new sections, "
@@ -1323,7 +1436,11 @@ def create_evolution_issue(
                 timeout=120,
             )
             if result.returncode == 0 and result.stdout.strip():
-                issue_body = result.stdout.strip()
+                # Exclusion disclosure is mechanical, not a prompt hint
+                # the model may drop (review R5-1 on #106).
+                issue_body = (result.stdout.strip()
+                              + _exclusion_footer(baseline_excl,
+                                                  evolved_excl))
         except Exception as e:
             logger.warning("agy issue generation failed: %s", e)
 
@@ -1339,10 +1456,18 @@ def create_evolution_issue(
             f"{m['evolved_meaningful']}% |\n"
             f"| Unhelpful rate | {m['baseline_unhelpful']}% → "
             f"{m['evolved_unhelpful']}% |\n"
+            f"| Baseline Exclusions | {baseline_excl} |\n"
+            f"| Evolved Exclusions | {evolved_excl} |\n"
             f"| Skill size | {evolved_size} chars |\n"
             f"| Run | `{os.path.basename(run_dir)}` |\n\n"
-            f"## Run Context\n\n{run_context}\n"
         )
+        if baseline_excl > 0 or evolved_excl > 0:
+            issue_body += (
+                f"**DENOMINATORS DIFFER**: the preflight excluded {baseline_excl} "
+                f"baseline vs {evolved_excl} evolved error-shaped record(s), so the "
+                f"two rates cover different question subsets. Deltas suppressed.\n\n"
+            )
+        issue_body += f"## Run Context\n\n{run_context}\n"
 
     labels = ["evolution", agent]
 
@@ -1673,10 +1798,20 @@ def extract_regression_cases(
     # (candidate_N_report.json) and coevolve internal scoring
     # (_score_candidate_N_report.json).
     patterns = ["candidate_*_report.json", "_score_candidate_*_report.json"]
+    skipped_excl = 0
     for pattern in patterns:
         for p in glob_mod.glob(
             os.path.join(run_dir, "**", pattern), recursive=True,
         ):
+            # A candidate whose preflight dropped records is scored over a
+            # smaller, error-reshaped question subset; its raw rate cannot
+            # beat reports with full denominators (review R3-1 on #106).
+            if _excluded_count(p):
+                skipped_excl += 1
+                logger.warning(
+                    "Skipping candidate %s: preflight excluded records, "
+                    "rate not comparable", p)
+                continue
             try:
                 rate = float(_extract_rate(p, "meaningful_rate"))
             except ValueError:
@@ -1684,6 +1819,14 @@ def extract_regression_cases(
             if rate > best_rate:
                 best_rate, best_report = rate, p
     if not best_report:
+        # Say what actually happened (review R5-2 on #106): reports that
+        # exist but were skipped for exclusions are not "no reports".
+        if skipped_excl:
+            return {"status": "skipped",
+                    "reason": (
+                        f"{skipped_excl} candidate report(s) in {run_dir} "
+                        "skipped: preflight exclusions, rates not comparable"
+                    )}
         return {"status": "skipped",
                 "reason": f"No candidate reports in {run_dir}"}
     with open(best_report) as f:
@@ -1893,11 +2036,22 @@ def create_evolution_pr(
     evolved_size = len(evolved_content)
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     branch_name = f"skill-evolution/{agent}-{version}-{timestamp}"
-    title = (
-        f"Evolve {agent} skill to {version} "
-        f"({metrics['baseline_meaningful']}% "
-        f"-> {metrics['evolved_meaningful']}%)"
-    )
+
+    baseline_excl = metrics.get("baseline_excl", 0)
+    evolved_excl = metrics.get("evolved_excl", 0)
+
+    if baseline_excl > 0 or evolved_excl > 0:
+        title = (
+            f"Evolve {agent} skill to {version} "
+            f"({metrics['baseline_meaningful']}% "
+            f"-> {metrics['evolved_meaningful']}%) [denominators differ]"
+        )
+    else:
+        title = (
+            f"Evolve {agent} skill to {version} "
+            f"({metrics['baseline_meaningful']}% "
+            f"-> {metrics['evolved_meaningful']}%)"
+        )
 
     if dry_run:
         body = _default_pr_body(
@@ -1986,6 +2140,10 @@ def create_evolution_pr(
             f"Evolve {agent} skill to {version}\n\n"
             f"Meaningful rate: {metrics['baseline_meaningful']}% "
             f"-> {metrics['evolved_meaningful']}%"
+        )
+        if baseline_excl > 0 or evolved_excl > 0:
+            commit_msg += " [denominators differ]"
+        commit_msg += (
             f"{regression_note}\n"
             f"Run: {os.path.basename(run_dir)}"
         )
@@ -2505,6 +2663,11 @@ def compare_versions(run_dir: str) -> dict:
             "meaningful_rate": summary.get("meaningful_rate", 0),
             "unhelpful": summary.get("unhelpful", 0),
             "unhelpful_rate": summary.get("unhelpful_rate", 0),
+            # Post-preflight denominator marker (review R6-2 on #106):
+            # rates from shrunken reports must not feed deltas or the
+            # best-version pick as if they shared a question set.
+            "excluded": (summary.get("excluded_error_shaped") or {})
+            .get("count", 0),
         })
 
     # Authoritative evolved-skill score recorded by the incumbent-guarded
@@ -2518,43 +2681,82 @@ def compare_versions(run_dir: str) -> dict:
             with open(evolved_score_path) as f:
                 es = json.load(f)
             if not any(v["version"] == "evolved" for v in versions):
+                # An unmeasurable winner records a null score (R6-4);
+                # publish it as unmeasured — never as 0% on a session
+                # count it never had (review R7-1 on #106).
+                unmeasurable = bool(es.get("unmeasurable"))
                 versions.append({
                     "version": "evolved",
-                    "total_sessions": versions[0]["total_sessions"]
-                    if versions else 0,
+                    "total_sessions": 0 if unmeasurable else (
+                        versions[0]["total_sessions"] if versions else 0),
                     "meaningful": 0,
-                    "meaningful_rate": es.get("meaningful_rate", 0),
+                    "meaningful_rate": (None if unmeasurable
+                                        else es.get("meaningful_rate", 0)),
                     "unhelpful": 0,
                     "unhelpful_rate": 0,
+                    "excluded": 0,
+                    "unmeasurable": unmeasurable,
                 })
         except Exception:  # noqa: BLE001
             pass
 
-    # Compute deltas
+    # Compute deltas — only between measured reports with full
+    # denominators; a delta across a preflight-shrunken or unmeasurable
+    # report is not a measurement (R6-2, R7-1).
+    def _uncomparable(v):
+        return (v.get("excluded") or v.get("unmeasurable")
+                or v["meaningful_rate"] is None)
+
     for i, v in enumerate(versions):
-        if i == 0:
+        if i == 0 or _uncomparable(v) or _uncomparable(versions[i - 1]):
             v["delta"] = None
         else:
             prev_rate = versions[i - 1]["meaningful_rate"] or 0
             curr_rate = v["meaningful_rate"] or 0
             v["delta"] = round(curr_rate - prev_rate, 1)
 
-    # Find peak version (excluding v0 baseline)
+    # Find peak version (excluding v0 baseline); clean measured
+    # denominators first, shrunken reports only as a marked fallback,
+    # never an unmeasurable row.
     evolved = [v for v in versions if v["version"] != "v0"]
-    best = max(evolved, key=lambda v: v["meaningful_rate"]) if evolved else versions[0]
+    measured = [v for v in evolved if v["meaningful_rate"] is not None
+                and not v.get("unmeasurable")]
+    clean_evolved = [v for v in measured if not v.get("excluded")]
+    if clean_evolved:
+        best = max(clean_evolved, key=lambda v: v["meaningful_rate"])
+    elif measured:
+        best = max(measured, key=lambda v: v["meaningful_rate"])
+        logger.warning(
+            "compare_versions: every evolved report has preflight "
+            "exclusions; best_version %s is on a shrunken denominator",
+            best["version"])
+    else:
+        best = versions[0]
 
     # Build text table
     header = "| Version | Sessions | Meaningful Rate | Delta | Best |"
     sep = "|---------|----------|-----------------|-------|------|"
     rows = [header, sep]
     for v in versions:
-        delta = f"+{v['delta']}pp" if v["delta"] and v["delta"] > 0 else (
-            f"{v['delta']}pp" if v["delta"] else "-"
-        )
+        # A measured 0.0pp must stay distinguishable from a suppressed
+        # delta (R7-3).
+        if v["delta"] is None:
+            delta = "-"
+        elif v["delta"] > 0:
+            delta = f"+{v['delta']}pp"
+        else:
+            delta = f"{v['delta']}pp"
         marker = " <-- " if v["version"] == best["version"] else ""
+        if v.get("unmeasurable"):
+            sessions, rate = "-", "n/a (unmeasurable)"
+        else:
+            sessions = str(v["total_sessions"])
+            if v.get("excluded"):
+                sessions += f" ({v['excluded']} excluded)"
+            rate = f"{v['meaningful_rate']}%"
         rows.append(
-            f"| {v['version']:<7} | {v['total_sessions']:>8} | "
-            f"{v['meaningful_rate']:>13}% | {delta:>5} | {marker:>4} |"
+            f"| {v['version']:<7} | {sessions:>8} | "
+            f"{rate:>13} | {delta:>5} | {marker:>4} |"
         )
 
     return {

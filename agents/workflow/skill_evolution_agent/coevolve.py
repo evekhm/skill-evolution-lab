@@ -237,14 +237,16 @@ def coevolve(
         len(agents_to_evolve), agents_to_evolve,
     )
 
-    # Incumbent baseline: never deploy a skill that scores worse than the
-    # CURRENT system. Starts at V0's rate and is refreshed after every
-    # agent in the sequential loop — earlier agents' deployed winners
-    # raise the bar (comparing agent 2's candidates against pre-agent-1
-    # V0 let a system regression clear a stale guard; review #54
-    # finding 9). evolve() records the deployed outcome's score in
-    # <output_dir>/evolved_score.json ("last writer wins" by design).
-    incumbent_score = report.get("summary", {}).get("meaningful_rate")
+    from agents.workflow.skill_evolution_agent.tools import _excluded_count
+
+    if _excluded_count(report_path) > 0:
+        logger.warning(
+            "Incumbent quality report has preflight exclusions; "
+            "disabling incumbent_score guard for co-evolution"
+        )
+        incumbent_score = None
+    else:
+        incumbent_score = report.get("summary", {}).get("meaningful_rate")
 
     def _make_score_fn(skill_dir):
         """Score a candidate skill on the eval set; returns meaningful_rate."""
@@ -271,6 +273,16 @@ def coevolve(
                 run_dir=output_dir, candidate_path=tmp, skill_dir=skill_dir,
                 questions_file=questions_file,
             )
+            report_path = res.get("report_path")
+            if report_path and _excluded_count(report_path) > 0:
+                # None = unmeasurable (review R5-3 on #106): evolve()
+                # floors it for selection but never records it as the
+                # deployed score, so a flaked run cannot lower the bar.
+                logger.warning(
+                    "Candidate scored report %s has preflight exclusions; "
+                    "score unmeasurable", report_path
+                )
+                return None
             return float(res.get("meaningful_rate", 0.0))
 
         return _score

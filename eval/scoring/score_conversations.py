@@ -68,9 +68,106 @@ os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 # ---------------------------------------------------------------------------
 from ensure_sdk import import_sdk_module  # noqa: E402
 
-_sdk = import_sdk_module("quality_report")
+_sdk = None
 
-print_quality_report = _sdk.print_quality_report
+
+def _get_sdk():
+    """Load the SDK quality_report module on first use.
+
+    Lazy so this module stays importable (and its pure helpers testable)
+    in environments with no SDK checkout configured.
+    """
+    global _sdk
+    if _sdk is None:
+        _sdk = import_sdk_module("quality_report")
+    return _sdk
+
+
+class NothingScoreableError(ValueError):
+    """Every record in the input was error-shaped (infrastructure failures)."""
+
+
+def exclude_error_shaped(
+    conversations: list[dict],
+) -> tuple[list[dict], list[str], list[str]]:
+    """Preflight: keep infrastructure failures away from the judge.
+
+    The traffic generator writes ``ERROR: {e}`` into the transcript and
+    sets ``errors`` on the record when a send fails, and the record still
+    lands in the results file. A judge scores those strings as unhelpful
+    without complaint, which has produced fake 0% rates before
+    (Verification Contract, "error-shaped answers").
+
+    A record is *excluded* when nothing scoreable can be salvaged: the
+    final response is empty or ``ERROR:``-shaped, the ``errors`` flag is
+    set with no error turn in the transcript to cut at (the generator
+    always writes one, so a flag-only record is corrupt), or no completed
+    exchange precedes the first error turn. A multi-turn record that
+    failed part-way but holds completed exchanges is *kept*: a copy is
+    scored with the transcript truncated at the first error turn —
+    trailing unanswered user turns dropped; ``user_turns``, the final
+    response, and the tag-derived ``corrections``/``verifications``
+    counters recomputed from the kept turns; ``preflight_truncated``
+    set — so late-turn quota failures neither bias the sample toward
+    short conversations nor read as the agent ignoring the last question.
+
+    Returns ``(scoreable, excluded_ids, truncated_ids)``.
+    """
+    scoreable, excluded, truncated = [], [], []
+    for c in conversations:
+        final = str(c.get("response") or c.get("final_response") or "")
+        turns = [t for t in (c.get("conversation") or []) if isinstance(t, dict)]
+        first_error = next(
+            (i for i, t in enumerate(turns)
+             if t.get("role") == "system"
+             and str(t.get("text") or "").startswith("ERROR:")),
+            None,
+        )
+        # The errors flag and system error turns are the generator's only
+        # failure signals; a final response opening with "ERROR:" is not
+        # one on its own (review R5-4 on #106: a genuine agent answer
+        # quoting an error code must stay in the denominator).
+        error_shaped = bool(c.get("errors")) or first_error is not None
+        if not error_shaped:
+            scoreable.append(c)
+            continue
+        session_id = str(c.get("session_id") or c.get("id") or "?")
+        if not final or final.startswith("ERROR:") or first_error is None:
+            excluded.append(session_id)
+            continue
+        kept_turns = turns[:first_error]
+        # The generator appends the user turn before the send that failed,
+        # so the cut transcript ends on an unanswered question — drop it,
+        # or the judge scores the infra failure as the agent ignoring it.
+        while kept_turns and kept_turns[-1].get("role") == "user":
+            kept_turns.pop()
+        agent_texts = [
+            str(t.get("text") or "") for t in kept_turns
+            if t.get("role") != "user" and str(t.get("text") or "").strip()
+        ]
+        if not agent_texts:
+            excluded.append(session_id)
+            continue
+        copy = {**c, "conversation": kept_turns, "errors": 0,
+                "preflight_truncated": True}
+        if "user_turns" in copy:
+            copy["user_turns"] = sum(
+                1 for t in kept_turns if t.get("role") == "user")
+        # The generator increments these per user-turn tag before the send
+        # that failed — recount them over the kept turns or the report
+        # claims a correction the judge never saw.
+        for field, tag in (("corrections", "CORRECTION"),
+                           ("verifications", "VERIFY")):
+            if field in copy:
+                copy[field] = sum(
+                    1 for t in kept_turns
+                    if t.get("role") == "user" and t.get("tag") == tag)
+        for key in ("response", "final_response"):
+            if key in copy:
+                copy[key] = agent_texts[-1]
+        scoreable.append(copy)
+        truncated.append(session_id)
+    return scoreable, excluded, truncated
 
 
 def compare_reports(report_files: list[str]) -> None:
@@ -102,6 +199,18 @@ def compare_reports(report_files: list[str]) -> None:
         for _, r in reports:
             print(f"  {r['summary'][field]:>11.1f}%", end="")
         print()
+
+    # Denominators can differ when the preflight excluded error-shaped
+    # records; a side-by-side rate comparison must say so.
+    print(f"{'Total Sessions':<25}", end="")
+    for _, r in reports:
+        print(f"  {r['summary'].get('total_sessions', '?'):>12}", end="")
+    print()
+    print(f"{'Excluded (infra)':<25}", end="")
+    for _, r in reports:
+        n = (r["summary"].get("excluded_error_shaped") or {}).get("count", 0)
+        print(f"  {n:>12}", end="")
+    print()
 
     dims = ["correctness", "tool_usage", "specificity",
             "scope_compliance", "first_time_right"]
@@ -164,6 +273,12 @@ def generate_quality_report(
     (including the ``golden_eval_summary`` block) now live in the SDK; this
     function just forwards the eval spec.
 
+    Applies the error-shaped preflight before judging (review R1-2 on
+    #106: the filter lives at the API boundary, not just the CLI) and
+    records what it dropped in ``summary.excluded_error_shaped`` /
+    ``summary.truncated_error_turns`` so consumers comparing two reports
+    can see when denominators differ (review R1-1 on #106).
+
     Args:
         conversations: List of conversation dicts from traffic generator.
         eval_spec: Eval spec dict ({scope, ground_truth, golden_qa}). When
@@ -176,18 +291,53 @@ def generate_quality_report(
 
     Returns:
         Quality report dict with summary and sessions.
+
+    Raises:
+        ValueError: If every record is error-shaped (nothing scoreable).
     """
-    if _sdk.PROJECT_ID is None:
-        _sdk._load_config()
+    conversations, excluded, truncated = exclude_error_shaped(conversations)
+    if excluded:
+        preview = ", ".join(excluded[:5])
+        if len(excluded) > 5:
+            preview += f", ... ({len(excluded) - 5} more)"
+        logger.warning(
+            "Preflight excluded %d error-shaped conversation(s) — "
+            "infrastructure failures, not agent answers: %s",
+            len(excluded), preview,
+        )
+    if truncated:
+        logger.info(
+            "Preflight truncated %d conversation(s) at their first error "
+            "turn; completed exchanges are scored: %s",
+            len(truncated), ", ".join(truncated[:5]),
+        )
+    if not conversations:
+        raise NothingScoreableError(
+            f"No scoreable conversations: all {len(excluded)} records "
+            "in the input are error-shaped (infrastructure failures)."
+        )
+
+    if _get_sdk().PROJECT_ID is None:
+        _get_sdk()._load_config()
     traj_count = trajectory_samples
     if isinstance(trajectory_samples, str) and trajectory_samples.lower() == "all":
         traj_count = len(conversations)
 
-    return _sdk.generate_quality_report_from_conversations(
+    report = _get_sdk().generate_quality_report_from_conversations(
         conversations, model=model, eval_spec=eval_spec,
         tag_turns=tag_turns, trajectory_samples=traj_count,
         golden_threshold=golden_threshold,
     )
+    summary = report.get("summary")
+    if isinstance(summary, dict):
+        summary["excluded_error_shaped"] = {
+            "count": len(excluded), "session_ids": excluded,
+        }
+        if truncated:
+            summary["truncated_error_turns"] = {
+                "count": len(truncated), "session_ids": truncated,
+            }
+    return report
 
 
 # ---------------------------------------------------------------------------
@@ -223,6 +373,12 @@ def write_md_report(report: dict, output_path: str) -> str:
     w("| Metric | Value |")
     w("|--------|-------|")
     w(f"| Total sessions | {s['total_sessions']} |")
+    if "excluded_error_shaped" in s:
+        w(f"| Excluded error-shaped (infra failures, not in denominator) "
+          f"| {s['excluded_error_shaped']['count']} |")
+    if "truncated_error_turns" in s:
+        w(f"| Truncated at first error turn (completed exchanges scored) "
+          f"| {s['truncated_error_turns']['count']} |")
     w(f"| Meaningful | {s['meaningful']} ({s['meaningful_rate']:.1f}%) |")
     w(f"| Unhelpful | {s['unhelpful']} ({s['unhelpful_rate']:.1f}%) |")
     if "knowledge_gap" in s:
@@ -485,7 +641,7 @@ def main():
         # Re-derive the skill-gap / knowledge-gap split from the per-session
         # dimensions already in the report (deterministic, no re-scoring), then
         # persist it so the JSON and Markdown both carry the breakdown.
-        _sdk._classify_failures(existing)
+        _get_sdk()._classify_failures(existing)
         with open(args.report_from_json, "w") as f:
             json.dump(existing, f, indent=2, default=str)
         md_path = write_md_report(existing, args.report_from_json)
@@ -509,17 +665,18 @@ def main():
         print("No conversations found in input file.")
         sys.exit(1)
 
-    logger.info("Scoring %d conversations...", len(conversations))
+    logger.info("Scoring %d conversations (before preflight)...",
+                len(conversations))
 
+    # "all" is resolved inside generate_quality_report against the
+    # post-preflight count; pass it through untouched.
     traj_samples_raw = args.trajectory_samples.strip().lower()
-    if traj_samples_raw == "all":
-        traj_count = len(conversations)
-    else:
-        traj_count = int(traj_samples_raw)
+    traj_count = traj_samples_raw if traj_samples_raw == "all" \
+        else int(traj_samples_raw)
 
     # Resolve eval spec: explicit --eval-spec, else auto-discover; the SDK does
     # the same auto-discovery, but loading here lets us log what was used.
-    eval_spec = _sdk._load_eval_spec(getattr(args, "eval_spec", None))
+    eval_spec = _get_sdk()._load_eval_spec(getattr(args, "eval_spec", None))
     if eval_spec:
         logger.info(
             "Eval spec: scope=%s, ground_truth=%s, golden_qa=%d",
@@ -528,11 +685,15 @@ def main():
             len(eval_spec.get("golden_qa") or []),
         )
 
-    report = generate_quality_report(
-        conversations, eval_spec=eval_spec, model=args.model,
-        tag_turns=args.tag_turns, trajectory_samples=traj_count,
-        golden_threshold=args.golden_threshold,
-    )
+    try:
+        report = generate_quality_report(
+            conversations, eval_spec=eval_spec, model=args.model,
+            tag_turns=args.tag_turns, trajectory_samples=traj_count,
+            golden_threshold=args.golden_threshold,
+        )
+    except NothingScoreableError as e:
+        print(e)
+        sys.exit(1)
 
     output_path = args.output or os.path.join(
         os.path.dirname(__file__), "quality_report.json"
