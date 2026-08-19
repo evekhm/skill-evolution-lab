@@ -365,3 +365,81 @@ def test_excluded_count_guards_candidate_selection(tmp_path, monkeypatch):
     cases = golden_content.get("eval_cases", [])
     assert "excellent candidate 2" in cases[0]["expected_answer"]
     assert "excellent candidate 1" not in cases[0]["expected_answer"]
+
+
+# --- #106 R6-5: pins for the R5/R6 denominator machinery -------------------
+
+
+def test_exclusion_footer_mechanical():
+    # R5-1: the disclosure appended to LLM-written bodies is deterministic.
+    assert evolution_tools._exclusion_footer(0, 0) == ""
+    footer = evolution_tools._exclusion_footer(1, 3)
+    assert "DENOMINATORS DIFFER" in footer
+    assert "1 baseline" in footer and "3 evolved" in footer
+
+
+def test_collect_metrics_surfaces_exclusions_when_all_shrunken(tmp_path):
+    # R5-2: with every candidate report shrunken, the best shrunken one is
+    # used and its non-zero exclusion count reaches the metrics dict —
+    # never "0 excluded" against a "?%" rate.
+    import json as _json
+
+    (tmp_path / "candidate_1_report.json").write_text(_json.dumps({
+        "summary": {
+            "meaningful_rate": 90.0, "unhelpful_rate": 10.0,
+            "excluded_error_shaped": {"count": 2, "session_ids": ["a", "b"]},
+        }}))
+    m = evolution_tools._collect_quality_metrics(str(tmp_path), "v1")
+    assert m["evolved_excl"] == 2
+    assert m["evolved_meaningful"] == "90.0"
+
+
+def test_compare_versions_guards_denominators(tmp_path):
+    # R6-2: deltas are suppressed across shrunken reports and best_version
+    # prefers clean denominators over a shrunken 100%.
+    import json as _json
+
+    def w(name, total, meaningful, rate, excl=0):
+        summary = {"total_sessions": total, "meaningful": meaningful,
+                   "meaningful_rate": rate, "unhelpful": total - meaningful,
+                   "unhelpful_rate": round(100 - rate, 1)}
+        if excl:
+            summary["excluded_error_shaped"] = {
+                "count": excl, "session_ids": ["x"] * excl}
+        (tmp_path / name).write_text(_json.dumps({"summary": summary}))
+
+    w("v0_quality_report.json", 20, 15, 75.0)
+    w("v1_quality_report.json", 16, 16, 100.0, excl=4)
+    w("v2_quality_report.json", 20, 17, 85.0)
+
+    res = evolution_tools.compare_versions(str(tmp_path))
+    assert res["best_version"] == "v2"
+    v1 = next(v for v in res["versions"] if v["version"] == "v1")
+    assert v1["excluded"] == 4
+    assert v1["delta"] is None
+    assert "(4 excluded)" in res["table"]
+
+
+def test_unmeasurable_winner_records_null_marker(tmp_path):
+    # R6-4: an unmeasurable winner writes an explicit null marker instead
+    # of leaving the previous agent's score on disk; compare_versions
+    # treats it like a shrunken report.
+    import json as _json
+
+    from agents.workflow.skill_evolution_agent import evolve as evolve_mod
+
+    cand = tmp_path / "candidates"
+    cand.mkdir()
+    evolve_mod._record_evolved_score(str(cand), None, unmeasurable=True)
+    es = _json.loads((tmp_path / "evolved_score.json").read_text())
+    assert es["meaningful_rate"] is None
+    assert es["unmeasurable"] is True
+
+    (tmp_path / "v0_quality_report.json").write_text(_json.dumps({
+        "summary": {"total_sessions": 20, "meaningful": 15,
+                    "meaningful_rate": 75.0, "unhelpful": 5,
+                    "unhelpful_rate": 25.0}}))
+    res = evolution_tools.compare_versions(str(tmp_path))
+    ev = next(v for v in res["versions"] if v["version"] == "evolved")
+    assert ev["excluded"] == 1
+    assert ev["delta"] is None

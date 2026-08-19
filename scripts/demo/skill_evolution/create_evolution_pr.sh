@@ -209,6 +209,18 @@ fi
 M_DELTA_DISP=$(delta_disp "$MEANINGFUL_DELTA")
 U_DELTA_DISP=$(delta_disp "$UNHELPFUL_DELTA")
 
+# Deterministic disclosure appended to any LLM-written body (review R6-3
+# on #106): the note must not depend on the model preserving the table.
+EXCL_FOOTER=""
+if [ -n "$EXCL_NOTE" ]; then
+    EXCL_FOOTER="
+
+| Excluded error-shaped (infra) | ${BASELINE_EXCL} baseline | ${EVOLVED_EXCL} evolved |
+|---|---|---|
+
+**${EXCL_NOTE}**"
+fi
+
 BASE_M_DISP=$(disp "$BASELINE_MEANINGFUL")
 EVO_M_DISP=$(disp "$EVOLVED_MEANINGFUL")
 BASE_U_DISP=$(disp "$BASELINE_UNHELPFUL")
@@ -263,12 +275,16 @@ fi
 
 # --- Create issue if requested ---
 if $CREATE_ISSUE && [ -z "$ISSUE_NUMBER" ]; then
-    ISSUE_TITLE="[Evolution] ${AGENT} skill ${VERSION} — meaningful ${BASE_M_DISP} → ${EVO_M_DISP}"
+    # Same denominator machinery as the PR path (review R6-1 on #106):
+    # suffix in the title, note in the prompt, mechanical row + note in
+    # both the agy output and the static fallback.
+    ISSUE_TITLE="[Evolution] ${AGENT} skill ${VERSION} — meaningful ${BASE_M_DISP} → ${EVO_M_DISP}${TITLE_SUFFIX}"
     ISSUE_BODY_PROMPT="Write a GitHub issue body for skill evolution of agent '${AGENT}' to version '${VERSION}'.
 Use these metrics EXACTLY as given — do not invent, alter, or estimate any numbers:
 Meaningful rate: ${BASE_M_DISP} -> ${EVO_M_DISP}${MEANINGFUL_DELTA:+ (${MEANINGFUL_DELTA}pp)}.
 Unhelpful rate: ${BASE_U_DISP} -> ${EVO_U_DISP}${UNHELPFUL_DELTA:+ (${UNHELPFUL_DELTA}pp)}.
-Skill size: ${EVOLVED_SIZE} chars. Run: $(basename "$RUN_DIR").
+${EXCL_NOTE:+${EXCL_NOTE}
+}Skill size: ${EVOLVED_SIZE} chars. Run: $(basename "$RUN_DIR").
 If a rate is 'n/a', state that it was not scored rather than guessing a value.
 Include sections: Metadata table, Quality Impact, What Changed, Verification.
 Output ONLY the issue body markdown."
@@ -277,6 +293,7 @@ Output ONLY the issue body markdown."
     if command -v agy &>/dev/null; then
         echo "Using agy to generate issue body..."
         ISSUE_BODY=$(agy -p "$ISSUE_BODY_PROMPT" 2>/dev/null) || true
+        [ -n "$ISSUE_BODY" ] && ISSUE_BODY="${ISSUE_BODY}${EXCL_FOOTER}"
     fi
     if [ -z "$ISSUE_BODY" ]; then
         ISSUE_BODY="## Metadata
@@ -287,8 +304,9 @@ Output ONLY the issue body markdown."
 | Version | \`${VERSION}\` |
 | Meaningful rate | ${BASE_M_DISP} → ${EVO_M_DISP}${MEANINGFUL_DELTA:+ (${MEANINGFUL_DELTA}pp)} |
 | Unhelpful rate | ${BASE_U_DISP} → ${EVO_U_DISP}${UNHELPFUL_DELTA:+ (${UNHELPFUL_DELTA}pp)} |
+| Excluded error-shaped (infra) | ${BASELINE_EXCL:-0} baseline / ${EVOLVED_EXCL:-0} evolved |
 | Skill size | ${EVOLVED_SIZE} chars |
-| Run | \`$(basename "$RUN_DIR")\` |"
+| Run | \`$(basename "$RUN_DIR")\` |${EXCL_FOOTER}"
     fi
 
     if $DRY_RUN; then
@@ -394,6 +412,8 @@ Diff:
 ${DIFF_TEXT:0:3000}
 
 Output ONLY the PR body in markdown. Start with the metrics table above, then a summary of what changed in the skill. No preamble." 2>/dev/null) || true
+    # Mechanical disclosure regardless of what the model kept (R6-3).
+    [ -n "$PR_BODY" ] && PR_BODY="${PR_BODY}${EXCL_FOOTER}"
 fi
 
 if [ -z "$PR_BODY" ]; then

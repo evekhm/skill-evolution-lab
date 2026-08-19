@@ -2663,6 +2663,11 @@ def compare_versions(run_dir: str) -> dict:
             "meaningful_rate": summary.get("meaningful_rate", 0),
             "unhelpful": summary.get("unhelpful", 0),
             "unhelpful_rate": summary.get("unhelpful_rate", 0),
+            # Post-preflight denominator marker (review R6-2 on #106):
+            # rates from shrunken reports must not feed deltas or the
+            # best-version pick as if they shared a question set.
+            "excluded": (summary.get("excluded_error_shaped") or {})
+            .get("count", 0),
         })
 
     # Authoritative evolved-skill score recorded by the incumbent-guarded
@@ -2681,25 +2686,40 @@ def compare_versions(run_dir: str) -> dict:
                     "total_sessions": versions[0]["total_sessions"]
                     if versions else 0,
                     "meaningful": 0,
-                    "meaningful_rate": es.get("meaningful_rate", 0),
+                    "meaningful_rate": es.get("meaningful_rate") or 0,
                     "unhelpful": 0,
                     "unhelpful_rate": 0,
+                    # An unmeasurable winner records a null score (review
+                    # R6-4); treat it like a shrunken report everywhere.
+                    "excluded": 1 if es.get("unmeasurable") else 0,
                 })
         except Exception:  # noqa: BLE001
             pass
 
-    # Compute deltas
+    # Compute deltas — only between reports with full denominators; a delta
+    # across a preflight-shrunken report is not a measurement (R6-2).
     for i, v in enumerate(versions):
-        if i == 0:
+        if i == 0 or v.get("excluded") or versions[i - 1].get("excluded"):
             v["delta"] = None
         else:
             prev_rate = versions[i - 1]["meaningful_rate"] or 0
             curr_rate = v["meaningful_rate"] or 0
             v["delta"] = round(curr_rate - prev_rate, 1)
 
-    # Find peak version (excluding v0 baseline)
+    # Find peak version (excluding v0 baseline); clean denominators first,
+    # shrunken reports only as a marked fallback.
     evolved = [v for v in versions if v["version"] != "v0"]
-    best = max(evolved, key=lambda v: v["meaningful_rate"]) if evolved else versions[0]
+    clean_evolved = [v for v in evolved if not v.get("excluded")]
+    if clean_evolved:
+        best = max(clean_evolved, key=lambda v: v["meaningful_rate"])
+    elif evolved:
+        best = max(evolved, key=lambda v: v["meaningful_rate"])
+        logger.warning(
+            "compare_versions: every evolved report has preflight "
+            "exclusions; best_version %s is on a shrunken denominator",
+            best["version"])
+    else:
+        best = versions[0]
 
     # Build text table
     header = "| Version | Sessions | Meaningful Rate | Delta | Best |"
@@ -2710,8 +2730,11 @@ def compare_versions(run_dir: str) -> dict:
             f"{v['delta']}pp" if v["delta"] else "-"
         )
         marker = " <-- " if v["version"] == best["version"] else ""
+        sessions = str(v["total_sessions"])
+        if v.get("excluded"):
+            sessions += f" ({v['excluded']} excluded)"
         rows.append(
-            f"| {v['version']:<7} | {v['total_sessions']:>8} | "
+            f"| {v['version']:<7} | {sessions:>8} | "
             f"{v['meaningful_rate']:>13}% | {delta:>5} | {marker:>4} |"
         )
 

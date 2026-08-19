@@ -174,7 +174,8 @@ def load_current_skill(skill_dir: str) -> str:
         return f.read()
 
 
-def _record_evolved_score(candidates_dir: str | None, score: float | None) -> None:
+def _record_evolved_score(candidates_dir: str | None, score: float | None,
+                          unmeasurable: bool = False) -> None:
     """Persist the deployed skill's authoritative selection score.
 
     Written to ``<run_dir>/evolved_score.json`` so ``compare_versions`` reports
@@ -183,12 +184,20 @@ def _record_evolved_score(candidates_dir: str | None, score: float | None) -> No
     in sequential co-evolution the final agent is scored against the others'
     already-deployed winners, so it reflects the full evolved system.
     """
-    if not candidates_dir or score is None:
+    if not candidates_dir or (score is None and not unmeasurable):
         return
     try:
         run_dir = os.path.dirname(candidates_dir.rstrip("/"))
+        payload = {"version": "evolved", "meaningful_rate": score}
+        if unmeasurable:
+            # Explicit null marker (review R6-4 on #106): in co-evolution
+            # the file is shared across agents, and writing nothing would
+            # leave the PREVIOUS agent's score attributed to a system that
+            # now includes this agent's skill. _refresh_incumbent treats a
+            # null rate as keep-the-current-bar.
+            payload["unmeasurable"] = True
         with open(os.path.join(run_dir, "evolved_score.json"), "w") as f:
-            json.dump({"version": "evolved", "meaningful_rate": score}, f)
+            json.dump(payload, f)
     except Exception as e:  # noqa: BLE001
         logger.warning("Could not record evolved score: %s", e)
 
@@ -391,6 +400,10 @@ def evolve(
         _record_evolved_score(candidates_dir, incumbent_score)
     elif selected in scores:
         _record_evolved_score(candidates_dir, scores[selected])
+    elif wrapped_score_fn is not None:
+        # Winner was scored but unmeasurable (its report lost records to
+        # the preflight): write the explicit null marker (review R6-4).
+        _record_evolved_score(candidates_dir, None, unmeasurable=True)
 
     logger.info("Evolution complete in %.1fs", time.time() - t0)
     return selected
