@@ -101,3 +101,27 @@ issues, and `@argus` mentions via
   post acknowledgment-only comments.
 
 
+
+## Review budgets (mechanical, enforced by the workflow — not by prompts)
+
+The per-finding exchange cap above does not bound runs when every
+round mints new finding IDs: PR #114 ran 22 rounds in ~4 hours. The
+workflow therefore enforces hard budgets BEFORE any model runs; they
+cost zero tokens when they trip and exit green.
+
+- Auto-reviews: at most `ARGUS_REVIEW_BUDGET` (default 3) per PR.
+- Mention responses: once Argus has posted `ARGUS_MENTION_BUDGET`
+  (default 10) comments on a thread, non-owner mentions get a one-line
+  notice instead of an agent run.
+- One more round: the owner applies the `review:continue` label
+  (consumed per round) or dispatches the workflow manually. Owner
+  mentions and owner dispatches always run.
+- Author agents never push fixes in response to a review round on
+  their own; the owner decides when the next round happens. An
+  auto-review x auto-fix loop is a protocol violation on the author
+  side even when the reviewer side would keep going.
+- Changes to the reviewer stack itself (`scripts/ci/`, the
+  `claude-*.yml` workflows, this protocol) get at most ONE review
+  round per reviewer, no exchanges: the owner arbitrates directly.
+  Reviewer-stack sync between sibling repos is a verbatim port of the
+  proven file, owner-reviewed — never renegotiated finding-by-finding.

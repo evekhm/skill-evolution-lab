@@ -50,6 +50,13 @@
 
 name: Argus Review
 
+# The trusted posting script filters ledger comments by author and the
+# budget gates count rounds by this login; both fail closed/warn when
+# it is empty. Set once: vars.ARGUS_LOGIN = the reviewer app's comment
+# author login (e.g. "evekhm-odyssey-argus[bot]").
+env:
+  ARGUS_LOGIN: ${{ vars.ARGUS_LOGIN }}
+
 on:
   pull_request:
     types: [opened, synchronize]
@@ -140,16 +147,88 @@ jobs:
             --json headRefOid --jq .headRefOid)
           { echo "number=$N"; echo "sha=$SHA"; } >> "$GITHUB_OUTPUT"
 
+
+      # Hard brake on the auto-review x auto-fix loop (port of the
+      # agentic-experiments-lab budget gate; PR #114 here ran 22 rounds
+      # in ~4h unattended). Deterministic, runs BEFORE Vertex auth and
+      # the agent, and costs zero model tokens when it trips. Semantics:
+      # first ARGUS_REVIEW_BUDGET (default 3) gated reviews run as
+      # today; past that, one more round per owner-applied
+      # `review:continue` label — CONSUMED here so a standing label
+      # cannot re-arm the loop. An owner-actor workflow_dispatch
+      # bypasses the budget (a manual dispatch IS the explicit request);
+      # sweep-driven dispatches are bot-actored and stay gated. Skipping
+      # exits green — a budget stop is not an error and must not block
+      # CI.
+      - name: Enforce per-PR review budget
+        id: budget
+        if: >-
+          github.event_name == 'pull_request' ||
+          (github.event_name == 'workflow_dispatch' &&
+           github.actor != github.repository_owner)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          ARGUS_LOGIN: ${{ vars.ARGUS_LOGIN }}
+          BUDGET_VAR: ${{ vars.ARGUS_REVIEW_BUDGET }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Misconfigured login fails closed (same rule as the sweep):
+          # an empty login would count zero rounds and disable the gate.
+          if [ -z "$ARGUS_LOGIN" ]; then
+            echo "::error::ARGUS_LOGIN is unset; refusing to run an ungated review."
+            exit 1
+          fi
+          BUDGET="$BUDGET_VAR"
+          case "$BUDGET" in (*[!0-9]*|'') BUDGET=3;; esac
+          # REST appends "[bot]" to App logins — normalize both sides.
+          WANT="${ARGUS_LOGIN%'[bot]'}"
+          ROUNDS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --paginate --jq '.[].user.login' | sed 's/\[bot\]$//' \
+            | grep -cxF "$WANT" || true)
+          case "$ROUNDS" in (*[!0-9]*|'') ROUNDS=0;; esac
+          echo "rounds so far: $ROUNDS (budget: $BUDGET)"
+          if [ "$ROUNDS" -lt "$BUDGET" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          HAS_LABEL=$(gh api "repos/$REPO/issues/$PR_NUMBER/labels" \
+            --paginate --jq '.[].name' | grep -cxF "review:continue" || true)
+          if [ "${HAS_LABEL:-0}" -gt 0 ]; then
+            gh api -X DELETE \
+              "repos/$REPO/issues/$PR_NUMBER/labels/review%3Acontinue"
+            echo "review:continue consumed — running one labeled round."
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "proceed=false" >> "$GITHUB_OUTPUT"
+          # One notice per budget stop, deduped by marker + round count
+          # so a later labeled round can trip a fresh notice.
+          MARK="<!-- argus-review-budget:$ROUNDS -->"
+          EXISTS=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+            --paginate --jq '.[].body' | grep -cF "$MARK" || true)
+          if [ "${EXISTS:-0}" -eq 0 ]; then
+            BODY=$(printf '%s\n\n%s\n\n%s' \
+              "$MARK" \
+              "### Argus review budget reached" \
+              "$ROUNDS auto-reviews have run on this PR (budget: $BUDGET). Further pushes will not be auto-reviewed. For one more round, apply the \`review:continue\` label (consumed per round) or dispatch the workflow manually. Rationale: the unbounded auto-review x auto-fix loop — see #114.")
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" -f body="$BODY" >/dev/null
+          fi
+          echo "Budget reached; skipping this review round (green exit)."
+
       # An unset repo variable interpolates to "", and auth@v2 treats
       # an empty service_account as direct WIF instead of an error —
       # the run would go green here and die at the first Vertex call.
       - name: Fail fast if reviewer variables are unset
-        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == ''
+        if: >-
+          steps.budget.outputs.proceed != 'false' &&
+          (vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == '')
         run: |
           echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT and/or CLAUDE_VERTEX_PROJECT_ID is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
           exit 1
 
       - name: Authenticate to Google Cloud
+        if: steps.budget.outputs.proceed != 'false'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
@@ -170,6 +249,7 @@ jobs:
       # auth action's post-job cleanup follows GOOGLE_GHA_CREDS_PATH,
       # so deletion still works.
       - name: Move WIF credentials out of the workspace
+        if: steps.budget.outputs.proceed != 'false'
         run: |
           DEST="$RUNNER_TEMP/gcp-wif-creds.json"
           mv "$GOOGLE_GHA_CREDS_PATH" "$DEST"
@@ -186,6 +266,7 @@ jobs:
       # process and later steps cannot rewrite them — and re-verified
       # by the trusted step before execution.
       - name: Stage trusted posting script
+        if: steps.budget.outputs.proceed != 'false'
         id: stage
         run: |
           cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
@@ -197,6 +278,7 @@ jobs:
       # review. A dead agent run leaves NO comment, which is exactly
       # what makes the sweep re-pick the PR.
       - name: Review the PR
+        if: steps.budget.outputs.proceed != 'false'
         uses: anthropics/claude-code-action@v1
         with:
           github_token: ${{ steps.app-token.outputs.token }}
@@ -255,6 +337,7 @@ jobs:
       # are maintained from validated JSON — authority is enforced by
       # this step, not by prompt text.
       - name: Publish Argus review (trusted step)
+        if: steps.budget.outputs.proceed != 'false'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -429,16 +512,77 @@ jobs:
           app-id: ${{ secrets.REVIEWER_APP_ID }}
           private-key: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
 
+
+      # Hard brake on reviewer-to-reviewer ping-pong: the #114 burn ran
+      # through THIS job (every Atlas comment mentioning @argus started
+      # a full agent run; 22 rounds, ~4h). Owner comments always run.
+      # For any other author, once Argus has posted
+      # ARGUS_MENTION_BUDGET (default 10) comments on the thread,
+      # further mentions get one dedup'd notice instead of an agent
+      # run; the owner-applied `review:continue` label grants one more
+      # round (consumed here). Skipping exits green.
+      - name: Enforce per-thread mention budget
+        id: budget
+        if: github.event.comment.user.login != github.repository_owner
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ARGUS_LOGIN: ${{ vars.ARGUS_LOGIN }}
+          BUDGET_VAR: ${{ vars.ARGUS_MENTION_BUDGET }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$ARGUS_LOGIN" ]; then
+            echo "::error::ARGUS_LOGIN is unset; refusing to run an ungated mention response."
+            exit 1
+          fi
+          BUDGET="$BUDGET_VAR"
+          case "$BUDGET" in (*[!0-9]*|'') BUDGET=10;; esac
+          # REST appends "[bot]" to App logins — normalize both sides.
+          WANT="${ARGUS_LOGIN%'[bot]'}"
+          ROUNDS=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" \
+            --paginate --jq '.[].user.login' | sed 's/\[bot\]$//' \
+            | grep -cxF "$WANT" || true)
+          case "$ROUNDS" in (*[!0-9]*|'') ROUNDS=0;; esac
+          echo "argus comments on thread: $ROUNDS (budget: $BUDGET)"
+          if [ "$ROUNDS" -lt "$BUDGET" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          HAS_LABEL=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/labels" \
+            --paginate --jq '.[].name' | grep -cxF "review:continue" || true)
+          if [ "${HAS_LABEL:-0}" -gt 0 ]; then
+            gh api -X DELETE \
+              "repos/$REPO/issues/$ISSUE_NUMBER/labels/review%3Acontinue"
+            echo "review:continue consumed — running one labeled round."
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "proceed=false" >> "$GITHUB_OUTPUT"
+          MARK="<!-- argus-mention-budget:$ROUNDS -->"
+          EXISTS=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" \
+            --paginate --jq '.[].body' | grep -cF "$MARK" || true)
+          if [ "${EXISTS:-0}" -eq 0 ]; then
+            BODY=$(printf '%s\n\n%s\n\n%s' \
+              "$MARK" \
+              "### Argus mention budget reached" \
+              "Argus has posted $ROUNDS comments on this thread (budget: $BUDGET). Further non-owner @argus mentions will not start agent runs. Owner mentions always run; the \`review:continue\` label grants one more round (consumed). Rationale: the unbounded reviewer exchange — see #114.")
+            gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" -f body="$BODY" >/dev/null
+          fi
+          echo "Budget reached; skipping this response (green exit)."
+
       # An unset repo variable interpolates to "", and auth@v2 treats
       # an empty service_account as direct WIF instead of an error —
       # the run would go green here and die at the first Vertex call.
       - name: Fail fast if reviewer variables are unset
-        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == ''
+        if: >-
+          steps.budget.outputs.proceed != 'false' &&
+          (vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == '')
         run: |
           echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT and/or CLAUDE_VERTEX_PROJECT_ID is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
           exit 1
 
       - name: Authenticate to Google Cloud
+        if: steps.budget.outputs.proceed != 'false'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
@@ -459,6 +603,7 @@ jobs:
       # auth action's post-job cleanup follows GOOGLE_GHA_CREDS_PATH,
       # so deletion still works.
       - name: Move WIF credentials out of the workspace
+        if: steps.budget.outputs.proceed != 'false'
         run: |
           DEST="$RUNNER_TEMP/gcp-wif-creds.json"
           mv "$GOOGLE_GHA_CREDS_PATH" "$DEST"
@@ -472,6 +617,7 @@ jobs:
       # agent can write anywhere, so the recorded step output is the
       # only thing it cannot forge.
       - name: Stage trusted posting script
+        if: steps.budget.outputs.proceed != 'false'
         id: stage
         run: |
           cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
@@ -481,6 +627,7 @@ jobs:
       # "### Argus" comment — no "Claude finished ..." header — and
       # peer-review consensus gets recorded by the trusted step below.
       - name: Answer the mention
+        if: steps.budget.outputs.proceed != 'false'
         uses: anthropics/claude-code-action@v1
         with:
           github_token: ${{ steps.app-token.outputs.token }}
@@ -560,6 +707,7 @@ jobs:
           ANTHROPIC_SMALL_FAST_MODEL: claude-opus-5
 
       - name: Record consensus (trusted step)
+        if: steps.budget.outputs.proceed != 'false'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
