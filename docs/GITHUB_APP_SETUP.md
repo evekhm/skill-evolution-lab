@@ -462,11 +462,12 @@ escalation rate.
 
 Atlas (`evekhm-atlas-bot`, a machine user with write access) is the
 second reviewer, running Gemini from a private environment of the
-owner's on an hourly poll. The dual-review protocol lives in three
-places: CLAUDE.md ("Peer review and consensus") for Argus, the
-mention-job prompt for the conversation mechanics, and the block
-below, which is the canonical copy of Atlas's standing instructions —
-install it in Atlas's runner configuration and keep the two in sync:
+owner's on an hourly poll. AGENTS.md ("Peer review and consensus")
+is the canonical protocol definition; the mention-job prompt carries
+the conversation mechanics; and the block below is the copy of
+Atlas's standing instructions — install it in Atlas's runner
+configuration and keep it in sync with AGENTS.md (when they
+disagree, AGENTS.md wins):
 
 ```text
 ## Dual review with Argus (evekhm-odyssey-argus[bot]) on evekhm/skill-evolution-lab
@@ -487,9 +488,12 @@ install it in Atlas's runner configuration and keep the two in sync:
   never APPROVE, never REQUEST_CHANGES. Blocking verdicts are gating
   acts reserved for the owner and CI; a bot verdict also goes stale
   and blocks merges after the findings are fixed.
-- ALWAYS include "@argus" in a verdict comment on security/bug
-  findings — including full agreement; agreement without @argus
-  cannot be recorded. Argus will not reply to a pure agreement:
+- RECORDING: verdicts you post as formal PR reviews are ingested by
+  Argus automatically (the workflow subscribes to
+  pull_request_review). Verdicts you post as ISSUE comments must
+  include "@argus" or they are invisible to the ledger.
+  Suggestion-only and clean reviews need no verdict at all — labels
+  resolve on their own. Argus will not reply to a pure agreement:
   silence after your AGREE verdict means consensus is recorded — do
   not follow up.
 - Disputes continue until resolved on evidence. Reply when Argus
@@ -498,10 +502,18 @@ install it in Atlas's runner configuration and keep the two in sync:
   position without new evidence is a protocol violation. If you have
   no new evidence, concede explicitly or escalate: two-line summary
   of both positions, tag @evekhm, stop. Tag conversational replies
-  [argus<->atlas N]; at N=10 escalate regardless.
+  [argus<->atlas N] — N is PER THREAD: 1 + the highest tag anywhere
+  in the thread, whoever posted it; never reuse a number. If N would
+  exceed 10, escalate regardless.
+- VERDICT FORMAT: one line per plain AGREE (finding ID + one line of
+  verification evidence); full prose only for disputes, amendments,
+  and new findings. Never assert ledger or label state ("the ledger
+  can be marked agreed") — state is derived by Argus's trusted step,
+  not declared by reviewers.
 - Argus's review comments are not "unaddressed comments" needing a
   reply outside this protocol; never post acknowledgment-only
-  comments.
+  comments (explicit AGREE/DISPUTE verdicts are required and do not
+  count as acknowledgments).
 - Write every comment self-contained (finding IDs, head SHA,
   evidence). You have no memory across runs; the thread is your
   memory. Argus replies within seconds; you reply on your next poll.

@@ -215,8 +215,9 @@ jobs:
                and atlas "pending", nominate a nudge when ALL hold:
                - that finding's pending_since is older than 24 hours
                  (rows written before pending_since existed: use the
-                 timestamp of the OLDEST Argus review/comment whose
-                 "Reviewed-head:" oid equals the current headRefOid);
+                 timestamp of the OLDEST Argus review/comment
+                 containing a "Reviewed-head:" marker — ANY oid, so a
+                 fresh push cannot restart this clock);
                - a review/comment by Argus carries "Reviewed-head:
                  <oid>" equal to the CURRENT headRefOid — if not, the
                  PR is waiting on an Argus re-review, not on Atlas;
@@ -264,8 +265,11 @@ jobs:
       # hash-pinned script does the posting; the agent only nominates
       # {number, sha} pairs, validated here. Posts with the app token
       # so the comment carries the Argus identity, and the script
-      # re-validates the sha before writing.
+      # re-validates the sha before writing. !cancelled(): a failed
+      # PR-dispatch validation must not silently drop valid nudges —
+      # this step self-validates everything it uses.
       - name: Post dead-peer nudges (trusted step)
+        if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -286,5 +290,7 @@ jobs:
             N=$(echo "$ROW" | jq -r '.number')
             echo "$ROW" | jq '{sha}' > "$RUNNER_TEMP/nudge-$N.json"
             echo "nudging PR #$N"
-            bash "$STAGED" nudge "${{ github.repository }}" "$N" "$RUNNER_TEMP/nudge-$N.json"
+            bash "$STAGED" nudge "${{ github.repository }}" "$N" \
+              "$RUNNER_TEMP/nudge-$N.json" \
+              || echo "nudge #$N failed (non-fatal — a deleted PR or locked thread must not drop the rest)"
           done

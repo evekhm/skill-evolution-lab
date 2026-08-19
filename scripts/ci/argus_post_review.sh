@@ -275,9 +275,9 @@ Reviewed-head: ${HEAD_SHA}" >/dev/null
         .findings as $old
         | ($old | map(.id)) as $ids
         | .findings += [$new[0].findings[] | select(.id as $i | $ids | index($i) | not) |
-            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
              severity,
-             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
              status: "open",
              atlas: (if .severity == "suggestion" then "—" else "pending" end),
              fixed_in: null, outcome: null}
@@ -301,12 +301,12 @@ mode_consensus() {
     if ! jq -e '
         (.updates | type == "array") and (.new_findings | type == "array") and
         (.escalated | type == "array") and
-        ((has("summary") | not) or (.summary | type == "string")) and
+        (((.summary // "") | type == "string")) and
         (.updates | all((.id|type=="string") and (.atlas|IN("agree","dispute")))) and
         (.new_findings | all((.id|type=="string") and
             (.severity|IN("security","bug","suggestion")) and
             (.title|type=="string") and
-            ((has("source") | not) or (.source|IN("argus","atlas"))) and
+            ((.source // "atlas") | IN("argus","atlas")) and
             (.argus_verdict|IN("agree","dispute"))))' \
         "$INPUT" >/dev/null 2>&1; then
         echo "ERROR: consensus.json failed validation" >&2
@@ -330,9 +330,9 @@ mode_consensus() {
               end)
         | (.findings | map(.id)) as $ids
         | .findings += [$c[0].new_findings[] | select(.id as $i | $ids | index($i) | not) |
-            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
              severity,
-             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->"; "→")),
+             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
              status: "open",
              fixed_in: null, outcome: null}
             + (if .source then {source} else {} end)
@@ -343,7 +343,7 @@ mode_consensus() {
         | .findings |= map(if (.id as $i | $esc | index($i))
               then .outcome = "escalated" else . end)
         | (if (($c[0].summary // "") != "")
-           then .consensus_summary = ($c[0].summary | gsub("-->"; "→"))
+           then .consensus_summary = ($c[0].summary | gsub("-->|<!--"; "→"))
            else . end)' <<<"$data")
 
     upsert_ledger "$data"
