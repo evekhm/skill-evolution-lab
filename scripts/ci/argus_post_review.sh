@@ -23,6 +23,8 @@
 # Modes:
 #   review    <repo> <pr_number> <findings_json>  <head_sha>
 #   consensus <repo> <number>    <consensus_json>
+#   seen      <repo> <number>    -                  (advance atlas_seen_at
+#                                                    only; recovery-loop stop)
 #   nudge     <repo> <pr_number> <nudge_json>       ({"sha": <head oid>})
 #   relabel   <repo> <number>    -                  (re-derive labels from
 #                                                    the existing ledger; the
@@ -458,7 +460,8 @@ mode_consensus() {
     # empty consensus file, and stamping it would tell the sweep a
     # peer verdict arrived when none did.
     data=$(jq -c --slurpfile c "$INPUT" --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
-        (if (($c[0].updates | length) + ($c[0].new_findings | length)) > 0
+        (if (($c[0].updates | length) + ($c[0].new_findings | length)
+              + ($c[0].escalated | length)) > 0
          then .atlas_seen = true | .atlas_seen_at = $seen_at
          else . end)
         | ($c[0].updates) as $u
@@ -466,7 +469,7 @@ mode_consensus() {
             (($u | map(select(.id == $f.id)) | first) // null) as $m
             | if $m == null then $f else
                 $f + {atlas: $m.atlas}
-                    + (if $m.atlas == "dispute"
+                    + (if $m.atlas == "dispute" and $f.atlas != "dispute"
                        then {pending_since: $seen_at} else {} end)
                     + (if $m.atlas == "agree" and ($f.status == "open" or $f.status == "fixed")
                        then {outcome: "agreed"} else {} end)
@@ -526,8 +529,13 @@ mode_consensus() {
 # sweep's unreconciled-peer-verdict exception stops re-dispatching the
 # same PR every hour. Runs inside the serialized consensus group.
 mode_seen() {
-    local data
-    data=$(load_ledger)
+    local row data
+    row=$(find_ledger_comment)
+    if [ -z "$row" ]; then
+        echo "seen: no ledger on #${NUMBER} — nothing to mark"
+        return 0
+    fi
+    data=$(echo "$row" | base64 -d | jq -r '.[1]' | extract_ledger_data)
     data=$(jq -c --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         '.atlas_seen = true | .atlas_seen_at = $seen_at' <<<"$data")
     upsert_ledger "$data"
