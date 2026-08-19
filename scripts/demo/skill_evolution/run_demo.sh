@@ -892,18 +892,30 @@ fi
 # Preview the version with the BEST measured rate (the agent can evolve
 # past its own peak: a later round may score worse than an earlier one).
 BEST_V=""; BEST_RATE=-1; BEST_REPORT=""
+BEST_ANY_V=""; BEST_ANY_RATE=-1; BEST_ANY_REPORT=""
 for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
          "$RUN_DIR"/candidate_*_report.json; do
     [ -f "$f" ] || continue
     v=$(basename "$f" | grep -oE '^v[0-9]+' || true)
     [ "$v" = "v0" ] && continue
     rate=$(jq -r '.summary.meaningful_rate // -1' "$f" 2>/dev/null)
+    excl=$(jq -r '.summary.excluded_error_shaped.count // 0' "$f" 2>/dev/null)
+
+    # Track any candidate regardless of exclusions (fallback)
+    if awk "BEGIN{exit !($rate > $BEST_ANY_RATE)}"; then
+        BEST_ANY_RATE="$rate"; BEST_ANY_REPORT="$f"
+        if [ -z "$v" ]; then
+            BEST_ANY_V=$(ls "$RUN_DIR" | grep -oE '^v[0-9]+' | grep -v '^v0$' | sort -V | tail -1)
+        else
+            BEST_ANY_V="$v"
+        fi
+    fi
+
     # A report that lost records to the error-shaped preflight has a
     # shrunken denominator; its rate is not comparable to the others'
-    # (review R3-1 on #106) — leave it out of winner selection.
-    excl=$(jq -r '.summary.excluded_error_shaped.count // 0' "$f" 2>/dev/null)
+    # (review R3-1 on #106) — leave it out of clean winner selection.
     if [ "${excl:-0}" != "0" ]; then
-        echo "  winner selection: skipping $(basename "$f") — ${excl} error-shaped record(s) excluded, rate not comparable"
+        echo "  winner selection: skipping clean selection for $(basename "$f") — ${excl} error-shaped record(s) excluded, rate not comparable"
         continue
     fi
     if awk "BEGIN{exit !($rate > $BEST_RATE)}"; then
@@ -917,6 +929,15 @@ for f in "$RUN_DIR"/v[0-9]*_report.json "$RUN_DIR"/v[0-9]*_quality_report.json \
         fi
     fi
 done
+
+# Fallback to the best report with exclusions if no clean report is available
+if [ -z "$BEST_V" ] && [ -n "$BEST_ANY_V" ]; then
+    BEST_V="$BEST_ANY_V"
+    BEST_RATE="$BEST_ANY_RATE"
+    BEST_REPORT="$BEST_ANY_REPORT"
+    excl=$(jq -r '.summary.excluded_error_shaped.count // 0' "$BEST_REPORT" 2>/dev/null)
+    echo "  winner selection fallback: selecting $(basename "$BEST_REPORT") ($BEST_RATE%) despite ${excl} excluded record(s) because no clean candidates exist"
+fi
 if [ -n "$BEST_V" ]; then
     step 4 "Review the PR" "the learning as a reviewable artifact: metrics, diff, regression cases"
     if [ "$GITHUB_PUBLISH" = true ]; then
@@ -1022,12 +1043,17 @@ step_close
         echo "| out-of-scope (unseen topics) | correct-behavior rate (declined or meaningful) | $(okr "$RUN_DIR/v0_oos_test_report.json")$(exm "$RUN_DIR/v0_oos_test_report.json") | $(okr "$RUN_DIR/v1_oos_test_report.json")$(exm "$RUN_DIR/v1_oos_test_report.json") |"
         echo "| corrections (unseen topics, anti-parroting) | ground-truth rate | $(gtr "$RUN_DIR/v0_corr_test_report.json")$(exm "$RUN_DIR/v0_corr_test_report.json") | $(gtr "$RUN_DIR/v1_corr_test_report.json")$(exm "$RUN_DIR/v1_corr_test_report.json") |"
     fi
-    [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
+    # Mark a winner whose report lost records to the preflight — its rate
+    # sits on a shrunken denominator (review R4-2 on #106).
+    _wexcl=$(jq -r '.summary.excluded_error_shaped.count // 0' "$BEST_REPORT" 2>/dev/null)
+    _wnote=""
+    [ "${_wexcl:-0}" != "0" ] && _wnote=" [${_wexcl} excluded — denominator not comparable]"
+    [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%${_wnote})** -> pr_preview.md"
     _thr=$(awk "BEGIN{printf \"%.0f\", ${QUALITY_THRESHOLD:-0.95}*100}")
     if [ -n "$BEST_V" ] && awk "BEGIN{exit !($BEST_RATE >= $_thr)}"; then
-        echo "Quality gate: winner ${BEST_RATE}% MEETS the ${_thr}% threshold"
+        echo "Quality gate: winner ${BEST_RATE}%${_wnote} MEETS the ${_thr}% threshold"
     elif [ -n "$BEST_V" ]; then
-        echo "Quality gate: winner ${BEST_RATE}% below the ${_thr}% threshold — another cycle is warranted"
+        echo "Quality gate: winner ${BEST_RATE}%${_wnote} below the ${_thr}% threshold — another cycle is warranted"
     fi
     echo ""
     echo "## Files worth reading"

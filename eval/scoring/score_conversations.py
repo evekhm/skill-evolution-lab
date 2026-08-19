@@ -119,7 +119,7 @@ def exclude_error_shaped(
         turns = [t for t in (c.get("conversation") or []) if isinstance(t, dict)]
         first_error = next(
             (i for i, t in enumerate(turns)
-             if t.get("role") != "user"
+             if t.get("role") == "system"
              and str(t.get("text") or "").startswith("ERROR:")),
             None,
         )

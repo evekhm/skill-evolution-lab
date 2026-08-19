@@ -199,13 +199,11 @@ BASELINE_EXCL=$(extract_excl "$BASELINE_REPORT")
 EVOLVED_EXCL=$(extract_excl "$QUALITY_REPORT")
 EXCL_NOTE=""
 TITLE_SUFFIX=""
-if [ "${BASELINE_EXCL:-0}" != "${EVOLVED_EXCL:-0}" ]; then
+if [ "${BASELINE_EXCL:-0}" != "0" ] || [ "${EVOLVED_EXCL:-0}" != "0" ]; then
     MEANINGFUL_DELTA=""
     UNHELPFUL_DELTA=""
     TITLE_SUFFIX=" [denominators differ]"
-    EXCL_NOTE="DENOMINATORS DIFFER: the preflight excluded ${BASELINE_EXCL} baseline vs ${EVOLVED_EXCL} evolved error-shaped record(s), so the two rates cover different question subsets. Deltas suppressed."
-elif [ "${EVOLVED_EXCL:-0}" != "0" ]; then
-    EXCL_NOTE="Note: the preflight excluded ${EVOLVED_EXCL} error-shaped record(s) from each report's denominator."
+    EXCL_NOTE="DENOMINATORS DIFFER: preflight excluded ${BASELINE_EXCL} baseline and/or ${EVOLVED_EXCL} evolved error-shaped record(s), so the rates do not cover identical question subsets. Deltas suppressed."
 fi
 
 M_DELTA_DISP=$(delta_disp "$MEANINGFUL_DELTA")

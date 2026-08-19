@@ -184,6 +184,12 @@ def run_evolution(
                     _incumbent = (
                         json.load(_rf).get("summary", {}).get("meaningful_rate")
                     )
+                if _excluded_count(quality_report_path) > 0:
+                    logger.warning(
+                        "Incumbent quality report %s has preflight exclusions; "
+                        "disabling incumbent_score guard for evolution", quality_report_path
+                    )
+                    _incumbent = None
             except Exception:  # noqa: BLE001
                 _incumbent = None
 
@@ -195,6 +201,13 @@ def run_evolution(
                     run_dir=_rd, candidate_path=tmp, skill_dir=_sd,
                     questions_file=_questions_file(),
                 )
+                report_path = res.get("report_path")
+                if report_path and _excluded_count(report_path) > 0:
+                    logger.warning(
+                        "Candidate scored report %s has preflight exclusions, "
+                        "meaningful_rate zeroed for selection", report_path
+                    )
+                    return 0.0
                 return float(res.get("meaningful_rate", 0.0))
 
         evolved_content = evolve(
@@ -810,6 +823,16 @@ def _generate_pr_body_with_agy(
     if not agy_bin:
         return None
 
+    baseline_excl = metrics.get("baseline_excl", 0)
+    evolved_excl = metrics.get("evolved_excl", 0)
+    excl_info = ""
+    if baseline_excl > 0 or evolved_excl > 0:
+        excl_info = (
+            f"Preflight Exclusions: excluded {baseline_excl} baseline and "
+            f"{evolved_excl} evolved error-shaped record(s).\n"
+            f"DENOMINATORS DIFFER: Do not report simple percentage change deltas.\n"
+        )
+
     prompt = (
         f"Write a pull request description for the following change.\n"
         f"Agent: {agent}, version: {version}\n"
@@ -817,6 +840,7 @@ def _generate_pr_body_with_agy(
         f"-> {metrics['evolved_meaningful']}%, "
         f"unhelpful rate {metrics['baseline_unhelpful']}% "
         f"-> {metrics['evolved_unhelpful']}%\n"
+        f"{excl_info}"
         f"Skill size: {evolved_size} chars, "
         f"run: {os.path.basename(run_dir)}\n\n"
         f"Diff:\n{diff_text[:3000]}\n\n"
@@ -846,6 +870,9 @@ def _default_pr_body(
 ) -> str:
     """Fallback PR body when agy is not available."""
     m = metrics
+    baseline_excl = m.get("baseline_excl", 0)
+    evolved_excl = m.get("evolved_excl", 0)
+
     body = (
         f"## Skill Evolution: {agent} {version}\n\n"
         f"### Quality Before Evolution\n\n"
@@ -861,8 +888,15 @@ def _default_pr_body(
         f"| {m['evolved_meaningful']}% |\n"
         f"| Unhelpful rate | {m['baseline_unhelpful']}% "
         f"| {m['evolved_unhelpful']}% |\n"
+        f"| Excluded error-shaped (infra) | {baseline_excl} | {evolved_excl} |\n"
         f"| Skill size | | {evolved_size} chars |\n\n"
     )
+    if baseline_excl > 0 or evolved_excl > 0:
+        body += (
+            f"**DENOMINATORS DIFFER**: the preflight excluded {baseline_excl} "
+            f"baseline vs {evolved_excl} evolved error-shaped record(s), so the "
+            f"two rates cover different question subsets. Deltas suppressed.\n\n"
+        )
     selector_path = os.path.join(run_dir, "trace_selector.json")
     if os.path.isfile(selector_path):
         try:
@@ -990,12 +1024,17 @@ def _collect_quality_metrics(
             baseline_report
         ).split("_quality_report")[0]
 
+    baseline_excl = _excluded_count(baseline_report) if baseline_report else 0
+    evolved_excl = _excluded_count(evolved_report) if evolved_report else 0
+
     return {
         "evolved_meaningful": _extract_rate(evolved_report, "meaningful_rate"),
         "evolved_unhelpful": _extract_rate(evolved_report, "unhelpful_rate"),
         "baseline_meaningful": _extract_rate(baseline_report, "meaningful_rate"),
         "baseline_unhelpful": _extract_rate(baseline_report, "unhelpful_rate"),
         "baseline_label": baseline_label,
+        "baseline_excl": baseline_excl,
+        "evolved_excl": evolved_excl,
     }
 
 
@@ -1297,10 +1336,27 @@ def create_evolution_issue(
 
     meaningful = metrics["evolved_meaningful"]
     baseline = metrics["baseline_meaningful"]
-    title = (
-        f"[Evolution] {agent} skill {version} — "
-        f"meaningful {baseline}% → {meaningful}%"
-    )
+    baseline_excl = metrics.get("baseline_excl", 0)
+    evolved_excl = metrics.get("evolved_excl", 0)
+
+    if baseline_excl > 0 or evolved_excl > 0:
+        title = (
+            f"[Evolution] {agent} skill {version} — "
+            f"meaningful {baseline}% → {meaningful}% [denominators differ]"
+        )
+    else:
+        title = (
+            f"[Evolution] {agent} skill {version} — "
+            f"meaningful {baseline}% → {meaningful}%"
+        )
+
+    excl_info = ""
+    if baseline_excl > 0 or evolved_excl > 0:
+        excl_info = (
+            f"Preflight Exclusions: excluded {baseline_excl} baseline and "
+            f"{evolved_excl} evolved error-shaped record(s).\n"
+            f"DENOMINATORS DIFFER: Do not report simple percentage change deltas.\n\n"
+        )
 
     agy_prompt = (
         f"Write a GitHub issue body for the following skill evolution run.\n\n"
@@ -1309,6 +1365,7 @@ def create_evolution_issue(
         f"Version: {version}\n"
         f"Run directory: {os.path.basename(run_dir)}\n"
         f"Evolved skill size: {evolved_size} chars\n\n"
+        f"{excl_info}"
         f"Context from the run:\n\n{run_context}\n\n"
         f"Write the issue body in markdown with these sections:\n"
         f"1. **Metadata** — a table with: agent, version, meaningful rate "
@@ -1358,10 +1415,18 @@ def create_evolution_issue(
             f"{m['evolved_meaningful']}% |\n"
             f"| Unhelpful rate | {m['baseline_unhelpful']}% → "
             f"{m['evolved_unhelpful']}% |\n"
+            f"| Baseline Exclusions | {baseline_excl} |\n"
+            f"| Evolved Exclusions | {evolved_excl} |\n"
             f"| Skill size | {evolved_size} chars |\n"
             f"| Run | `{os.path.basename(run_dir)}` |\n\n"
-            f"## Run Context\n\n{run_context}\n"
         )
+        if baseline_excl > 0 or evolved_excl > 0:
+            issue_body += (
+                f"**DENOMINATORS DIFFER**: the preflight excluded {baseline_excl} "
+                f"baseline vs {evolved_excl} evolved error-shaped record(s), so the "
+                f"two rates cover different question subsets. Deltas suppressed.\n\n"
+            )
+        issue_body += f"## Run Context\n\n{run_context}\n"
 
     labels = ["evolution", agent]
 
@@ -1920,11 +1985,22 @@ def create_evolution_pr(
     evolved_size = len(evolved_content)
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     branch_name = f"skill-evolution/{agent}-{version}-{timestamp}"
-    title = (
-        f"Evolve {agent} skill to {version} "
-        f"({metrics['baseline_meaningful']}% "
-        f"-> {metrics['evolved_meaningful']}%)"
-    )
+
+    baseline_excl = metrics.get("baseline_excl", 0)
+    evolved_excl = metrics.get("evolved_excl", 0)
+
+    if baseline_excl > 0 or evolved_excl > 0:
+        title = (
+            f"Evolve {agent} skill to {version} "
+            f"({metrics['baseline_meaningful']}% "
+            f"-> {metrics['evolved_meaningful']}%) [denominators differ]"
+        )
+    else:
+        title = (
+            f"Evolve {agent} skill to {version} "
+            f"({metrics['baseline_meaningful']}% "
+            f"-> {metrics['evolved_meaningful']}%)"
+        )
 
     if dry_run:
         body = _default_pr_body(
@@ -2013,6 +2089,10 @@ def create_evolution_pr(
             f"Evolve {agent} skill to {version}\n\n"
             f"Meaningful rate: {metrics['baseline_meaningful']}% "
             f"-> {metrics['evolved_meaningful']}%"
+        )
+        if baseline_excl > 0 or evolved_excl > 0:
+            commit_msg += " [denominators differ]"
+        commit_msg += (
             f"{regression_note}\n"
             f"Run: {os.path.basename(run_dir)}"
         )

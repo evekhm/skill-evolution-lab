@@ -190,7 +190,7 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
              {"role": "user", "text": "sure?", "tag": "VERIFY"},
              {"role": "system", "text": "ERROR: 503 quota"},
          ]},
-        # ERROR arrived as agent *text* (errors=0) before any completed
+        # ERROR arrived as system *text* (errors=0) before any completed
         # exchange; the recovery answer after it is what final_response
         # points at. Scoring the pre-error stub would disagree with its
         # own final answer, so the record is excluded (R2-4).
@@ -198,7 +198,7 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
          "final_response": "Recovered answer.",
          "conversation": [
              {"role": "user", "text": "hello?"},
-             {"role": "agent", "text": "ERROR: bad gateway"},
+             {"role": "system", "text": "ERROR: bad gateway"},
              {"role": "user", "text": "hello again?"},
              {"role": "agent", "text": "Recovered answer."},
          ]},
@@ -288,22 +288,57 @@ def test_md_report_carries_exclusion_row(tmp_path):
     assert "| Truncated at first error turn (completed exchanges scored) | 1 |" in md
 
 
-def test_excluded_count_guards_candidate_selection(tmp_path):
+def test_excluded_count_guards_candidate_selection(tmp_path, monkeypatch):
     # #106 R3-1 (and its tools.py sister): a report that lost records to
     # the preflight has a shrunken denominator; selection must be able to
     # see that and skip it instead of comparing raw rates.
     import json as _json
 
+    monkeypatch.setenv("EVOLUTION_PUBLISH", "0")
+
+    # Baseline report with a failure session
+    baseline = tmp_path / "baseline_quality_report.json"
+    baseline.write_text(_json.dumps({
+        "summary": {"meaningful_rate": 0.0},
+        "sessions": [
+            {
+                "question": "q1",
+                "metrics": {"response_usefulness": {"category": "unhelpful"}},
+                "response": "bad"
+            }
+        ]
+    }))
+
     quota_hit = tmp_path / "candidate_1_report.json"
-    quota_hit.write_text(_json.dumps({"summary": {
-        "meaningful_rate": 100.0,
-        "excluded_error_shaped": {"count": 3, "session_ids": ["a", "b", "c"]},
-    }}))
+    quota_hit.write_text(_json.dumps({
+        "summary": {
+            "meaningful_rate": 100.0,
+            "excluded_error_shaped": {"count": 3, "session_ids": ["a", "b", "c"]},
+        },
+        "sessions": [
+            {
+                "question": "q1",
+                "metrics": {"response_usefulness": {"category": "meaningful"}},
+                "response": "excellent candidate 1",
+                "answered_by": "policy_agent"
+            }
+        ]
+    }))
     clean = tmp_path / "candidate_2_report.json"
-    clean.write_text(_json.dumps({"summary": {
-        "meaningful_rate": 88.0,
-        "excluded_error_shaped": {"count": 0, "session_ids": []},
-    }}))
+    clean.write_text(_json.dumps({
+        "summary": {
+            "meaningful_rate": 88.0,
+            "excluded_error_shaped": {"count": 0, "session_ids": []},
+        },
+        "sessions": [
+            {
+                "question": "q1",
+                "metrics": {"response_usefulness": {"category": "meaningful"}},
+                "response": "excellent candidate 2",
+                "answered_by": "policy_agent"
+            }
+        ]
+    }))
     legacy = tmp_path / "old_report.json"
     legacy.write_text(_json.dumps({"summary": {"meaningful_rate": 90.0}}))
 
@@ -311,3 +346,14 @@ def test_excluded_count_guards_candidate_selection(tmp_path):
     assert evolution_tools._excluded_count(str(clean)) == 0
     assert evolution_tools._excluded_count(str(legacy)) == 0  # pre-key report
     assert evolution_tools._excluded_count(str(tmp_path / "missing.json")) == 0
+
+    # Execute extract_regression_cases: candidate 1 is skipped, candidate 2 wins and its session is extracted
+    res = evolution_tools.extract_regression_cases(run_dir=str(tmp_path))
+    assert res["status"] == "success"
+
+    golden_file = tmp_path / "golden_evals.json"
+    assert golden_file.exists()
+    golden_content = _json.loads(golden_file.read_text())
+    cases = golden_content.get("eval_cases", [])
+    assert "excellent candidate 2" in cases[0]["expected_answer"]
+    assert "excellent candidate 1" not in cases[0]["expected_answer"]
