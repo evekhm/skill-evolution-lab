@@ -140,8 +140,9 @@ set_label_pair() { # $1 add $2... remove
 }
 
 apply_labels_from() { # $1 data json
-    local data="$1" open disputed pending seen
+    local data="$1" open secbug disputed pending seen
     open=$(echo "$data"    | jq '[.findings[] | select(.status=="open")] | length')
+    secbug=$(echo "$data"  | jq '[.findings[] | select(.severity!="suggestion")] | length')
     disputed=$(echo "$data" | jq '[.findings[] | select(.status=="open" and .severity!="suggestion" and .atlas=="dispute")] | length')
     pending=$(echo "$data" | jq '[.findings[] | select(.status=="open" and .severity!="suggestion" and .atlas=="pending")] | length')
     seen=$(echo "$data"    | jq -r '.atlas_seen')
@@ -153,12 +154,19 @@ apply_labels_from() { # $1 data json
     fi
     if [ "$disputed" -gt 0 ]; then
         set_label_pair "consensus:disputed" "consensus:pending" "consensus:agreed"
+    elif [ "$secbug" -eq 0 ]; then
+        # Clean or suggestion-only ledger: nothing ever entered consensus
+        # scope, so Atlas legitimately posts no verdict and atlas_seen
+        # never flips. Requiring it here deadlocked such items at
+        # consensus:pending forever (#109 — PRs #104/#82/#108 merged in
+        # that state). Suggestions never block consensus by design.
+        set_label_pair "consensus:agreed" "consensus:pending" "consensus:disputed"
     elif [ "$pending" -gt 0 ] || [ "$seen" != "true" ]; then
         set_label_pair "consensus:pending" "consensus:agreed" "consensus:disputed"
     else
         set_label_pair "consensus:agreed" "consensus:pending" "consensus:disputed"
     fi
-    echo "labels: open=${open} disputed=${disputed} pending=${pending} atlas_seen=${seen}"
+    echo "labels: open=${open} secbug=${secbug} disputed=${disputed} pending=${pending} atlas_seen=${seen}"
 }
 
 # ---- review body -------------------------------------------------------
