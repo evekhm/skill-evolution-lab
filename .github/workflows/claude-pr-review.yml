@@ -123,6 +123,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Pinned ref (R19-1): on pull_request events the default is
+          # the PR merge ref, and this job stages the trusted posting
+          # script from its checkout — a PR editing that script would
+          # otherwise be reviewed by its own modified copy. The agent
+          # reads the DIFF via gh pr diff, so reviewing branch content
+          # is unaffected.
+          ref: ${{ github.event.repository.default_branch }}
           # Deep clone requested, but the action's own ref fetching can
           # still leave the repo shallow (verified on run 30959850358:
           # is-shallow=true, origin/main had no merge base), so gh pr
@@ -725,22 +732,23 @@ jobs:
             # groups, so an empty-payload upsert would race the
             # serialized peer runs for the ledger comment. Skipping it
             # keeps ledger writers inside one concurrency group.
-            # Emptiness matches the script's clock-advance test
-            # exactly (R18-1): a summary-only payload records nothing
-            # while pending rows exist, so treating it as content
-            # left the recovery dispatch armed forever. Verdict
-            # arrays decide; a stray summary rides along or drops.
+            # Three-way gate (R18-1 then R19-2): verdict arrays decide
+            # whether the clock advances; a recovery dispatch with no
+            # verdicts takes `seen` so the sweep stops re-dispatching;
+            # a summary-only payload on a live event still runs
+            # consensus so the close-out digest stays recordable (the
+            # unsettled-rows invariant governs whether it renders).
             if jq -e '((.updates | length) + (.new_findings | length) +
                        (.escalated | length)) == 0' \
                 "$F" >/dev/null 2>&1; then
               if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-                # A recovery dispatch that parsed nothing still
-                # advances atlas_seen_at, or the sweep re-dispatches
-                # this PR every hour forever (R16-3). Serialized in
-                # the consensus concurrency group, so no writer race.
                 bash "$STAGED" seen \
                   "${{ github.repository }}" \
                   "${{ github.event.issue.number || github.event.pull_request.number || inputs.pr_number }}" -
+              elif jq -e '(.summary // "") != ""' "$F" >/dev/null 2>&1; then
+                bash "$STAGED" consensus \
+                  "${{ github.repository }}" \
+                  "${{ github.event.issue.number || github.event.pull_request.number || inputs.pr_number }}" "$F"
               else
                 echo "empty consensus payload — nothing to record, ledger untouched"
               fi

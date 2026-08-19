@@ -519,7 +519,7 @@ mode_consensus() {
     # be visible in the run log, and the peer can re-send it.
     local unmatched
     unmatched=$(jq -r --slurpfile c "$INPUT" '[.findings[].id] as $ids
-        | [$c[0].updates[].id | select(. as $i | $ids | index($i) | not)]
+        | [($c[0].updates[].id, $c[0].escalated[]) | select(. as $i | $ids | index($i) | not)]
         | join(", ")' <<<"$data")
     if [ -n "$unmatched" ]; then
         echo "WARNING: consensus updates matched no ledger row: ${unmatched}" >&2
