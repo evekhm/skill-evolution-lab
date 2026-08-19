@@ -188,17 +188,16 @@ set_label_pair() { # $1 add $2... remove
 apply_labels_from() { # $1 data json
     local data="$1" open secbug disputed pending seen
     open=$(echo "$data"    | jq '[.findings[] | select(.status=="open")] | length')
-    # ANY status, not just open (R1-1): a fixed security/bug row still
-    # needs the peer's verdict — "fixed by Argus's word alone" must not
-    # shortcut to consensus:agreed. Only items that never had a
-    # security/bug finding at all skip the Atlas requirement.
-    secbug=$(echo "$data"  | jq '[.findings[] | select(.severity!="suggestion")] | length')
-    # Like secbug, disputed and pending count ANY status (R4-1, and the
-    # remainder of R1-1): Argus marking a row "fixed" ends fix-tracking,
-    # not the peer's say — a fixed row whose Atlas verdict is dispute or
-    # pending must still block consensus:agreed.
-    disputed=$(echo "$data" | jq '[.findings[] | select(.severity!="suggestion" and .atlas=="dispute")] | length')
-    pending=$(echo "$data" | jq '[.findings[] | select(.severity!="suggestion" and .atlas=="pending")] | length')
+    # Consensus scope = security/bug rows at any NON-TERMINAL status
+    # (R1-1, R4-1, then AEL#22 R7-1): a fixed row still needs the
+    # peer's verdict — "fixed by Argus's word alone" must not shortcut
+    # to consensus:agreed — while a WITHDRAWN row is a conceded false
+    # positive whose stale atlas value ("dispute" from the exchange
+    # that refuted it, or "pending") would otherwise pin the item at
+    # consensus:disputed forever.
+    secbug=$(echo "$data"  | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion")] | length')
+    disputed=$(echo "$data" | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion" and .atlas=="dispute")] | length')
+    pending=$(echo "$data" | jq '[.findings[] | select(.status!="withdrawn" and .severity!="suggestion" and .atlas=="pending")] | length')
     seen=$(echo "$data"    | jq -r '.atlas_seen')
 
     if [ "$open" -gt 0 ]; then
@@ -360,7 +359,10 @@ mode_consensus() {
           | (if has("outcome") and
                ((.outcome | IN("agreed","conceded-by-argus","conceded-by-atlas","escalated")) | not)
              then del(.outcome) else . end))' "$INPUT" > "$norm" 2>/dev/null; then
-        if ! cmp -s "$norm" "$INPUT"; then
+        # Canonicalize both sides before comparing (AEL#22 R6-4):
+        # comparing jq's formatted output against the raw input fires
+        # the notice on every well-formed payload.
+        if ! cmp -s <(jq -cS . "$norm" 2>/dev/null) <(jq -cS . "$INPUT" 2>/dev/null); then
             echo "consensus: dropped malformed optional status/outcome field(s)" >&2
         fi
         INPUT="$norm"
@@ -412,19 +414,19 @@ mode_consensus() {
         | ($c[0].escalated) as $esc
         | .findings |= map(if (.id as $i | $esc | index($i))
               then .outcome = "escalated" else . end)
-        | (if (($c[0].summary // "") == "")
-             and (([$c[0].updates[]?.atlas] + [$c[0].new_findings[]?.argus_verdict])
-                  | any(. == "dispute"))
-           then del(.consensus_summary) else . end)
-        | (if (($c[0].summary // "") != "")
-             and (([.findings[] | select(.severity != "suggestion"
-                    and (.atlas == "pending" or .atlas == "dispute"))] | length) == 0)
+        | ([.findings[] | select(.status != "withdrawn"
+              and .severity != "suggestion"
+              and (.atlas == "pending" or .atlas == "dispute"))]
+           | length) as $unsettled
+        | (if $unsettled > 0 then del(.consensus_summary) else . end)
+        | (if (($c[0].summary // "") != "") and $unsettled == 0
            then .consensus_summary = ($c[0].summary | gsub("-->|<!--"; "→"))
            else . end)' <<<"$data")
-        # ^ the digest is code-gated (R6-3): it renders only when the
-        #   post-merge state carries no pending or disputed
-        #   security/bug verdict — an agent-supplied summary cannot
-        #   declare consensus the rows contradict.
+        # ^ one invariant governs the digest (R6-3, then AEL#22 R4-2):
+        #   it exists exactly while the post-merge state carries no
+        #   pending or disputed security/bug verdict. Unsettled rows
+        #   delete a stale digest and block a new one, whatever the
+        #   incoming payload claims.
 
     upsert_ledger "$data"
     apply_labels_from "$data"
