@@ -242,7 +242,7 @@ jobs:
               says so in one line.
           claude_args: |
             --model claude-opus-5
-            --max-turns 60
+            --max-turns 120
             --allowedTools "Write,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ vars.CLAUDE_VERTEX_PROJECT_ID }}
