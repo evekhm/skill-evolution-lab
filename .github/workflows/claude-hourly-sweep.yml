@@ -120,19 +120,27 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           SINCE=$(date -u -d '30 days ago' +%Y-%m-%d)
-          # The failure signal is gh's exit status, never a payload
+          # Both non-terminal labels are in scope (R7-1): a stuck
+          # consensus:disputed heals here too — the ledger may already
+          # record the concession while the label write was lost. The
+          # failure signal is gh's exit status, never a payload
           # sentinel (R6-1): a failing gh can still emit partial
           # stdout, and a sentinel comparison would miss it. search/
           # issues is the endpoint most prone to secondary rate
           # limits; a label cosmetic must never take down the sweep
           # that finds unanswered PRs (R1-4).
-          if ! RESP=$(gh api -X GET search/issues \
-            -f q="repo:${{ github.repository }} label:\"consensus:pending\" updated:>=${SINCE}"); then
-            echo "::warning::self-heal search failed — skipping this cycle"
-            RESP='{"total_count":0,"items":[]}'
-          fi
-          TOTAL=$(echo "$RESP" | jq -r '.total_count // 0' 2>/dev/null || echo 0)
-          NUMS=$(echo "$RESP" | jq -r '.items[:20][].number' 2>/dev/null || true)
+          TOTAL=0
+          ALLNUMS=""
+          for LBL in "consensus:pending" "consensus:disputed"; do
+            if ! RESP=$(gh api -X GET search/issues \
+              -f q="repo:${{ github.repository }} label:\"${LBL}\" updated:>=${SINCE}"); then
+              echo "::warning::self-heal search for ${LBL} failed — skipping it this cycle"
+              continue
+            fi
+            TOTAL=$((TOTAL + $(echo "$RESP" | jq -r '.total_count // 0' 2>/dev/null || echo 0)))
+            ALLNUMS="${ALLNUMS} $(echo "$RESP" | jq -r '.items[].number' 2>/dev/null || true)"
+          done
+          NUMS=$(printf '%s\n' $ALLNUMS | sort -un | head -20)
           COUNT=0
           for N in $NUMS; do
             case "$N" in (*[!0-9]*|'') continue;; esac
