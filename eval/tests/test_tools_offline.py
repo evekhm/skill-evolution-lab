@@ -175,7 +175,7 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
             {"role": "user", "text": "quoting"},
             {"role": "agent", "text": "The log line says 'ERROR: x' means..."},
         ]},
-        {"session_id": "partial", "errors": 1,
+        {"session_id": "partial", "errors": 1, "user_turns": 2,
          "final_response": "Your balance is 20 days.",
          "conversation": [
              {"role": "user", "text": "balance?"},
@@ -183,18 +183,35 @@ def test_error_shaped_preflight_excludes_infrastructure_failures():
              {"role": "user", "text": "and next year?"},
              {"role": "system", "text": "ERROR: 503 quota"},
          ]},
+        # ERROR arrived as agent *text* (errors=0) before any completed
+        # exchange; the recovery answer after it is what final_response
+        # points at. Scoring the pre-error stub would disagree with its
+        # own final answer, so the record is excluded (R2-4).
+        {"session_id": "err-then-recovered", "errors": 0,
+         "final_response": "Recovered answer.",
+         "conversation": [
+             {"role": "user", "text": "hello?"},
+             {"role": "agent", "text": "ERROR: bad gateway"},
+             {"role": "user", "text": "hello again?"},
+             {"role": "agent", "text": "Recovered answer."},
+         ]},
     ]
     kept, excluded, truncated = sc.exclude_error_shaped(convs)
     assert [c["session_id"] for c in kept] == ["ok-1", "ok-2", "partial"]
-    assert excluded == ["err-resp", "err-turn"]
+    assert excluded == ["err-resp", "err-turn", "err-then-recovered"]
     assert truncated == ["partial"]
     partial = kept[-1]
-    # Truncated copy: error turn gone, completed exchanges kept, original
-    # record untouched.
+    # Truncated copy ends on the last completed exchange: the error turn
+    # AND the unanswered trailing user turn are gone (R2-1), user_turns
+    # and final_response recomputed from the kept turns; the original
+    # record is untouched.
     assert [t["text"] for t in partial["conversation"]] == [
-        "balance?", "Your balance is 20 days.", "and next year?"]
+        "balance?", "Your balance is 20 days."]
+    assert partial["user_turns"] == 1
+    assert partial["final_response"] == "Your balance is 20 days."
     assert partial["preflight_truncated"] is True and not partial["errors"]
-    assert convs[-1]["errors"] == 1 and len(convs[-1]["conversation"]) == 4
+    assert convs[4]["errors"] == 1 and len(convs[4]["conversation"]) == 4
+    assert convs[4]["user_turns"] == 2
     # Idempotent: a second pass finds nothing error-shaped in the output.
     kept2, excluded2, truncated2 = sc.exclude_error_shaped(kept)
     assert (kept2, excluded2, truncated2) == (kept, [], [])
@@ -228,11 +245,13 @@ def test_exclusion_record_reaches_report_summary(monkeypatch):
 
 
 def test_all_error_shaped_raises_instead_of_scoring(monkeypatch):
+    # A dedicated exception type, so callers (and the CLI) can tell
+    # nothing-scoreable apart from a genuine scoring ValueError (R2-3).
     from eval.scoring import score_conversations as sc
     import pytest
 
     monkeypatch.setattr(sc, "_sdk", _FakeSDK)
-    with pytest.raises(ValueError, match="error-shaped"):
+    with pytest.raises(sc.NothingScoreableError, match="error-shaped"):
         sc.generate_quality_report(
             [{"session_id": "err-1", "response": "ERROR: 503", "errors": 1}]
         )

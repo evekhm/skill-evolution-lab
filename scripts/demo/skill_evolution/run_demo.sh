@@ -865,16 +865,19 @@ if [ -n "$TESTSET" ]; then
     # usefulness judge -- the judge mislabels verbose, tool-grounded answers
     # (see the skill lab). Falls back silently if the field is absent.
     gt () { jq -r '.summary.golden_eval_summary.matched_meaningful_rate // "n/a"' "$1" 2>/dev/null; }
-    echo "  V0 (test): $RUN_DIR/v0_test_report.json   ground-truth $(gt "$RUN_DIR/v0_test_report.json")%"
-    echo "  V1 (test): $RUN_DIR/v1_test_report.json   ground-truth $(gt "$RUN_DIR/v1_test_report.json")%"
+    # Preflight can exclude error-shaped records, shrinking a report's
+    # denominator; any side-by-side rate must carry the exclusion count.
+    exn () { jq -r '(.summary.excluded_error_shaped.count // 0) as $n | if $n > 0 then " [" + ($n|tostring) + " excluded]" else "" end' "$1" 2>/dev/null; }
+    echo "  V0 (test): $RUN_DIR/v0_test_report.json   ground-truth $(gt "$RUN_DIR/v0_test_report.json")%$(exn "$RUN_DIR/v0_test_report.json")"
+    echo "  V1 (test): $RUN_DIR/v1_test_report.json   ground-truth $(gt "$RUN_DIR/v1_test_report.json")%$(exn "$RUN_DIR/v1_test_report.json")"
     echo "  V1 skills snapshotted: $RUN_DIR/v1_*_skill.md (V0 now restored)"
     if [ -n "$OOD_EXAM" ]; then
         # OOS success = clean decline; corrections success = held the
         # tool-verified value (meaningful). Both rendered from each
         # report's own summary counts.
         ok_rate () { jq -r '((.summary.meaningful + (.summary.declined // 0)) / .summary.total_sessions * 100 | round | tostring) + "%"' "$1" 2>/dev/null || echo "n/a"; }
-        echo "  OOD out-of-scope  V0: $(ok_rate "$RUN_DIR/v0_oos_test_report.json")  V1: $(ok_rate "$RUN_DIR/v1_oos_test_report.json")  (correct-behavior rate: declined or meaningful)"
-        echo "  OOD corrections   V0: $(gt "$RUN_DIR/v0_corr_test_report.json")%  V1: $(gt "$RUN_DIR/v1_corr_test_report.json")%  (ground-truth rate)"
+        echo "  OOD out-of-scope  V0: $(ok_rate "$RUN_DIR/v0_oos_test_report.json")$(exn "$RUN_DIR/v0_oos_test_report.json")  V1: $(ok_rate "$RUN_DIR/v1_oos_test_report.json")$(exn "$RUN_DIR/v1_oos_test_report.json")  (correct-behavior rate: declined or meaningful)"
+        echo "  OOD corrections   V0: $(gt "$RUN_DIR/v0_corr_test_report.json")%$(exn "$RUN_DIR/v0_corr_test_report.json")  V1: $(gt "$RUN_DIR/v1_corr_test_report.json")%$(exn "$RUN_DIR/v1_corr_test_report.json")  (ground-truth rate)"
     fi
 
     # Triage: how many skill-fixable failures evolution auto-healed, plus the
@@ -981,9 +984,14 @@ step_close
         echo ""
         echo "## HELD-OUT RESULT — measured on unseen questions"
         echo ""
+        ex0=$(jq -r '.summary.excluded_error_shaped.count // 0' "$RUN_DIR/v0_test_report.json" 2>/dev/null || echo 0)
+        ex1=$(jq -r '.summary.excluded_error_shaped.count // 0' "$RUN_DIR/v1_test_report.json" 2>/dev/null || echo 0)
         echo "| | V0 | Winner | Gain |"
         echo "|---|---|---|---|"
         echo "| Ground-truth rate | ${gt0}% | ${gt1}% | ${d}pp |"
+        if [ "${ex0:-0}" != "0" ] || [ "${ex1:-0}" != "0" ]; then
+            echo "| Excluded error-shaped (denominators differ) | ${ex0} | ${ex1} | |"
+        fi
         echo ""
         echo "NOTE: the test set holds the same facts as the evolve set in"
         echo "different phrasings — it measures phrasing robustness. For"
@@ -992,13 +1000,16 @@ step_close
     if [ -f "$RUN_DIR/v0_oos_test_report.json" ] && [ -f "$RUN_DIR/v1_oos_test_report.json" ]; then
         okr () { jq -r '((.summary.meaningful + (.summary.declined // 0)) / .summary.total_sessions * 100 | round | tostring) + "%"' "$1" 2>/dev/null || echo "?"; }
         gtr () { jq -r '(.summary.golden_eval_summary.matched_meaningful_rate // "?" | tostring) + "%"' "$1" 2>/dev/null || echo "?"; }
+        # Cells flag preflight exclusions: rates over shrunken denominators
+        # must not read like same-sample comparisons.
+        exm () { jq -r '(.summary.excluded_error_shaped.count // 0) as $n | if $n > 0 then " (" + ($n|tostring) + " excluded)" else "" end' "$1" 2>/dev/null; }
         echo ""
         echo "## OOD EXAM — topic-disjoint held-out sets (--ood-exam)"
         echo ""
         echo "| Set | Metric | V0 | Winner |"
         echo "|---|---|---|---|"
-        echo "| out-of-scope (unseen topics) | correct-behavior rate (declined or meaningful) | $(okr "$RUN_DIR/v0_oos_test_report.json") | $(okr "$RUN_DIR/v1_oos_test_report.json") |"
-        echo "| corrections (unseen topics, anti-parroting) | ground-truth rate | $(gtr "$RUN_DIR/v0_corr_test_report.json") | $(gtr "$RUN_DIR/v1_corr_test_report.json") |"
+        echo "| out-of-scope (unseen topics) | correct-behavior rate (declined or meaningful) | $(okr "$RUN_DIR/v0_oos_test_report.json")$(exm "$RUN_DIR/v0_oos_test_report.json") | $(okr "$RUN_DIR/v1_oos_test_report.json")$(exm "$RUN_DIR/v1_oos_test_report.json") |"
+        echo "| corrections (unseen topics, anti-parroting) | ground-truth rate | $(gtr "$RUN_DIR/v0_corr_test_report.json")$(exm "$RUN_DIR/v0_corr_test_report.json") | $(gtr "$RUN_DIR/v1_corr_test_report.json")$(exm "$RUN_DIR/v1_corr_test_report.json") |"
     fi
     [ -n "$BEST_V" ] && echo "" && echo "Winner previewed as PR: **$BEST_V (${BEST_RATE}%)** -> pr_preview.md"
     _thr=$(awk "BEGIN{printf \"%.0f\", ${QUALITY_THRESHOLD:-0.95}*100}")

@@ -83,6 +83,10 @@ def _get_sdk():
     return _sdk
 
 
+class NothingScoreableError(ValueError):
+    """Every record in the input was error-shaped (infrastructure failures)."""
+
+
 def exclude_error_shaped(
     conversations: list[dict],
 ) -> tuple[list[dict], list[str], list[str]]:
@@ -94,12 +98,15 @@ def exclude_error_shaped(
     without complaint, which has produced fake 0% rates before
     (Verification Contract, "error-shaped answers").
 
-    A record is *excluded* only when it carries no usable agent answer
-    (its final response is empty or itself ``ERROR:``-shaped). A
-    multi-turn record that failed part-way but holds completed exchanges
-    is *kept*: a copy is scored with the transcript truncated at the
-    first error turn and ``preflight_truncated`` set, so late-turn quota
-    failures do not bias the sample toward short conversations.
+    A record is *excluded* when no completed exchange survives the error
+    (no usable agent answer before the first error turn). A multi-turn
+    record that failed part-way but holds completed exchanges is *kept*:
+    a copy is scored with the transcript truncated at the first error
+    turn — trailing unanswered user turns dropped, ``user_turns`` and
+    the final response recomputed from the kept turns, and
+    ``preflight_truncated`` set — so late-turn quota failures neither
+    bias the sample toward short conversations nor read as the agent
+    ignoring the last question.
 
     Returns ``(scoreable, excluded_ids, truncated_ids)``.
     """
@@ -125,10 +132,28 @@ def exclude_error_shaped(
             ):
                 break
             kept_turns.append(t)
-        scoreable.append(
-            {**c, "conversation": kept_turns, "errors": 0,
-             "preflight_truncated": True}
-        )
+        # The generator appends the user turn before the send that failed,
+        # so the cut transcript ends on an unanswered question — drop it,
+        # or the judge scores the infra failure as the agent ignoring it.
+        while kept_turns and kept_turns[-1].get("role") == "user":
+            kept_turns.pop()
+        agent_texts = [
+            str(t.get("text") or "") for t in kept_turns
+            if t.get("role") != "user" and str(t.get("text") or "").strip()
+        ]
+        if turns and not agent_texts:
+            excluded.append(session_id)
+            continue
+        copy = {**c, "conversation": kept_turns, "errors": 0,
+                "preflight_truncated": True}
+        if "user_turns" in copy:
+            copy["user_turns"] = sum(
+                1 for t in kept_turns if t.get("role") == "user")
+        if agent_texts:
+            for key in ("response", "final_response"):
+                if key in copy:
+                    copy[key] = agent_texts[-1]
+        scoreable.append(copy)
         truncated.append(session_id)
     return scoreable, excluded, truncated
 
@@ -162,6 +187,18 @@ def compare_reports(report_files: list[str]) -> None:
         for _, r in reports:
             print(f"  {r['summary'][field]:>11.1f}%", end="")
         print()
+
+    # Denominators can differ when the preflight excluded error-shaped
+    # records; a side-by-side rate comparison must say so.
+    print(f"{'Total Sessions':<25}", end="")
+    for _, r in reports:
+        print(f"  {r['summary'].get('total_sessions', '?'):>12}", end="")
+    print()
+    print(f"{'Excluded (infra)':<25}", end="")
+    for _, r in reports:
+        n = (r["summary"].get("excluded_error_shaped") or {}).get("count", 0)
+        print(f"  {n:>12}", end="")
+    print()
 
     dims = ["correctness", "tool_usage", "specificity",
             "scope_compliance", "first_time_right"]
@@ -263,7 +300,7 @@ def generate_quality_report(
             len(truncated), ", ".join(truncated[:5]),
         )
     if not conversations:
-        raise ValueError(
+        raise NothingScoreableError(
             f"No scoreable conversations: all {len(excluded)} records "
             "in the input are error-shaped (infrastructure failures)."
         )
@@ -642,7 +679,7 @@ def main():
             tag_turns=args.tag_turns, trajectory_samples=traj_count,
             golden_threshold=args.golden_threshold,
         )
-    except ValueError as e:
+    except NothingScoreableError as e:
         print(e)
         sys.exit(1)
 
