@@ -23,8 +23,11 @@
 # Modes:
 #   review    <repo> <pr_number> <findings_json>  <head_sha>
 #   consensus <repo> <number>    <consensus_json>
-#   seen      <repo> <number>    -                  (advance atlas_seen_at
-#                                                    only; recovery-loop stop)
+#   seen      <repo> <number>    <consensus_json|-> (advance atlas_seen_at;
+#                                                    recovery-loop stop. With a
+#                                                    payload, also records a
+#                                                    summary-only close-out
+#                                                    digest — R20-2)
 #   nudge     <repo> <pr_number> <nudge_json>       ({"sha": <head oid>})
 #   relabel   <repo> <number>    -                  (re-derive labels from
 #                                                    the existing ledger; the
@@ -477,8 +480,10 @@ mode_consensus() {
     #   summary       — close-out digest rendered atop the ledger (#111)
     #   source        — "argus" on new_findings rows that are Argus's own
     #                   issue findings (R<issue>-N) being recorded at
-    #                   reconciliation time (#110); argus_verdict then
-    #                   carries the exchange outcome, same state machine.
+    #                   reconciliation time (#110). Such rows land
+    #                   atlas:"pending" (R16-5): the peer's verdict must
+    #                   arrive as an "updates" entry — same round or a
+    #                   later one — never be inferred from this payload.
     # Malformed OPTIONAL fields are dropped per-row before validation
     # instead of discarding the whole verdict payload (R4-3) — one bad
     # status string must not throw away every other recorded verdict.
@@ -518,9 +523,29 @@ mode_consensus() {
             ((.source // "atlas") | IN("argus","atlas")) and
             (.argus_verdict|IN("agree","dispute"))))' \
         "$INPUT" >/dev/null 2>&1; then
+        # Thread feedback on failure (AT-3), mirroring mode_review's
+        # fallback comment: a silent red job leaves the thread looking
+        # like the recorder never ran, and the peer re-posts verdicts
+        # into the void. No Reviewed-head marker — that is the review
+        # path's completion signal, and this run completed nothing.
+        api POST "issues/${NUMBER}/comments" -f body="### Argus
+
+A consensus recording ran but its structured verdict payload failed validation — see the workflow run log. The ledger and labels were not modified; the verdicts in this thread still stand and will be recorded by a later run.
+
+— Argus · Claude on Vertex AI" >/dev/null
         echo "ERROR: consensus.json failed validation" >&2
         exit 1
     fi
+
+    # A payload with no verdicts must never CREATE a ledger (R20-1):
+    # summary-only payloads reach this mode so the digest stays
+    # recordable, but on an item that has no ledger there is nothing
+    # to digest — proceeding would POST an empty-table ledger and
+    # label the item argus:clean + consensus:agreed off a payload
+    # that recorded no finding.
+    local has_verdicts
+    has_verdicts=$(jq -r '((.updates | length) + (.new_findings | length)
+                           + (.escalated | length)) > 0' "$INPUT")
 
     # Load-merge-write under optimistic retry (R4-2/R14-2/R15-2): a
     # review or another recorder finishing mid-run is detected by
@@ -530,6 +555,10 @@ mode_consensus() {
     for attempt in 1 2 3; do
     if [ "$attempt" -gt 1 ]; then sleep "$attempt"; fi
     snapshot_ledger
+    if [ "$LEDGER_EXISTS" != "1" ] && [ "$has_verdicts" != "true" ]; then
+        echo "consensus: no ledger on #${NUMBER} and the payload records no verdicts — nothing to record (R20-1)"
+        return 0
+    fi
     data="$LEDGER_DATA"
 
     # atlas_seen and its timestamp advance only when the payload
@@ -541,6 +570,29 @@ mode_consensus() {
               + ($c[0].escalated | length)) > 0
          then .atlas_seen = true | .atlas_seen_at = $seen_at
          else . end)
+        # New rows are appended BEFORE updates apply (R16-5): a
+        # source:"argus" row must never take atlas:"agree" from the
+        # Argus payload itself — the peer verdict on it arrives as an
+        # "updates" entry, the same channel every peer verdict takes,
+        # which the map below can now settle in the same round. Until
+        # that entry lands, the row is representable as atlas:pending
+        # and counts against consensus like any other unverdicted row.
+        | (.findings | map(.id)) as $ids
+        | .findings += [$c[0].new_findings[] | select(.id as $i | $ids | index($i) | not) |
+            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
+             severity,
+             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
+             status: "open",
+             fixed_in: null, outcome: null}
+            + (if .source then {source} else {} end)
+            + (if .argus_verdict == "dispute"
+               then {atlas: "dispute", pending_since: $seen_at}
+               elif (.source // "atlas") == "argus"
+               then {atlas: "pending", pending_since: $seen_at}
+               else {atlas: "agree", outcome: "agreed"} end)]
+            # ^ the atlas:"agree" arm is sound only for peer-raised
+            #   (AT-*) rows, where the existence of the row IS the
+            #   peer position and argus_verdict settles the other side.
         | ($c[0].updates) as $u
         | .findings |= map(. as $f |
             (($u | map(select(.id == $f.id)) | first) // null) as $m
@@ -560,17 +612,6 @@ mode_consensus() {
                     + (if ($m | has("status")) then {status: $m.status} else {} end)
                     + (if ($m | has("outcome")) then {outcome: $m.outcome} else {} end)
               end)
-        | (.findings | map(.id)) as $ids
-        | .findings += [$c[0].new_findings[] | select(.id as $i | $ids | index($i) | not) |
-            {id: (.id | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
-             severity,
-             title: (.title | gsub("\r|\n|\\|"; " ") | gsub("-->|<!--"; "→")),
-             status: "open",
-             fixed_in: null, outcome: null}
-            + (if .source then {source} else {} end)
-            + (if .argus_verdict == "dispute"
-               then {atlas: "dispute", pending_since: $seen_at}
-               else {atlas: "agree", outcome: "agreed"} end)]
         | ($c[0].escalated) as $esc
         | .findings |= map(if (.id as $i | $esc | index($i))
               then .outcome = "escalated" else . end)
@@ -621,8 +662,21 @@ mode_consensus() {
 # agent parsed no verdicts still advances atlas_seen_at, so the
 # sweep's unreconciled-peer-verdict exception stops re-dispatching the
 # same PR every hour. Runs inside the serialized consensus group.
+#
+# The payload argument is optional ("-" from the sweep). When the
+# recovery dispatch hands over a summary-only payload (R20-2), the
+# close-out digest is recorded HERE — routing such payloads to
+# consensus instead would re-open the R16-3 loop, since consensus
+# advances the clock only on non-empty verdict arrays. The same
+# unsettled-rows invariant that governs the consensus path's digest
+# governs it here, and the R17-2 no-ledger guard above the write
+# means this mode can never invent a ledger to hang the digest on.
 mode_seen() {
-    local data attempt rc=0
+    local data attempt rc=0 summary=""
+    if [ "$INPUT" != "-" ] && [ -f "$INPUT" ]; then
+        summary=$(jq -r 'if ((.summary // "") | type) == "string"
+                         then .summary // "" else "" end' "$INPUT" 2>/dev/null || echo "")
+    fi
     for attempt in 1 2 3; do
         if [ "$attempt" -gt 1 ]; then sleep "$attempt"; fi
         snapshot_ledger
@@ -630,8 +684,16 @@ mode_seen() {
             echo "seen: no ledger on #${NUMBER} — nothing to mark"
             return 0
         fi
-        data=$(jq -c --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '.atlas_seen = true | .atlas_seen_at = $seen_at' <<<"$LEDGER_DATA")
+        data=$(jq -c --arg seen_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg summary "$summary" '
+            .atlas_seen = true | .atlas_seen_at = $seen_at
+            | ([.findings[] | select(.status != "withdrawn"
+                  and .severity != "suggestion"
+                  and (.outcome // "") != "escalated"
+                  and (.atlas == "pending" or .atlas == "dispute"))]
+               | length) as $unsettled
+            | (if ($summary != "") and $unsettled == 0
+               then .consensus_summary = ($summary | gsub("-->|<!--"; "→"))
+               else . end)' <<<"$LEDGER_DATA")
         rc=0
         upsert_ledger "$data" || rc=$?
         if [ "$rc" -eq 0 ]; then break; fi
@@ -643,7 +705,11 @@ mode_seen() {
         exit 1
     fi
     apply_labels_from "$data"
-    echo "seen: atlas_seen_at advanced with no verdict changes"
+    if [ -n "$summary" ] && [ "$(jq -r 'has("consensus_summary")' <<<"$data")" = "true" ]; then
+        echo "seen: atlas_seen_at advanced; close-out digest recorded (R20-2)"
+    else
+        echo "seen: atlas_seen_at advanced with no verdict changes"
+    fi
 }
 
 # ---- mode: nudge -------------------------------------------------------

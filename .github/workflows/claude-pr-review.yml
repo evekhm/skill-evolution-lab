@@ -699,11 +699,15 @@ jobs:
               "summary": "<see below — only at full consensus>"
             }
             - On ISSUE threads your own earlier findings (IDs
-              R<issue>-N from the triage/sweep comment) that received
-              Atlas verdicts belong in "new_findings" too, with
-              "source": "argus" and argus_verdict set to the exchange
-              outcome — that is how both sides' findings reach the
-              ledger (#110).
+              R<issue>-N from the triage/sweep comment) belong in
+              "new_findings" too, with "source": "argus" and
+              argus_verdict set to the exchange outcome — that is how
+              both sides' findings reach the ledger (#110). Such rows
+              are created atlas-pending: when Atlas has posted a
+              verdict on one, record it as an "updates" entry for the
+              same ID in the same payload — only that entry, the
+              channel every peer verdict takes, settles the row
+              (R16-5).
             - When every finding in the thread has reached agreed or
               escalated, add "summary": 2-4 plain sentences — what was
               agreed, what it changes about this item's scope, where
@@ -738,17 +742,19 @@ jobs:
             # keeps ledger writers inside one concurrency group.
             # Three-way gate (R18-1 then R19-2): verdict arrays decide
             # whether the clock advances; a recovery dispatch with no
-            # verdicts takes `seen` so the sweep stops re-dispatching;
-            # a summary-only payload on a live event still runs
-            # consensus so the close-out digest stays recordable (the
-            # unsettled-rows invariant governs whether it renders).
+            # verdicts takes `seen` so the sweep stops re-dispatching —
+            # it gets the payload too, so a summary-only digest still
+            # lands on that path (R20-2); a summary-only payload on a
+            # live event still runs consensus so the close-out digest
+            # stays recordable (the unsettled-rows invariant governs
+            # whether it renders on either path).
             if jq -e '((.updates | length) + (.new_findings | length) +
                        (.escalated | length)) == 0' \
                 "$F" >/dev/null 2>&1; then
               if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
                 bash "$STAGED" seen \
                   "${{ github.repository }}" \
-                  "${{ github.event.issue.number || github.event.pull_request.number || inputs.pr_number }}" -
+                  "${{ github.event.issue.number || github.event.pull_request.number || inputs.pr_number }}" "$F"
               elif jq -e '(.summary // "") != ""' "$F" >/dev/null 2>&1; then
                 bash "$STAGED" consensus \
                   "${{ github.repository }}" \
