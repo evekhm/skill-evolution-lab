@@ -491,7 +491,7 @@ mode_consensus() {
     local norm
     norm=$(mktemp)
     if jq '.updates |= map(
-            (if has("status") and (.status != "withdrawn")
+            (if has("status") and ((.status | IN("withdrawn","open")) | not)
              then del(.status) else . end)
           | (if has("outcome") and
                ((.outcome | IN("agreed","conceded-by-argus","conceded-by-atlas","escalated")) | not)
@@ -514,7 +514,7 @@ mode_consensus() {
         (.escalated | type == "array" and all(type == "string")) and
         (((.summary // "") | type == "string")) and
         (.updates | all((.id|type=="string") and (.atlas|IN("agree","dispute")) and
-            ((has("status") | not) or (.status == "withdrawn")) and
+            ((has("status") | not) or (.status | IN("withdrawn","open"))) and
             ((has("outcome") | not) or
              (.outcome | IN("agreed","conceded-by-argus","conceded-by-atlas","escalated"))))) and
         (.new_findings | all((.id|type=="string") and
@@ -610,6 +610,11 @@ A consensus recording ran but its structured verdict payload failed validation â
                     + (if $m.atlas == "agree" and ($f.status == "open" or $f.status == "fixed")
                        then {outcome: "agreed"} else {} end)
                     + (if ($m | has("status")) then {status: $m.status} else {} end)
+                    # ^ "open" corrects the record when a fix a row
+                    #   points at was deliberately reverted (R19-3);
+                    #   the stale fixed_in goes with it.
+                    + (if ($m | has("status")) and $m.status == "open"
+                       then {fixed_in: null} else {} end)
                     + (if ($m | has("outcome")) then {outcome: $m.outcome} else {} end)
               end)
         | ($c[0].escalated) as $esc

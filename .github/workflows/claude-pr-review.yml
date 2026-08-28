@@ -687,7 +687,10 @@ jobs:
             {
               "updates": [
                 {"id": "R3-1", "atlas": "agree" | "dispute",
-                 "status": "withdrawn",            <- only when you concede
+                 "status": "withdrawn" | "open",   <- withdrawn only when
+                            you concede; open only to correct a ledger
+                            row recorded fixed whose fix was since
+                            deliberately reverted (R19-3)
                  "outcome": "conceded-by-argus" | "conceded-by-atlas"
                             | "escalated"}         <- when applicable
               ],
