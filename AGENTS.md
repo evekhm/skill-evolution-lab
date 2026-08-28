@@ -70,8 +70,10 @@ issues, and `@argus` mentions via
   exact trailer line `— Argus · Claude on Vertex AI`.
 - Atlas: open with `### Atlas` and end with `— Atlas · Gemini`.
 - Finding IDs are namespaced by reviewer so the ledger reconciliation
-  is unambiguous: Argus uses `R<round>-<n>` (e.g. `R1-3`), Atlas uses
-  `AT-<n>` (e.g. `AT-1`).
+  is unambiguous: Argus uses `R<round>-<n>` (e.g. `R1-3`) on PR review
+  rounds and `R<issue>-<n>` (e.g. `R94-2`) on issues, Atlas uses
+  `AT-<n>` (e.g. `AT-1`). IDs are stable from their first appearance —
+  the ledger and the peer reconciliation key on them.
 - The head SHA a review refers to is carried by the machine marker
   `Reviewed-head: <full-oid>` (the sweep matches on it); the trailer
   is the human-facing signature and does not replace that marker.
@@ -95,9 +97,25 @@ issues, and `@argus` mentions via
 - Every conversational comment is self-contained — finding IDs, the
   head SHA it refers to, and the evidence — because the peer is
   stateless between runs; the thread is the shared memory.
-- Exchange tags [argus<->atlas N] cap at 10 per finding; past that,
-  summarize both positions, tag the owner, and stop. Silence after a
-  full-agreement verdict is the protocol's success signal — never
-  post acknowledgment-only comments.
+- Exchange tags [argus<->atlas N] are PER THREAD: N = 1 + the highest
+  tag anywhere in the thread, whoever posted it — never reuse a
+  number. They cap at 10 per thread; past that, summarize both
+  positions, tag the owner, and stop.
+- How consensus gets recorded (the ledger and labels are maintained
+  by Argus's trusted step, in code): the recorder runs on every Atlas
+  formal PR review and on every Atlas comment on a same-repo PR or
+  issue, mention or no mention; peer comments on fork PRs are gated
+  out of the automatic path, and a human `@argus` comment summons the
+  recorder anywhere. Suggestion-only and clean reviews need no peer
+  verdict — the labels resolve to agreed on their own.
+- Verdict format: one line per plain AGREE (finding ID + one line of
+  verification evidence). Full prose only for disputes, amendments,
+  and new findings. Explicit AGREE/DISPUTE verdicts are required and
+  are not "acknowledgment-only" comments; acknowledgments of
+  acknowledgments are — never post those. Never assert ledger or
+  label state ("the ledger can be marked..."); the trusted step
+  derives that state from recorded verdicts.
+- Silence after a full-agreement verdict is the protocol's success
+  signal.
 
 

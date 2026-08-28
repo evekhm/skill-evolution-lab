@@ -75,9 +75,9 @@ jobs:
       # an empty service_account as direct WIF instead of an error —
       # the run would go green here and die at the first Vertex call.
       - name: Fail fast if reviewer variables are unset
-        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == ''
+        if: vars.ARGUS_SERVICE_ACCOUNT == '' || vars.CLAUDE_VERTEX_PROJECT_ID == '' || vars.ARGUS_LOGIN == ''
         run: |
-          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT and/or CLAUDE_VERTEX_PROJECT_ID is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
+          echo "::error::Repo variable ARGUS_SERVICE_ACCOUNT, CLAUDE_VERTEX_PROJECT_ID and/or ARGUS_LOGIN is not set (an empty CLAUDE_VERTEX_PROJECT_ID fails only after the tracking comment is posted). Run SETUP_ARGUS=1 bash scripts/setup/setup_github.sh (docs/GITHUB_APP_SETUP.md, 'Reviewer app (Argus)')."
           exit 1
 
       - name: Authenticate to Google Cloud
@@ -105,6 +105,85 @@ jobs:
             echo "GOOGLE_APPLICATION_CREDENTIALS=$DEST"
             echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=$DEST"
           } >> "$GITHUB_ENV"
+
+      # Deterministic self-heal (#109): re-derive consensus labels from
+      # each item's ledger. No agent involved — pure jq over recorded
+      # state — so it runs before the agent step and costs no model
+      # turns. This is what retro-corrects items that closed while a
+      # label was stuck (suggestion-only PRs merged at consensus:pending
+      # before the label logic learned they need no peer verdict), and
+      # it is a no-op when labels are already true. Closed items are
+      # deliberately in scope; 30-day window and a 20-item cap bound the
+      # API cost.
+      - name: Self-heal consensus labels (trusted, deterministic)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          SINCE=$(date -u -d '30 days ago' +%Y-%m-%d)
+          # Both non-terminal labels are in scope (R7-1): a stuck
+          # consensus:disputed heals here too — the ledger may already
+          # record the concession while the label write was lost. The
+          # failure signal is gh's exit status, never a payload
+          # sentinel (R6-1): a failing gh can still emit partial
+          # stdout, and a sentinel comparison would miss it. search/
+          # issues is the endpoint most prone to secondary rate
+          # limits; a label cosmetic must never take down the sweep
+          # that finds unanswered PRs (R1-4).
+          TOTAL=0
+          ALLNUMS=""
+          for LBL in "consensus:pending" "consensus:disputed"; do
+            if ! RESP=$(gh api -X GET --paginate --slurp search/issues \
+              -f q="repo:${{ github.repository }} label:\"${LBL}\" updated:>=${SINCE}" \
+              -f per_page=100 -f sort=updated -f order=asc); then
+              echo "::warning::self-heal search for ${LBL} failed — skipping it this cycle"
+              continue
+            fi
+            TOTAL=$((TOTAL + $(echo "$RESP" | jq -r '.[0].total_count // 0' 2>/dev/null || echo 0)))
+            ALLNUMS="${ALLNUMS} $(echo "$RESP" | jq -r '.[].items[].number' 2>/dev/null || true)"
+          done
+          # Clock-driven cyclic window (R14-1, ending the ordering
+          # series R9/R13): a rotating 20-item slice of the stable
+          # number-sorted list, offset by the hour. Every item is
+          # covered within ceil(N/20) hours regardless of position,
+          # and the rotation depends on nothing the processing might
+          # or might not touch — the write-on-drift change silenced
+          # the updatedAt bumps earlier rotations relied on.
+          ORDERED=$(printf '%s\n' $ALLNUMS | awk 'NF && !seen[$0]++' | sort -un)
+          N_ALL=$(printf '%s\n' "$ORDERED" | sed '/^$/d' | wc -l)
+          if [ "$N_ALL" -le 20 ]; then
+            NUMS="$ORDERED"
+          else
+            PAGES=$(( (N_ALL + 19) / 20 ))
+            OFFSET=$(( ( $(date -u +%s) / 3600 ) % PAGES * 20 ))
+            NUMS=$({ printf '%s\n' "$ORDERED"; printf '%s\n' "$ORDERED"; } \
+              | sed '/^$/d' | tail -n +$((OFFSET + 1)) | head -20)
+          fi
+          COUNT=0
+          for N in $NUMS; do
+            case "$N" in (*[!0-9]*|'') continue;; esac
+            echo "relabel #$N"
+            bash scripts/ci/argus_post_review.sh relabel \
+              "${{ github.repository }}" "$N" - || echo "relabel #$N failed (non-fatal)"
+            COUNT=$((COUNT + 1))
+          done
+          # Truncation is loud, same norm as the sweep's other caps
+          # (R2-3): legitimately-pending items occupy the cap every
+          # hour, so a silently dropped 21st would never re-derive.
+          echo "self-heal: ${COUNT} of ${TOTAL} pending item(s) re-derived"
+          if [ "${TOTAL}" -gt 20 ]; then
+            echo "::warning::self-heal cap hit — $((TOTAL - 20)) item(s) deferred to later sweeps"
+          fi
+
+      # The nudge step below runs AFTER the agent, so the script it
+      # executes must be staged and hash-pinned now — same discipline
+      # as claude-pr-review.yml (the agent's Write tool is not
+      # path-restricted; a recorded step output is the one thing it
+      # cannot forge).
+      - name: Stage trusted posting script
+        id: stage
+        run: |
+          cp scripts/ci/argus_post_review.sh "$RUNNER_TEMP/argus_post_review.sh"
+          echo "hash=$(sha256sum "$RUNNER_TEMP/argus_post_review.sh" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Sweep for unanswered items
         uses: anthropics/claude-code-action@v1
@@ -144,6 +223,19 @@ jobs:
                  @argus mention path's job, not yours (mention
                  replies carry no markers and neither block nor
                  trigger a review);
+                 EXCEPTION — unreconciled peer verdict: keep the PR
+                 even at a matching Reviewed-head when its ledger has
+                 a non-suggestion finding at atlas "pending" and a
+                 peer review or peer comment is NEWER than the
+                 ledger data's "atlas_seen_at" timestamp (treat a
+                 missing atlas_seen_at as never-seen). Compare against
+                 atlas_seen_at, never the ledger comment's createdAt:
+                 the ledger is PATCHed in place, its createdAt never
+                 advances, and that comparison would re-dispatch the
+                 same PR every hour forever (R15-1). Put such PRs in "consensus_prs"
+                 (step 5), never in "prs": a review dispatch cannot
+                 update the ledger's Atlas column, only the consensus
+                 path can.
                - PR: it is from a fork (`gh pr view --json
                  isCrossRepository` is true) — the dispatch path
                  refuses forks by design; maintainers review those by
@@ -167,11 +259,48 @@ jobs:
                  post ONE comment answering it, starting with
                  "### Argus" and ending with the exact signature line
                  "— Argus · Claude on Vertex AI", citing file paths.
-            4. ALWAYS write ${{ runner.temp }}/argus-dispatch.json —
-               {"prs": [<numbers to dispatch>]} — with an empty array
-               when no PR qualifies. If nothing qualifies at all,
-               write the empty list and finish without posting
-               anything.
+                 Number any findings you state with stable IDs
+                 R<issue-number>-1, R<issue-number>-2, ... — the peer
+                 reconciliation and the findings ledger key on them.
+            4. Dead-peer scan (#113) — OPEN PRs only (issues cannot
+               reach a pending Atlas verdict). Enumerate candidates
+               with `gh pr list --state open --label consensus:pending
+               --limit 100` AND a second pass with
+               `--label consensus:disputed`, then union the lists —
+               the disputed label displaces the pending one on items
+               that carry both a disputed and a pending row, so a
+               single-label scan misses them (R11-1). Use the union,
+               NOT the step-1 window: a PR waiting on a
+               dead peer has, by definition, no recent updates, so the
+               24h-updated list from step 1 excludes exactly the PRs
+               this scan exists to find (R3-2). For each whose
+               "Argus findings ledger" comment's embedded JSON has a
+               finding with severity NOT "suggestion", outcome NOT
+               "escalated", and atlas "pending" OR "dispute" (any
+               status except "withdrawn") — a dispute the peer
+               abandoned mid-exchange stalls exactly like an
+               unanswered verdict (R12-1) — nominate a nudge when ALL
+               hold:
+               - that finding's pending_since is older than 24 hours
+                 (rows written before pending_since existed: use the
+                 timestamp of the OLDEST Argus review/comment
+                 containing a "Reviewed-head:" marker — ANY oid, so a
+                 fresh push cannot restart this clock);
+               - a review/comment by Argus carries "Reviewed-head:
+                 <oid>" equal to the CURRENT headRefOid — if not, the
+                 PR is waiting on an Argus re-review, not on Atlas;
+               - no comment in the thread contains "Consensus-nudge:
+                 <current headRefOid>" (the dedupe token).
+               At most 5 nudges per run; list any overflow in your
+               output.
+            5. ALWAYS write ${{ runner.temp }}/argus-dispatch.json —
+               {"prs": [<numbers to re-review>],
+                "consensus_prs": [<numbers with an unreconciled peer
+                verdict — the step-2 exception>],
+                "nudges": [{"number": <pr>, "sha": "<current headRefOid>"}]}
+               — with empty arrays when nothing qualifies. If nothing
+               qualifies at all, write the empty lists and finish
+               without posting anything.
           claude_args: |
             --model claude-opus-5
             --max-turns 50
@@ -200,4 +329,48 @@ jobs:
             gh workflow run claude-pr-review.yml \
               --repo "${{ github.repository }}" --ref main \
               -f pr_number="$N"
+          done
+          if ! jq -e '(.consensus_prs // []) | type == "array" and length <= 5 and all(type == "number")' "$F" >/dev/null; then
+            echo "::error::consensus_prs failed validation"; exit 1
+          fi
+          for N in $(jq -r '(.consensus_prs // [])[]' "$F"); do
+            case "$N" in (*[!0-9]*|'') continue;; esac
+            echo "dispatching consensus recovery for PR #$N"
+            gh workflow run claude-pr-review.yml \
+              --repo "${{ github.repository }}" --ref main \
+              -f pr_number="$N" -f mode=consensus
+          done
+
+      # Dead-peer nudges (#113). Runs after the agent, so the staged
+      # hash-pinned script does the posting; the agent only nominates
+      # {number, sha} pairs, validated here. Posts with the app token
+      # so the comment carries the Argus identity, and the script
+      # re-validates the sha before writing. !cancelled(): a failed
+      # PR-dispatch validation must not silently drop valid nudges —
+      # this step self-validates everything it uses.
+      - name: Post dead-peer nudges (trusted step)
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          F="${{ runner.temp }}/argus-dispatch.json"
+          if [ ! -f "$F" ]; then echo "no dispatch file"; exit 0; fi
+          if ! jq -e '(.nudges // []) | type == "array" and length <= 5 and
+                      all((.number | type == "number") and
+                          (.sha | type == "string" and test("^[0-9a-f]{40}$")))' \
+              "$F" >/dev/null; then
+            echo "::error::nudges failed validation"; exit 1
+          fi
+          STAGED="$RUNNER_TEMP/argus_post_review.sh"
+          if [ "$(sha256sum "$STAGED" | cut -d' ' -f1)" != "${{ steps.stage.outputs.hash }}" ]; then
+            echo "::error::staged trusted script changed during the agent run — refusing to execute it."
+            exit 1
+          fi
+          jq -c '(.nudges // [])[]' "$F" | while read -r ROW; do
+            N=$(echo "$ROW" | jq -r '.number')
+            echo "$ROW" | jq '{sha}' > "$RUNNER_TEMP/nudge-$N.json"
+            echo "nudging PR #$N"
+            bash "$STAGED" nudge "${{ github.repository }}" "$N" \
+              "$RUNNER_TEMP/nudge-$N.json" \
+              || echo "nudge #$N failed (non-fatal — a deleted PR or locked thread must not drop the rest)"
           done
