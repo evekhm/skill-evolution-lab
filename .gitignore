@@ -66,3 +66,8 @@ agents/workflow/skill_evolution_agent/enterprise/
 agents/workflow/skill_evolution_agent/eval/
 agents/workflow/skill_evolution_agent/ensure_sdk.py
 agents/workflow/skill_evolution_agent/gcs_utils.py
+
+### Local reviewer-bot runtime state (Atlas config references a
+### private token path; verdict scratch files) — never repo content ###
+.agents/
+.atlas/
