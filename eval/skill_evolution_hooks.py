@@ -57,6 +57,17 @@ if _REPO_ROOT not in _pythonpath.split(os.pathsep):
 
 logger = logging.getLogger(__name__)
 
+# Pre-warm the SDK discovery (SDK_DIR / SDK_REPO+SDK_BRANCH -> .sdk/
+# auto-clone) once, at import time, from the single main process: the
+# agentic analysts hit ensure_sdk from concurrent threads and the
+# auto-clone into .sdk/ is not locked, so first use must be serial.
+try:
+    from ensure_sdk import find_sdk_scripts_dir as _find_sdk_scripts_dir
+
+    _find_sdk_scripts_dir()
+except Exception as _exc:  # best-effort warm-up; hooks degrade like before
+    logger.warning("SDK pre-warm failed: %s", _exc)
+
 
 def traffic(run_dir: str) -> dict:
     """Generate evaluation traffic into ``<run_dir>/traffic.json``.
