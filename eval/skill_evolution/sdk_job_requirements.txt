@@ -1,0 +1,19 @@
+# Extra image dependencies for running this lab's hooks adapter
+# (eval/skill_evolution_hooks.py) inside the SDK's generic
+# skill-evolution Cloud Run Job. Passed to its deploy.sh via
+# --extra-requirements. The job image already ships
+# bigquery-agent-analytics[llm], google-adk, google-genai,
+# google-cloud-storage and python-dotenv; this file adds only what the
+# lab modules the adapter imports additionally need.
+google-cloud-aiplatform[agent-engines,a2a]>=1.130.0
+google-cloud-logging>=3.12.0,<4.0.0
+a2a-sdk>=0.3.26,<1.0.0
+nest-asyncio>=1.6.0,<2.0.0
+httpx
+PyGithub>=2.3.0
+google-cloud-secret-manager>=2.20.0
+numpy>=2.4.6
+protobuf>=6.31.1,<7.0.0
+# The publish gate (_publish_gate_check) shells out to pytest.
+pytest>=8.3.4,<9.0.0
+pytest-asyncio>=0.23.8,<1.0.0
