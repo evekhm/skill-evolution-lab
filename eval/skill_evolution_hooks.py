@@ -36,6 +36,17 @@ _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
+# The job's CWD is its own app dir, not this repo's clone, while the lab's
+# env conventions (AGENT_REGISTRY, EVAL_QUESTIONS_FILE) are repo-relative
+# paths resolved against CWD. Re-anchor them to this repo before any lab
+# module reads them at import time.
+for _var in ("AGENT_REGISTRY", "EVAL_QUESTIONS_FILE"):
+    _val = os.environ.get(_var)
+    if _val and not os.path.isabs(_val) and not os.path.exists(_val):
+        _anchored = os.path.join(_REPO_ROOT, _val)
+        if os.path.exists(_anchored):
+            os.environ[_var] = _anchored
+
 logger = logging.getLogger(__name__)
 
 
