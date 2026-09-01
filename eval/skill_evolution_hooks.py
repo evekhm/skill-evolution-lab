@@ -39,13 +39,21 @@ if _REPO_ROOT not in sys.path:
 # The job's CWD is its own app dir, not this repo's clone, while the lab's
 # env conventions (AGENT_REGISTRY, EVAL_QUESTIONS_FILE) are repo-relative
 # paths resolved against CWD. Re-anchor them to this repo before any lab
-# module reads them at import time.
+# module reads them at import time. Export the repo root on PYTHONPATH
+# too: lab scripts spawn helper subprocesses (e.g. the traffic generator)
+# that import the ``agents`` package and inherit only the environment.
 for _var in ("AGENT_REGISTRY", "EVAL_QUESTIONS_FILE"):
     _val = os.environ.get(_var)
     if _val and not os.path.isabs(_val) and not os.path.exists(_val):
         _anchored = os.path.join(_REPO_ROOT, _val)
         if os.path.exists(_anchored):
             os.environ[_var] = _anchored
+
+_pythonpath = os.environ.get("PYTHONPATH", "")
+if _REPO_ROOT not in _pythonpath.split(os.pathsep):
+    os.environ["PYTHONPATH"] = (
+        _REPO_ROOT + os.pathsep + _pythonpath if _pythonpath else _REPO_ROOT
+    )
 
 logger = logging.getLogger(__name__)
 
