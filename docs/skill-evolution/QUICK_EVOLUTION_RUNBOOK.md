@@ -296,7 +296,7 @@ cp "$RUN_DIR/v0_skill_backup.md" agents/enterprise/policy_agent/skill/SKILL.md
 |------|---------|
 | `eval/scoring/score_conversations.py` | SDK scorer: turn tags, trajectories, quality scoring |
 | `agents/workflow/skill_evolution_agent/evolve.py` | Adapter over the SDK evolution engine (`scripts/skill_evolution.py` in the pinned SDK; analyst + consolidator prompts live there) |
-| `agents/workflow/skill_evolution_agent/tools.py` | Cloud Run agent wrapper |
+| `agents/workflow/skill_evolution_agent/tools.py` | Registry push, PR creation, quality report — hook implementations imported by `eval/skill_evolution_hooks.py` |
 | `scripts/demo/skill_evolution/run_demo.sh` | Full automated demo pipeline |
 | `eval/data/questions/demo_quick.json` | 22-question quick test set |
 | `eval/data/questions/demo_conversations.json` | 205-question full set |

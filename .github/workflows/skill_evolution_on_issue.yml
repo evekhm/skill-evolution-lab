@@ -15,7 +15,9 @@
 # Skill Evolution dispatcher — triggered when the Quality Agent files a
 # quality issue. The runner counts open quality issues; at the threshold
 # (EVOLUTION_MIN_OPEN_ISSUES repo var, default 10) it dispatches the
-# skill-evolution-agent Cloud Run job, which runs the full pipeline and
+# SDK's generic skill-evolution Cloud Run job (bqaa-skill-evolution,
+# from BigQuery-Agent-Analytics-SDK deploy/skill_evolution_job/, wired
+# to this lab via EVOLUTION_HOOKS), which runs the full pipeline and
 # opens the PR.
 #
 # Auth:
@@ -82,7 +84,7 @@ jobs:
           # In-flight guard: one evolution run at a time. Without this,
           # every issue in a morning batch dispatches its own multi-hour
           # execution (they'd all see the same >=threshold count).
-          RUNNING=$(gcloud run jobs executions list --job=skill-evolution-agent \
+          RUNNING=$(gcloud run jobs executions list --job=bqaa-skill-evolution \
             --project="${PROJECT_ID}" --region="${REGION}" --limit=10 \
             --format="value(metadata.name,status.completionTime)" \
             | awk -F'\t' '$2=="" {c++} END {print c+0}')
@@ -90,11 +92,11 @@ jobs:
             echo "An evolution execution is already running (${RUNNING} in flight) — skipping dispatch."
             exit 0
           fi
-          echo "Threshold met — dispatching skill-evolution-agent job (async)."
-          gcloud run jobs execute skill-evolution-agent \
+          echo "Threshold met — dispatching bqaa-skill-evolution job (async)."
+          gcloud run jobs execute bqaa-skill-evolution \
             --project="${PROJECT_ID}" --region="${REGION}"
           gh issue comment "${{ github.event.issue.number }}" \
-            --body "Quality-issue threshold met (${OPEN} open >= ${MIN_OPEN_ISSUES}): dispatched the skill-evolution-agent Cloud Run job. Watch: \`gcloud run jobs executions list --job=skill-evolution-agent --region=${REGION}\`"
+            --body "Quality-issue threshold met (${OPEN} open >= ${MIN_OPEN_ISSUES}): dispatched the bqaa-skill-evolution Cloud Run job (SDK skill-evolution job). Watch: \`gcloud run jobs executions list --job=bqaa-skill-evolution --region=${REGION}\`"
 
       - name: Post failure comment
         if: failure()

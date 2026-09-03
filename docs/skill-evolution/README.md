@@ -368,7 +368,7 @@ agents/enterprise/policy_agent/skill/
 python agents/workflow/skill_evolution_agent/main.py --full-loop
 
 # Cloud Run Job (weekly via Cloud Scheduler)
-gcloud run jobs execute skill-evolution-agent
+gcloud run jobs execute bqaa-skill-evolution
 ```
 
 Both paths run the same pipeline. The demo script is for interactive
