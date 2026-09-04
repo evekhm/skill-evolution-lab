@@ -164,7 +164,7 @@ learn-propose pipeline and opens the PR). Details and key files:
    revision at startup. Rollback to the baseline is one command.
 
 In production the loop is driven by two Cloud Scheduler jobs
-(`quality-agent-daily` at 08:00 UTC, `skill-evolution-weekly` on
+(`quality-agent-daily` at 08:00 UTC, `bqaa-skill-evolution-cron` on
 Mondays at 09:00 UTC; accumulating quality issues can also trigger a
 run — see [Quality Monitoring](#quality-monitoring--automated-evolution)).
 Human involvement is limited to reviewing and merging the PR. The
@@ -881,7 +881,7 @@ EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
 ### Step 3 — Run the evolution job
 
 ```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+gcloud run jobs execute bqaa-skill-evolution --region $REGION --wait \
   --args="--full-loop,--trace-labels,$DEMO_LABEL,--mode,policy_agent,--rounds,1,--candidates,2,--quick"
 ```
 
@@ -1033,13 +1033,13 @@ The evolution job selects its input slice with the same vocabulary:
 
 ```bash
 # Re-run the scheduled job on demand (default selector: current version)
-gcloud scheduler jobs run skill-evolution-weekly --location $REGION
+gcloud scheduler jobs run bqaa-skill-evolution-cron --location $REGION
 
 # Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
 uv run python -m agents.workflow.traffic_generator.main \
   --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
 # (the run prints its run_id label)
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+gcloud run jobs execute bqaa-skill-evolution --region $REGION --wait \
   --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
 ```
 
@@ -1361,7 +1361,7 @@ flowchart TD
     Traffic([Users / Simulator]) -->|1. traffic| Supervisor[supervisor]
     Supervisor -->|2. traces tagged w/<br>agent_version| BQ[(BigQuery<br>agent_events)]
     
-    CRJ[skill-evolution-agent<br><i>Cloud Run Job</i>]
+    CRJ[bqaa-skill-evolution<br><i>Cloud Run Job</i>]
     BQ -->|3. trigger: on-demand,<br>issues, or schedule| CRJ
     
     CRJ -.->|bottleneck analysis &<br>best-of-N candidate wins| CRJ
@@ -1610,7 +1610,7 @@ no intermediate downloads.
 bash agents/workflow/skill_evolution_agent/deploy.sh
 
 # Run batch evolution manually
-gcloud run jobs execute skill-evolution-agent --project=$PROJECT_ID --region=$REGION
+gcloud run jobs execute bqaa-skill-evolution --project=$PROJECT_ID --region=$REGION
 
 # Run locally
 uv run python agents/workflow/skill_evolution_agent/main.py --batch
@@ -1765,7 +1765,7 @@ deployed stack consistent:
 - **Evolution on issue** (`.github/workflows/skill_evolution_on_issue.yml`)
   -- each new quality issue triggers a dispatcher: the runner counts
   open `quality` issues against `EVOLUTION_MIN_OPEN_ISSUES` (repo var,
-  default 10) and at the threshold dispatches the skill-evolution-agent
+  default 10) and at the threshold dispatches the bqaa-skill-evolution
   Cloud Run job (async, via WIF), commenting the issue either way.
   Proven live 2026-07-17: the daily quality agent filed issues at
   08:00, the 10-issue threshold tripped, and the dispatcher started a

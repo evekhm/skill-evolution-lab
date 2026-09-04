@@ -670,7 +670,7 @@ that executes the full loop autonomously:
 bash agents/workflow/skill_evolution_agent/deploy.sh
 
 # Run manually
-gcloud run jobs execute skill-evolution-agent \
+gcloud run jobs execute bqaa-skill-evolution \
     --project=$PROJECT_ID --region=$REGION
 
 # Or run locally via CLI
@@ -874,7 +874,7 @@ EVOLUTION_TRACE_LABELS=$DEMO_LABEL EVAL_TIME_PERIOD=6h \
 ### Step 3 — Run the evolution job
 
 ```bash
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+gcloud run jobs execute bqaa-skill-evolution --region $REGION --wait \
   --args="--full-loop,--trace-labels,$DEMO_LABEL,--mode,policy_agent,--rounds,1,--candidates,2,--quick"
 ```
 
@@ -1026,13 +1026,13 @@ The evolution job selects its input slice with the same vocabulary:
 
 ```bash
 # Re-run the scheduled job on demand (default selector: current version)
-gcloud scheduler jobs run skill-evolution-weekly --location $REGION
+gcloud scheduler jobs run bqaa-skill-evolution-cron --location $REGION
 
 # Evolve on ONE labeled slice — e.g. exactly the traffic you just seeded
 uv run python -m agents.workflow.traffic_generator.main \
   --from-file eval/data/questions/two_defect_evolve.json --concurrency 2
 # (the run prints its run_id label)
-gcloud run jobs execute skill-evolution-agent --region $REGION --wait \
+gcloud run jobs execute bqaa-skill-evolution --region $REGION --wait \
   --args="--full-loop,--trace-labels,run_id=<that run_id>,--mode,policy_agent,--rounds,1,--quick"
 ```
 

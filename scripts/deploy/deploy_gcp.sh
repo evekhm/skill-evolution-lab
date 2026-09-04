@@ -140,7 +140,7 @@ fi
 # Deploy Skill Evolution Agent as Cloud Run Job + Cloud Scheduler
 echo ""
 echo "========================================="
-echo "[7/${TOTAL_STEPS}] Deploying skill_evolution_agent..."
+echo "[7/${TOTAL_STEPS}] Deploying skill evolution (SDK job bqaa-skill-evolution)..."
 echo "========================================="
 STEP_START=$(date +%s)
 if (cd "$PROJECT_ROOT/agents/workflow/skill_evolution_agent" && ./deploy.sh); then

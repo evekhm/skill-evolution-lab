@@ -91,14 +91,14 @@ fi
 
 # --- 8 jobs + schedulers ---
 jobs=$(gcloud run jobs list --project="$PROJECT_ID" --region="$REGION" --format="value(metadata.name)" 2>/dev/null)
-for j in quality-agent skill-evolution-agent; do
+for j in quality-agent bqaa-skill-evolution; do
     if echo "$jobs" | grep -q "^${j}$"; then ok "8 Cloud Run job: $j"; else bad "8 Cloud Run job: $j"; fi
 done
 scheds=$(gcloud scheduler jobs list --project="$PROJECT_ID" --location="$REGION" --format="value(name)" 2>/dev/null)
-if echo "$scheds" | grep -q "quality-agent-daily" && echo "$scheds" | grep -q "skill-evolution-weekly"; then
-    ok "8 schedulers: quality-agent-daily + skill-evolution-weekly"
+if echo "$scheds" | grep -q "quality-agent-daily" && echo "$scheds" | grep -q "bqaa-skill-evolution-cron"; then
+    ok "8 schedulers: quality-agent-daily + bqaa-skill-evolution-cron"
 else
-    bad "8 schedulers" "expected quality-agent-daily and skill-evolution-weekly"
+    bad "8 schedulers" "expected quality-agent-daily and bqaa-skill-evolution-cron"
 fi
 
 # --- 9 Skill Registry seeded ---

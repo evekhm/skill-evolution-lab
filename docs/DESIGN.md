@@ -873,18 +873,18 @@ Both jobs authenticate to GCP via Workload Identity Federation.
 Concurrency: one run at a time (global).
 
 Steps:
-1. Checkout code
-2. Authenticate to GCP (Workload Identity Federation)
-3. Run `agents/workflow/skill_evolution_agent/main.py --batch`
-4. Agent counts open quality issues:
-   - If count >= threshold (default 10): queries BQ for sessions with current `agent_version`, scores them, evolves SKILL.md, creates PR (with before/after quality table) closing all analyzed issues
+1. Authenticate to GCP (Workload Identity Federation)
+2. Counts open quality issues via `gh issue list --label quality`:
+   - If count >= threshold (default 10) and no execution is already in
+     flight: dispatches the `bqaa-skill-evolution` Cloud Run job (async,
+     via `gcloud run jobs execute`) — the SDK job itself queries BQ for
+     sessions with the current `agent_version`, scores them, evolves
+     SKILL.md, and opens the PR (with before/after quality table)
    - If count < threshold: exits without action (accumulate more data)
-5. On failure, posts a comment with workflow log link
+3. On failure, posts a comment with workflow log link
 
-**Why `--batch` instead of `--from-issue`:**
-- Analyzes all open issues together for holistic SKILL.md evolution
-- Queries BQ directly by version -- always uses fresh session data
-- Better for learning patterns across multiple failure modes
+The runner only counts issues and dispatches; the evolution pipeline
+runs inside the Cloud Run job, not on the GitHub Actions runner.
 
 ### 9.3 `deploy.yml` -- Deploy on PR Merge
 

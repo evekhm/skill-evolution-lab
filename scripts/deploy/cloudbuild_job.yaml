@@ -13,7 +13,8 @@
 # limitations under the License.
 
 # Shared Cloud Build config for the workflow-agent job images
-# (quality_agent, skill_evolution_agent). Exists so SDK_REPO/SDK_BRANCH flow
+# (quality_agent — skill evolution now deploys as the SDK job, see
+# agents/workflow/skill_evolution_agent/deploy.sh). Exists so SDK_REPO/SDK_BRANCH flow
 # from .env into the Docker build as build args — `gcloud builds submit
 # --tag` cannot pass build args. Invoked by each agent's deploy.sh:
 #

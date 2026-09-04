@@ -6,8 +6,13 @@ creates a GitHub PR with the evolved skill for human review.
 Traffic generation and initial scoring are handled by main.py
 orchestration before the agent starts.
 
-Deployed as a **Cloud Run Job** with weekly Cloud Scheduler trigger.
-Can also run locally via CLI.
+Deployed as the BigQuery-Agent-Analytics-SDK's generic scheduled job
+(`deploy/skill_evolution_job/`) — Cloud Run Job `bqaa-skill-evolution`
+with Cloud Scheduler trigger `bqaa-skill-evolution-cron`. This
+directory's modules (`main.py`, `tools.py`, `evolve.py`,
+`agentic_analyst.py`, `bottleneck.py`, `coevolve.py`, `agent.py`) are
+the hook implementations the job imports via `EVOLUTION_HOOKS=eval.skill_evolution_hooks`
+from a runtime clone of this repo. Can also run locally via CLI.
 
 Based on:
 - [Trace2Skill](https://arxiv.org/abs/2603.25158) (Alibaba/Qwen, Mar 2026)
@@ -190,23 +195,27 @@ multiple quality runs, all distinct reports should be downloaded and merged.
 
 ## Deploying to GCP
 
-Deployed as a Cloud Run Job with weekly Cloud Scheduler trigger:
+The evolution runner no longer ships as a lab-built container. It
+deploys as the SDK's generic scheduled job — Cloud Run Job
+`bqaa-skill-evolution` with Cloud Scheduler trigger
+`bqaa-skill-evolution-cron`:
 
 ```bash
 # Deploy
 bash agents/workflow/skill_evolution_agent/deploy.sh
 
 # Run manually
-gcloud run jobs execute skill-evolution-agent \
+gcloud run jobs execute bqaa-skill-evolution \
     --project=$PROJECT_ID --region=$REGION
 ```
 
-The deploy script:
-- Builds a container with all dependencies (traffic generator,
-  quality scorer, enterprise agents, eval data)
-- Creates a Cloud Run Job with 1h timeout, 2Gi memory
-- Sets `FULL_LOOP=true`, `GCS_UPLOAD=true`, `GCS_BUCKET`
-- Creates Cloud Scheduler job (weekly, Mondays 09:00 UTC)
+`deploy.sh` wraps the SDK job deploy
+(`deploy/skill_evolution_job/deploy.sh` in
+BigQuery-Agent-Analytics-SDK) and persists the lab hook wiring on the
+job: `EVOLUTION_HOOKS=eval.skill_evolution_hooks`, the `SDK_REPO`/
+`SDK_BRANCH` pair, and the quality-scoping/model env vars this
+package's hooks read. Image extras (this lab's runtime dependencies)
+come from `eval/skill_evolution/sdk_job_requirements.txt`.
 
 ## Configuration
 
@@ -258,8 +267,7 @@ lab-side integration:
 | `bottleneck.py` | Failure classification and bottleneck detection |
 | `coevolve.py` | Cross-agent co-evolution orchestrator |
 | `agentic_analyst.py` | Agentic error analysts with tool access (plugged into the engine's `error_analyst_fn` hook) |
-| `Dockerfile` | Container image for Cloud Run deployment |
-| `deploy.sh` | Cloud Run Job + Cloud Scheduler deployment |
+| `deploy.sh` | Wraps the SDK job deploy and persists the lab hook wiring on the job |
 | `eval/skill_evolution/agent_registry.json` | Agent registry (which agents to evolve) |
 | `gcs_utils.py` | Shared GCS upload/download utilities (in `agents/workflow/`) |
 
