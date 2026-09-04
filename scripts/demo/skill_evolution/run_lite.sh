@@ -27,8 +27,11 @@ if [ "$TARGET" = deployed ]; then
     # agents/workflow/skill_evolution_agent/deploy.sh): synthetic quality
     # source drives the traffic hook, the 13-question lite set replaces
     # the 55-question evolve default, and a 1h report window isolates the
-    # fresh V0 sessions the traffic hook just wrote.
-    OVERRIDES="^|^QUALITY_SOURCE=synthetic|EVAL_QUESTIONS_FILE=eval/data/questions/two_defect_lite.json|EVAL_TIME_PERIOD=1h|MIN_SESSIONS=13|MIN_FAILURES=5|EVOLUTION_TARGET_AGENTS=supervisor|EVOLUTION_CANDIDATES=2"
+    # fresh V0 sessions the traffic hook just wrote. EVOLUTION_MAX_ROUNDS=1
+    # and EVOLUTION_CANDIDATES=2 are binding in the job's tools (the
+    # orchestrating agent cannot exceed them) — the lite profile is one
+    # round of two candidates, same as the local sandbox.
+    OVERRIDES="^|^QUALITY_SOURCE=synthetic|EVAL_QUESTIONS_FILE=eval/data/questions/two_defect_lite.json|EVAL_TIME_PERIOD=1h|MIN_SESSIONS=13|MIN_FAILURES=5|EVOLUTION_TARGET_AGENTS=supervisor|EVOLUTION_CANDIDATES=2|EVOLUTION_MAX_ROUNDS=1"
     JOB_ARGS=""
     for a in ${ARGS[@]+"${ARGS[@]}"}; do [ -n "$a" ] && JOB_ARGS="${JOB_ARGS:+$JOB_ARGS,}$a"; done
     # --project is REQUIRED: gcloud config is shared across VM sessions

@@ -81,6 +81,29 @@ if [ ! -x "${SDK_JOB_DIR}/deploy/skill_evolution_job/deploy.sh" ]; then
     exit 1
 fi
 
+# Engine baked into the image. The job source branch ships upstream
+# main's scripts/skill_evolution.py, which lacks the agentic-analyst and
+# incumbent-guard kwargs this lab depends on (error_analyst_fn, tools,
+# incumbent_score — SDK PR #395). The image must carry the same engine
+# the lab pins for local runs (SDK_REPO@SDK_BRANCH in .env, the pair
+# ensure_sdk.py clones), so clone that ref and hand its scripts/ to the
+# SDK deploy.sh via --scripts-dir. SDK_ENGINE_DIR overrides with a local
+# checkout.
+SDK_ENGINE_REPO="${SDK_REPO:-https://github.com/evekhm/BigQuery-Agent-Analytics-SDK.git}"
+SDK_ENGINE_BRANCH="${SDK_BRANCH:-lab-stable}"
+if [ -z "${SDK_ENGINE_DIR:-}" ]; then
+    SDK_ENGINE_DIR="$(mktemp -d)/sdk-engine"
+    echo "Cloning ${SDK_ENGINE_REPO}@${SDK_ENGINE_BRANCH} (engine source)..."
+    git clone --depth 1 --branch "${SDK_ENGINE_BRANCH}" "${SDK_ENGINE_REPO}" \
+        "${SDK_ENGINE_DIR}" --quiet
+fi
+if ! grep -q 'error_analyst_fn' "${SDK_ENGINE_DIR}/scripts/skill_evolution.py"; then
+    echo "ERROR: ${SDK_ENGINE_DIR}/scripts/skill_evolution.py has no error_analyst_fn;" >&2
+    echo "the image would silently drop the agentic analysts and the incumbent guard." >&2
+    echo "Point SDK_REPO/SDK_BRANCH (or SDK_ENGINE_DIR) at an engine that has them." >&2
+    exit 1
+fi
+
 echo "========================================="
 echo "  Deploying Skill Evolution (SDK job)"
 echo "========================================="
@@ -88,6 +111,7 @@ echo "  Project:    $PROJECT_ID"
 echo "  Region:     $REGION"
 echo "  Job:        $JOB_NAME"
 echo "  SDK source: ${SDK_JOB_REPO}@${SDK_JOB_BRANCH}"
+echo "  Engine:     ${SDK_ENGINE_DIR}/scripts (${SDK_ENGINE_REPO}@${SDK_ENGINE_BRANCH})"
 echo "  PR target:  ${GITHUB_REPO:-<none — dry-run mode>}"
 echo "========================================="
 
@@ -101,8 +125,11 @@ DEPLOY_ARGS=(
     --table "${TABLE_ID:-agent_events}"
     --dataset-location "${DATASET_LOCATION:-us-central1}"
     --schedule "${EVOLUTION_SCHEDULE:-0 9 * * 1}"
+    # Relative on purpose: the job resolves AGENT_REGISTRY inside its
+    # runtime clone of this repo (registry.registry_path), not on this VM.
     --agent-registry eval/skill_evolution/agent_registry.json
     --extra-requirements "${PROJECT_ROOT}/eval/skill_evolution/sdk_job_requirements.txt"
+    --scripts-dir "${SDK_ENGINE_DIR}/scripts"
     --gcs-bucket "${GCS_BUCKET:-${PROJECT_ID}-skill-evolution}"
     --smoke
 )

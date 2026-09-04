@@ -8,16 +8,21 @@ wired in exclusively through the job's host-hook seam:
 `eval/skill_evolution_hooks.py` (`EVOLUTION_HOOKS=eval.skill_evolution_hooks`)
 plus `eval/skill_evolution/sdk_job_requirements.txt` for the image.
 
-The job's engine must be this repo's lab-stable one (it has the agentic
-analyst kwargs: `error_analyst_fn`, `incumbent_score`,
-`analyst_timeout_s`). Extract it once:
+The job's engine must be the one this repo pins (`SDK_REPO@SDK_BRANCH`
+in `.env`, the `lab-stable` branch): it has the agentic analyst kwargs
+`error_analyst_fn`, `tools`, `incumbent_score`, `analyst_timeout_s`. The
+job source branch ships upstream main's `scripts/skill_evolution.py`,
+which lacks them (SDK PR #395 is still open); on that engine the job
+logs the dropped keywords and falls back to single-pass analysts and
+size-based candidate selection. Locally, `ensure_sdk.py` clones the pin
+to `.sdk/BigQuery-Agent-Analytics-SDK`, so point the job there
+(`SDK_SCRIPTS_DIR=$PWD/.sdk/BigQuery-Agent-Analytics-SDK/scripts`). For
+the image, `agents/workflow/skill_evolution_agent/deploy.sh` clones the
+same pin and passes it to the SDK's `deploy.sh --scripts-dir`.
 
-```bash
-cd ~/projects/BigQuery-Agent-Analytics-SDK
-mkdir -p /tmp/labstable_scripts
-git show lab-stable:scripts/skill_evolution.py > /tmp/labstable_scripts/skill_evolution.py
-git show lab-stable:scripts/quality_report.py > /tmp/labstable_scripts/quality_report.py
-```
+The job accepts `EVOLUTION_WORKDIR` pointing at a git worktree as well as
+a clone (a worktree's `.git` is a file; the PR head rejected it, fixed in
+the job's `config.py`).
 
 ## Scenario 1 — lite_local (report-driven, no BigQuery, no publish)
 
@@ -31,7 +36,7 @@ unset DATASET_ID TABLE_ID DATASET_LOCATION   # local traffic must not write BigQ
 export EVAL_QUESTIONS_FILE=eval/data/questions/two_defect_lite.json \
   EVOLUTION_PUBLISH=0 EVOLUTION_HOOKS=eval.skill_evolution_hooks \
   EVOLUTION_WORKDIR=$PWD AGENT_REGISTRY=eval/skill_evolution/agent_registry.json \
-  SDK_SCRIPTS_DIR=/tmp/labstable_scripts PYTHONPATH=$PWD
+  SDK_SCRIPTS_DIR=$PWD/.sdk/BigQuery-Agent-Analytics-SDK/scripts PYTHONPATH=$PWD
 RUN=/path/to/runs/$(date +%Y-%m-%d_%H%M%S)_lite_local_e2e; mkdir -p $RUN
 ```
 
@@ -87,6 +92,37 @@ Baselines are live-judged regenerated traffic, so they land within a
 > those numbers are not baselines anywhere in `sample_runs/` (30.8 is the
 > lite_deployed *unhelpful* rate). The recorded figures above are canonical.
 
+### Figures — PR #472 head as shipped, upstream engine (2026-09-04, run `2026-09-03_233649_sdk472_lite_local_upstream_engine`)
+
+Same scenario against the job at SDK PR #472 head (bd534d6) with the
+engine the PR ships (upstream main `scripts/skill_evolution.py`,
+`SDK_SCRIPTS_DIR` unset) plus the one-line worktree fix in the job's
+`config.py`; lab side is this branch. The V0 exam is not re-measured; the
+reference from the run above is reused.
+
+| Leg | lab-stable engine (run above) | upstream engine (this run) |
+|---|---|---|
+| Evolve set V0 (13q, lab judge) | 46.2% (6/13) | 30.8% (4/13) |
+| Evolve set V0 re-scored by the engine | not run (`incumbent_score` passed) | 46.2% (kwarg dropped, engine re-ran traffic) |
+| Evolve set winner (13q) | 100.0% | 100.0% (both candidates 100.0%) |
+| Exam V0 (55q) | 41.8% (23/55) | 41.8% (reference reused) |
+| Exam V1 (55q) | 100.0% (55/55) | 100.0% (55/55) |
+| Exam delta | +58.2pp | +58.2pp vs reference |
+| pr_preview.md | yes | yes (title `30.8% -> 100.0%`, evolved figure from `evolved_score.json`) |
+
+Elapsed: V0 traffic 4.6 min + score 0.9 min; job step 19.7 min (engine's
+own V0 re-score 5.7 min, then ~6 min per candidate); exam 19.1 min.
+
+Observed on the upstream engine: the job logs `does not support kwargs
+['error_analyst_fn', 'incumbent_score'] — dropping them`, analysts run
+single-pass (~30 s for both candidates), and the engine re-scores V0
+itself (same 13 questions, live judge: 46.2% against the report's
+30.8%), so the incumbent guard uses its own figure, not the report's.
+The first attempt failed at the job step with `--mode: invalid choice:
+'supervisor'` because `EVOLUTION_WORKDIR` was a git worktree (the
+registry never loaded); fixed in the job's `config.py`, and the `--mode`
+help now names the registry error.
+
 ## Scenario 2 — lite_deployed (full loop in Cloud Run, real PR)
 
 Prerequisites:
@@ -94,31 +130,23 @@ Prerequisites:
 - The hooks adapter must be **committed to this repo on GitHub**
   (`evekhm/skill-evolution-lab@main`): the job clones the repo at runtime
   and imports `EVOLUTION_HOOKS` from the clone.
-- Image built with the lab-stable engine and the adapter's dependencies
-  (from the SDK checkout, with
-  `/tmp/labstable_scripts/skill_evolution.py` temporarily copied over
-  `scripts/skill_evolution.py`):
+- Image built with the pinned engine and the adapter's dependencies.
+  The lab wrapper does the whole thing (clones the job source and the
+  engine pin, runs the SDK's `deploy.sh` with `--scripts-dir`,
+  `--extra-requirements` and `--smoke`, then persists the lab env on the
+  job):
 
   ```bash
-  cd deploy/skill_evolution_job
-  ./deploy.sh --project skill-evolution-lab --region us-central1 \
-    --dataset agent_logs --dataset-location us-central1 \
-    --github-repo evekhm/skill-evolution-lab --gh-secret github-pat \
-    --gcs-bucket skill-evolution-lab-skill-evolution \
-    --agent-registry eval/skill_evolution/agent_registry.json \
-    --extra-requirements <lab>/eval/skill_evolution/sdk_job_requirements.txt \
-    --smoke
+  bash agents/workflow/skill_evolution_agent/deploy.sh
   ```
 
-  (`--github-repo` + `--gh-secret` together flip `EVOLUTION_PUBLISH=true`
-  on the job — real PR mode.)
-
-  This is automated by the lab's own deploy step:
-  `agents/workflow/skill_evolution_agent/deploy.sh` (called by
-  `scripts/deploy/deploy_gcp.sh` step 7) clones the SDK job source, runs
-  the command above, and then persists the lab hook wiring on the job
-  (`EVOLUTION_HOOKS`, `SDK_REPO`/`SDK_BRANCH`, quality scoping and model
-  IDs) — so a scheduled fire needs no per-execution env.
+  It refuses to build when the engine it is about to bake has no
+  `error_analyst_fn` (the image would silently lose the agentic
+  analysts and the incumbent guard). `--github-repo` + `--gh-secret`
+  (derived from `origin` and `GH_SECRET_NAME`) together flip
+  `EVOLUTION_PUBLISH=true` on the job — real PR mode. `--agent-registry`
+  stays relative on purpose: the job resolves it inside its runtime
+  clone of this repo.
 - Deployed agents rolled back to V0:
   `bash scripts/demo/skill_evolution/rollback_demo.sh`.
 - **`SDK_REPO` + `SDK_BRANCH` must be in the execution env** (the same
@@ -173,22 +201,59 @@ pushing the winner to the Skill Registry.
 ### Figures — migrated deploy path (2026-09-03, execution bqaa-skill-evolution-j4z2m)
 
 Re-validation after this repo's deploy surface moved to the SDK-job
-wrapper (`agents/workflow/skill_evolution_agent/deploy.sh` rebuilt the
-image via the SDK's deploy.sh, smoke SELF-TEST passed, hook wiring
-persisted on the job). Two evolution rounds ran (50 min):
+wrapper (image rebuilt via the SDK's deploy.sh, smoke SELF-TEST passed,
+hook wiring persisted on the job). The loop closed (gate, PR, registry
+push), 50 min, but the run exposed four defects, all fixed afterwards:
 
 | Leg | Result |
 |---|---|
-| Evolve set V0 (13q) | 23.1% |
-| Round-1 v1 | 26.9% |
-| Final eval (winner, 26 sessions) | 100.0% (+73.1pp) |
+| Evolve set V0 (13q, BigQuery 1h window: 26 sessions) | 23.1% |
+| Winner on the evolve set (`evolved_score.json`, incumbent-guarded selection) | 100.0% |
+| Post-round BigQuery re-reports `v1_`/`v2_quality_report.json` | 26.9% both, the same 26 sessions: stale, not a measurement of the winner |
+| Held-out exam (55q) | not run by the job |
 | Publish gate | pass (10 passed, 1 skipped, 2 xfailed) |
-| PR opened | #126 (auto-closes issue #125) |
-| Registry publish | yes — supervisor v2 pushed to ks-knowledge-supervisor (revisions: 37) |
+| PR opened | #126 (auto-closes issue #125); title reads "23.1% -> 26.9%", the stale figure |
+| Registry publish | yes — supervisor v2 pushed to ks-knowledge-supervisor |
 
-Cleanup: delete or pause the weekly scheduler when the lab should not
-keep evolving on its own —
-`./deploy.sh --down --project skill-evolution-lab --region us-central1`.
+Defects found (Cloud Build source and execution log are the evidence):
+
+1. The image carried the lab-stable engine copied over by hand; the
+   wrapper as committed clones the job branch fresh and would have baked
+   the upstream engine (no agentic analysts, no incumbent guard). Fixed:
+   the wrapper clones the engine pin and passes `--scripts-dir`.
+2. `EVOLUTION_CANDIDATES=2` was bypassed: the orchestrating agent passed
+   `candidates=3` to `run_evolution` and the job honored it. Fixed in the
+   job (the env value is binding over the caller's).
+3. A second round ran although the profile is one round:
+   `EVOLUTION_MAX_ROUNDS` was only enforced for `run_coevolution` and the
+   lite profile did not set it. Fixed: per-agent guard on `run_evolution`
+   and `EVOLUTION_MAX_ROUNDS=1` in `run_lite.sh`.
+4. The PR title/body took the evolved figure from the stale re-report
+   instead of the selection score. Fixed: `evolved_score.json` is the
+   authoritative evolved figure; `run_quality_report` flags a report whose
+   summary is identical to an earlier one as `stale`.
+
+Cleanup: the SDK deploy leaves `bqaa-skill-evolution-cron` ENABLED
+(weekly, real-PR mode). Pause it when the lab should not keep evolving
+on its own, the way the legacy schedulers are kept:
+
+```bash
+gcloud scheduler jobs pause bqaa-skill-evolution-cron \
+  --project skill-evolution-lab --location us-central1
+```
+
+or tear the job + trigger down with
+`./deploy.sh --down --project skill-evolution-lab --region us-central1`
+(SDK checkout). The legacy lab resources are still present and paused,
+`skill-evolution-weekly` (scheduler) and `skill-evolution-agent` (Cloud
+Run job); they are superseded by the SDK job and can be deleted:
+
+```bash
+gcloud scheduler jobs delete skill-evolution-weekly \
+  --project skill-evolution-lab --location us-central1
+gcloud run jobs delete skill-evolution-agent \
+  --project skill-evolution-lab --region us-central1
+```
 
 ---
 Disposition (2026-09-01): Scenario 2 reproduced end-to-end (execution
@@ -197,3 +262,10 @@ GoogleCloudPlatform/BigQuery-Agent-Analytics-SDK#472. Follow-ups:
 lab issues #122 (score-traffic BigQuery pollution), #123
 (default_app_name auto-scoping), #124 (publish-hook unit test); SDK
 items in a comment on PR #472.
+Disposition (2026-09-04): PR #472 head verified as shipped (upstream
+engine, run `2026-09-03_233649_sdk472_lite_local_upstream_engine`,
+figures under Scenario 1); fixes pushed to the PR #472 branch
+(candidate/round binding, worktree workdir, `--scripts-dir`, stale
+re-report flag, PR-title metric source) and to this branch (engine pin in
+the deploy wrapper, `EVOLUTION_MAX_ROUNDS=1` in run_lite.sh). Cleanup
+commands above are pending the owner's decision.
